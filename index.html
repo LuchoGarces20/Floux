@@ -3,73 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucho Tracker Global</title>
+    <title>Floux</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #f4f7f6; --surface-color: #ffffff; --text-color: #2c3e50; --text-muted: #7f8c8d;
-            --border-color: #e0e6ed; --primary-color: #0d47a1; --primary-hover: #1565c0;
-            --danger-color: #e74c3c; --danger-hover: #c0392b; --success-color: #27ae60;
-            --tab-bg: #e3f2fd;
+            --bg-color: #F8FAFC; 
+            --surface-color: #ffffff; 
+            --text-color: #1e293b; 
+            --text-muted: #94A3B8;
+            --border-color: #F1F5F9; 
+            --primary-color: #0F766E; 
+            --primary-hover: #14B8A6;
+            --primary-gradient: rgba(15, 118, 110, 0.08);
+            --danger-color: #EF4444; 
+            --success-color: #10B981;
+            --tab-bg: #F0FDFA;
+            --shadow-color: rgb(0 0 0 / 0.05);
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-color: #121212; --surface-color: #1e1e1e; --text-color: #e0e0e0; --text-muted: #9e9e9e;
-                --border-color: #333333; --primary-color: #4fc3f7; --primary-hover: #29b6f6;
-                --tab-bg: #263238;
+                --bg-color: #0f172a; 
+                --surface-color: #1e293b; 
+                --text-color: #f8fafc; 
+                --text-muted: #94a3b8;
+                --border-color: #334155; 
+                --primary-color: #2DD4BF; 
+                --primary-hover: #14B8A6;
+                --primary-gradient: rgba(45, 212, 191, 0.12);
+                --tab-bg: #134e4a;
+                --shadow-color: rgb(0 0 0 / 0.2);
             }
         }
-        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; }
-        #app-movil { background-color: var(--surface-color); width: 100%; max-width: 450px; min-height: 100vh; padding: 2rem; box-sizing: border-box; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .header-app { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px;}
-        h1 { margin: 0; font-size: 1.6rem; }
-        .btn-icono { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 5px; color: var(--primary-color); }
-        h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); }
-        .oculto { display: none !important; }
         
-        /* Estilos para las nuevas pestañas de Onboarding */
-        .onboarding-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 10px; text-align: center; background: transparent; border: 2px solid var(--border-color); border-radius: 8px; color: var(--text-muted); font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 0.85rem;}
-        .tab-btn.active { background: var(--tab-bg); border-color: var(--primary-color); color: var(--primary-color); }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; justify-content: center; font-weight: 400; }
+        #app-movil { background-color: var(--surface-color); width: 100%; max-width: 450px; min-height: 100vh; padding: 2rem; box-sizing: border-box; box-shadow: 0 4px 20px var(--shadow-color); }
+        .header-app { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 20px;}
+        h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+        .btn-icono { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 5px; color: var(--primary-color); transition: transform 0.2s ease; }
+        h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); padding-bottom: 5px; font-weight: 700; }
         
-        .calc-result { background-color: var(--tab-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 1px dashed var(--primary-color);}
-        .calc-result strong { font-size: 1.5rem; color: var(--primary-color); display: block; margin-top: 5px;}
+        .transicion-seccion {
+            transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.4s ease;
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 2500px;
+            overflow: hidden;
+        }
+        .oculto { 
+            opacity: 0;
+            transform: translateY(10px);
+            max-height: 0;
+            pointer-events: none;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+        
+        .lang-flags { display: flex; gap: 8px; background: var(--border-color); padding: 4px 8px; border-radius: 20px; align-items: center; }
+        .flag { cursor: pointer; opacity: 0.4; transition: opacity 0.2s, transform 0.2s; font-size: 1.2rem; filter: grayscale(100%); }
+        .flag:hover { transform: scale(1.1); filter: grayscale(0%); opacity: 0.8;}
+        .flag.active { opacity: 1; transform: scale(1.1); filter: grayscale(0%); }
 
-        .balance-container { text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: var(--bg-color); border-radius: 12px; border: 1px solid var(--border-color); }
-        .balance-title { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
-        .balance-amount { font-size: 2.8rem; font-weight: bold; color: var(--primary-color); }
-        .balance-amount.monthly { font-size: 1.8rem; color: var(--text-color); }
-        progress { width: 100%; height: 12px; border-radius: 6px; margin-top: 10px; }
-        progress::-webkit-progress-bar { background-color: var(--border-color); border-radius: 6px; }
-        progress::-webkit-progress-value { background-color: var(--success-color); border-radius: 6px; }
-        progress.warning::-webkit-progress-value { background-color: var(--danger-color); }
+        .onboarding-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px; text-align: center; background: transparent; border: 2px solid var(--border-color); border-radius: 12px; color: var(--text-muted); font-weight: 500; cursor: pointer; transition: 0.2s; font-size: 0.85rem;}
+        .tab-btn.active { background: var(--tab-bg); border-color: var(--primary-color); color: var(--primary-color); font-weight: 700; }
+        .calc-result { background-color: var(--tab-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: 1px dashed var(--primary-color);}
+        .calc-result strong { font-size: 1.5rem; color: var(--primary-color); display: block; margin-top: 5px; font-variant-numeric: tabular-nums;}
+
+        .grid-balances { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .balance-card { text-align: center; padding: 1rem 0.5rem; background: var(--surface-color); border-radius: 16px; border: none; box-shadow: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color); }
+        .balance-card.highlight { background: linear-gradient(135deg, var(--primary-gradient) 0%, transparent 100%); grid-column: span 2; padding: 1.5rem; }
+        .b-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; display: block; font-weight: 500;}
+        .b-amount { font-size: 1.5rem; font-weight: 700; color: var(--text-color); font-variant-numeric: tabular-nums; }
+        .highlight .b-amount { font-size: 2.8rem; color: var(--primary-color); font-weight: 800; }
+
+        .custom-progress { width: 100%; height: 12px; background-color: var(--border-color); border-radius: 6px; margin-top: 10px; overflow: hidden; }
+        .custom-progress-fill { height: 100%; background-color: var(--success-color); border-radius: 6px; width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease; }
+        .custom-progress-fill.warning { background-color: var(--danger-color); }
+
         .form-group { margin-bottom: 1rem; text-align: left;}
-        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: bold;}
-        
-        input, select { width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--surface-color); color: var(--text-color); box-sizing: border-box; font-size: 1rem;}
-        
-        button.btn-principal { width: 100%; padding: 1rem; background-color: var(--primary-color); color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s; margin-bottom: 10px;}
+        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; color: var(--text-color);}
+        input, select { width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-size: 1rem; font-family: 'Inter', sans-serif;}
+        button.btn-principal { width: 100%; padding: 1rem; background-color: var(--primary-color); color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; margin-bottom: 10px;}
         button.btn-principal:hover { background-color: var(--primary-hover); }
+        button:active { transform: scale(0.97); }
+        
         .log { list-style: none; padding: 0; margin: 0; }
-        .log li { border-bottom: 1px solid var(--border-color); padding: 1rem 0; display: flex; justify-content: space-between; align-items: center; }
-        .expense-info { display: flex; flex-direction: column; }
-        .expense-desc { font-weight: bold; }
-        .expense-date { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
-        .expense-amount { font-weight: bold; font-size: 1.1rem; }
-        .delete-btn { background-color: var(--danger-color); color: white; border: none; width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem; margin: 0 0 0 1rem; border-radius: 4px; cursor: pointer;}
-        .delete-btn:hover { background-color: var(--danger-hover); }
-        .btn-secundario { background-color: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); width: 100%; padding: 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px;}
+        .log li { border-radius: 12px; padding: 1rem 0.5rem; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.2s ease; cursor: pointer; box-shadow: 0 1px 2px var(--shadow-color); background-color: var(--surface-color);}
+        .log li:hover, .log li:active { background-color: var(--bg-color); }
+        .expense-info { display: flex; flex-direction: column; flex-grow: 1; margin-left: 10px;}
+        .expense-desc { font-weight: 700; }
+        .expense-cat { font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; font-weight: 700; margin-top: 2px;}
+        .expense-date { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+        .expense-amount { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums;}
+        .cat-icon { font-size: 1.5rem; width: 35px; text-align: center; }
+        
+        .delete-btn { background-color: var(--danger-color); color: white; border: none; width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem; margin: 0 0 0 0.5rem; border-radius: 8px; cursor: pointer;}
+        .edit-btn { background-color: var(--primary-color); color: white; border: none; width: auto; padding: 0.4rem 0.8rem; font-size: 0.8rem; margin: 0 0 0 0.5rem; border-radius: 8px; cursor: pointer;}
+        .actions-row { display: flex; align-items: center; }
+        .btn-secundario { background-color: transparent; border: 2px solid var(--border-color); color: var(--primary-color); width: 100%; padding: 1rem; border-radius: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; transition: background-color 0.2s, border-color 0.2s, transform 0.1s;}
+        .btn-secundario:hover { border-color: var(--primary-color); background-color: var(--primary-gradient); }
+        .btn-pequeno { padding: 0.5rem; font-size: 0.85rem; margin-bottom: 10px;}
+        
+        .cat-breakdown { margin-bottom: 20px; }
+        .cat-bar-container { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.85rem;}
+        .cat-bar-label { width: 30%; font-weight: 500; color: var(--text-muted);}
+        .cat-bar-wrapper { width: 45%; background: var(--border-color); height: 8px; border-radius: 4px; margin: 0 10px; overflow: hidden;}
+        .cat-bar-fill { height: 100%; background: var(--primary-color); border-radius: 4px;}
+        .cat-bar-amount { width: 25%; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;}
     </style>
 </head>
 <body>
 
 <main id="app-movil">
     <div class="header-app">
-        <h1 id="titulo-mes">Lucho Tracker</h1>
-        <button id="btn-editar-presupuesto" class="btn-icono oculto">⚙️</button>
+        <h1 id="titulo-mes">Floux</h1>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <div class="lang-flags">
+                <span class="flag" data-lang="es" title="Español">🇪🇸</span>
+                <span class="flag" data-lang="en" title="English">🇺🇸</span>
+                <span class="flag" data-lang="pt" title="Português">🇧🇷</span>
+            </div>
+            <button id="btn-editar-presupuesto" class="btn-icono transicion-seccion oculto">⚙️</button>
+        </div>
     </div>
 
-    <section id="pantalla-configuracion">
-        
+    <section id="pantalla-configuracion" class="transicion-seccion">
         <div class="form-group">
             <label data-i18n="currencyLabel">Moneda</label>
             <select id="input-moneda">
@@ -78,9 +139,6 @@
                 <option value="EUR">EUR (€)</option>
                 <option value="MXN">MXN ($)</option>
                 <option value="COP">COP ($)</option>
-                <option value="ARS">ARS ($)</option>
-                <option value="CLP">CLP ($)</option>
-                <option value="PEN">PEN (S/)</option>
             </select>
         </div>
 
@@ -89,408 +147,481 @@
             <button id="tab-calc" class="tab-btn" data-i18n="tabCalc">Ayúdame a calcular</button>
         </div>
 
-        <div id="modo-directo">
+        <div id="modo-directo" class="transicion-seccion">
             <div class="form-group">
                 <label data-i18n="budgetLabel">Presupuesto Total para el Mes</label>
                 <input type="number" id="input-presupuesto" data-i18n-ph="budgetPlaceholder" placeholder="Ej: 2000" inputmode="decimal">
             </div>
         </div>
 
-        <div id="modo-calculadora" class="oculto">
+        <div id="modo-calculadora" class="transicion-seccion oculto">
             <div class="form-group">
-                <label data-i18n="incomeLabel">Ingresos Totales (Salario, etc.)</label>
+                <label data-i18n="incomeLabel">Ingresos Totales</label>
                 <input type="number" id="input-ingresos" placeholder="Ej: 5000" inputmode="decimal" class="input-calc">
             </div>
             <div class="form-group">
-                <label data-i18n="fixedLabel">Gastos Fijos (Alquiler, Cuentas)</label>
+                <label data-i18n="fixedLabel">Gastos Fijos</label>
                 <input type="number" id="input-fijos" placeholder="Ej: 2000" inputmode="decimal" class="input-calc">
             </div>
             <div class="form-group">
-                <label data-i18n="investLabel">Inversiones o Ahorros</label>
+                <label data-i18n="investLabel">Inversiones Fijas</label>
                 <input type="number" id="input-inversiones" placeholder="Ej: 500" inputmode="decimal" class="input-calc">
             </div>
             <div class="calc-result">
-                <span data-i18n="calcResult">Presupuesto Calculado para Gastar:</span>
+                <span data-i18n="calcResult">Presupuesto Calculado:</span>
                 <strong id="display-calculado">0.00</strong>
             </div>
         </div>
 
-        <div class="form-group" id="area-gastos-previos" class="oculto">
-            <label data-i18n="spentLabel">¿Ya gastaste algo este mes? (Opcional)</label>
+        <div class="form-group transicion-seccion oculto" id="area-gastos-previos">
+            <label data-i18n="spentLabel">¿Ya gastaste algo este mes?</label>
             <input type="number" id="input-gastos-iniciales" value="0" inputmode="decimal">
         </div>
-        
         <button id="btn-comenzar" class="btn-principal" data-i18n="btnStart">Guardar y Continuar</button>
     </section>
 
-    <section id="pantalla-principal" class="oculto">
-        <div class="balance-container">
-            <div class="balance-title" data-i18n="limitToday">Tu límite para hoy</div>
-            <div class="balance-amount" id="display-diario">0.00</div>
-        </div>
-
-        <div class="balance-container" style="padding: 1rem; background: transparent; border: none; margin-bottom: 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span class="balance-title" style="margin:0;" data-i18n="remainsMonth">Restante del Mes</span>
-                <span class="balance-amount monthly" id="display-mensual" style="font-size: 1rem;">0.00</span>
+    <section id="pantalla-principal" class="transicion-seccion oculto">
+        
+        <div class="grid-balances">
+            <div class="balance-card highlight">
+                <span class="b-title" data-i18n="limitToday">Tu límite de hoy</span>
+                <span class="b-amount" id="display-diario">0.00</span>
             </div>
-            <progress id="progreso-mensual" value="0" max="100"></progress>
+            
+            <div class="balance-card">
+                <span class="b-title" data-i18n="remainsMonth">Restante</span>
+                <span class="b-amount" id="display-mensual">0.00</span>
+                <div class="custom-progress">
+                    <div class="custom-progress-fill" id="progreso-mensual-fill"></div>
+                </div>
+            </div>
+
+            <div class="balance-card">
+                <span class="b-title" data-i18n="spentMonth">Gastado</span>
+                <span class="b-amount" id="display-gastado">0.00</span>
+            </div>
         </div>
 
-        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
 
         <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
         <form id="form-gasto">
             <div class="form-group">
-                <input type="number" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto (Ej: 15.50)" step="0.01" required inputmode="decimal">
+                <input type="number" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" step="0.01" required inputmode="decimal">
             </div>
             <div class="form-group">
-                <input type="text" id="input-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción (Ej: Café)" required>
+                <input type="text" id="input-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción" required>
             </div>
-            <button type="submit" class="btn-principal" data-i18n="btnAdd">Agregar Gasto</button>
+            
+            <div class="form-group">
+                <select id="input-categoria"></select>
+                
+                <button type="button" id="btn-toggle-nueva-cat" class="btn-secundario btn-pequeno">✚ <span data-i18n="newCategory">Nueva Categoría</span></button>
+                <div id="area-nueva-categoria" class="transicion-seccion oculto" style="padding: 10px; border: 1px solid var(--border-color); border-radius: 12px; margin-top: 5px;">
+                    <input type="text" id="input-nueva-cat-nombre" data-i18n-ph="catNamePlaceholder" placeholder="Nombre (ej: Gimnasio)" style="margin-bottom: 5px;">
+                    <input type="text" id="input-nueva-cat-emoji" data-i18n-ph="catEmojiPlaceholder" placeholder="Emoji (ej: 🏋️)" style="margin-bottom: 5px;" maxlength="2">
+                    <button type="button" id="btn-guardar-nueva-cat" class="btn-principal" data-i18n="btnSave" style="padding: 0.5rem; margin-bottom: 0;">Guardar</button>
+                </div>
+            </div>
+            
+            <button type="submit" id="btn-guardar-gasto" class="btn-principal" data-i18n="btnAdd">Agregar</button>
         </form>
 
-        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
 
-        <h3 data-i18n="expensesMonth">Gastos de este mes</h3>
+        <h3 data-i18n="analysisTitle">Análisis del Mes</h3>
+        <div class="cat-breakdown" id="grafico-categorias"></div>
+
+        <h3 data-i18n="expensesMonth">Historial</h3>
         <ul class="log" id="lista-historial"></ul>
 
-        <button id="btn-exportar" class="btn-secundario" data-i18n="btnExport">Exportar Respaldo Anual</button>
-        <button id="btn-reiniciar" class="delete-btn" style="width: 100%; margin: 10px 0 0 0; padding: 1rem;" data-i18n="btnReset">Borrar todos los datos de la app</button>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="btn-exportar" class="btn-secundario" data-i18n="btnExport" style="margin-top: 0;">Exportar</button>
+            <button id="btn-importar" class="btn-secundario" data-i18n="btnImport" style="margin-top: 0;">Importar</button>
+            <input type="file" id="input-archivo" accept=".json" style="display:none;">
+        </div>
+        
+        <button id="btn-reiniciar" class="btn-secundario" style="width: 100%; margin: 10px 0 0 0; border-color: var(--danger-color); color: var(--danger-color);" data-i18n="btnReset">Borrar App</button>
     </section>
 </main>
 
 <script>
     const diccionario = {
         es: {
-            appTitle: "Lucho Tracker - ",
-            currencyLabel: "Moneda",
-            tabDirect: "Ya sé mi presupuesto",
-            tabCalc: "Ayúdame a calcular",
-            budgetLabel: "Presupuesto Total para el Mes",
-            budgetPlaceholder: "Ej: 2000",
-            incomeLabel: "Ingresos Totales (Salario, etc.)",
-            fixedLabel: "Gastos Fijos (Alquiler, Cuentas)",
-            investLabel: "Inversiones o Ahorros",
-            calcResult: "Presupuesto Calculado para Gastar:",
-            spentLabel: "¿Ya gastaste algo este mes? (Opcional)",
-            btnStart: "Guardar y Continuar",
-            limitToday: "Tu límite para hoy",
-            remainsMonth: "Restante del Mes",
-            addExpenseTitle: "Registrar Gasto",
-            amountPlaceholder: "Monto (Ej: 15.50)",
-            descPlaceholder: "Descripción (Ej: Café)",
-            btnAdd: "Agregar Gasto",
-            expensesMonth: "Gastos de este mes",
-            btnExport: "Exportar Respaldo Anual",
-            btnReset: "Borrar todos los datos",
-            noExpenses: "Sin gastos registrados aún.",
-            prevExpense: "Gasto Previo",
-            alertReset: "🚨 ¿ESTÁS SEGURO? Esto borrará el presupuesto y todo el historial del año."
+            appTitle: "Floux - ", currencyLabel: "Moneda", tabDirect: "Ya sé mi presupuesto", tabCalc: "Ayúdame a calcular",
+            budgetLabel: "Presupuesto Mensual", budgetPlaceholder: "Ej: 2000", incomeLabel: "Ingresos Totales",
+            fixedLabel: "Gastos Fijos", investLabel: "Inversiones", calcResult: "Presupuesto:",
+            spentLabel: "¿Ya gastaste algo?", btnStart: "Guardar y Continuar", limitToday: "Tu límite de hoy",
+            remainsMonth: "Restante", spentMonth: "Gastado",
+            addExpenseTitle: "Registrar Gasto", amountPlaceholder: "Monto", descPlaceholder: "Descripción",
+            btnAdd: "Agregar", btnEdit: "Guardar Edición", analysisTitle: "Distribución de Gastos", expensesMonth: "Historial",
+            btnExport: "Exportar", btnImport: "Importar", btnReset: "Borrar App", noExpenses: "Sin gastos.",
+            prevExpense: "Gasto Previo", alertReset: "🚨 ¿ESTÁS SEGURO?", cat_comida: "Comida",
+            cat_transporte: "Transporte", cat_supermercado: "Super", cat_cuentas: "Cuentas",
+            cat_ocio: "Ocio", cat_otros: "Otros", newCategory: "Nueva Categoría", catNamePlaceholder: "Nombre (ej: Gimnasio)",
+            catEmojiPlaceholder: "Emoji (ej: 🏋️)", btnSave: "Guardar", errorBudget: "Por favor ingresa un presupuesto mayor a 0."
         },
         en: {
-            appTitle: "Lucho Tracker - ",
-            currencyLabel: "Currency",
-            tabDirect: "I know my budget",
-            tabCalc: "Help me calculate",
-            budgetLabel: "Total Monthly Budget",
-            budgetPlaceholder: "E.g. 2000",
-            incomeLabel: "Total Income (Salary, etc.)",
-            fixedLabel: "Fixed Expenses (Rent, Bills)",
-            investLabel: "Investments or Savings",
-            calcResult: "Calculated Budget to Spend:",
-            spentLabel: "Already spent something this month? (Optional)",
-            btnStart: "Save and Continue",
-            limitToday: "Your limit for today",
-            remainsMonth: "Remaining this Month",
-            addExpenseTitle: "Log Expense",
-            amountPlaceholder: "Amount (E.g. 15.50)",
-            descPlaceholder: "Description (E.g. Coffee)",
-            btnAdd: "Add Expense",
-            expensesMonth: "Expenses this month",
-            btnExport: "Export Annual Backup",
-            btnReset: "Delete all app data",
-            noExpenses: "No expenses logged yet.",
-            prevExpense: "Previous Expense",
-            alertReset: "🚨 ARE YOU SURE? This will delete your budget and all history for the year."
+            appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Calculate",
+            budgetLabel: "Monthly Budget", budgetPlaceholder: "E.g. 2000", incomeLabel: "Income",
+            fixedLabel: "Fixed Expenses", investLabel: "Investments", calcResult: "Budget:",
+            spentLabel: "Already spent?", btnStart: "Save and Continue", limitToday: "Today's Limit",
+            remainsMonth: "Remaining", spentMonth: "Spent",
+            addExpenseTitle: "Log Expense", amountPlaceholder: "Amount", descPlaceholder: "Description",
+            btnAdd: "Add", btnEdit: "Save Edit", analysisTitle: "Spending Breakdown", expensesMonth: "History",
+            btnExport: "Export", btnImport: "Import", btnReset: "Reset App", noExpenses: "No expenses.",
+            prevExpense: "Previous Expense", alertReset: "🚨 ARE YOU SURE?", cat_comida: "Food",
+            cat_transporte: "Transport", cat_supermercado: "Groceries", cat_cuentas: "Bills",
+            cat_ocio: "Leisure", cat_otros: "Others", newCategory: "New Category", catNamePlaceholder: "Name (e.g., Gym)",
+            catEmojiPlaceholder: "Emoji (e.g., 🏋️)", btnSave: "Save", errorBudget: "Please enter a budget greater than 0."
         },
         pt: {
-            appTitle: "Lucho Tracker - ",
-            currencyLabel: "Moeda",
-            tabDirect: "Já sei meu orçamento",
-            tabCalc: "Ajude-me a calcular",
-            budgetLabel: "Orçamento Total do Mês",
-            budgetPlaceholder: "Ex: 2000",
-            incomeLabel: "Renda Total (Salário, etc.)",
-            fixedLabel: "Despesas Fixas (Aluguel, Contas)",
-            investLabel: "Investimentos ou Poupança",
-            calcResult: "Orçamento Calculado para Gastar:",
-            spentLabel: "Já gastou algo este mês? (Opcional)",
-            btnStart: "Salvar e Continuar",
-            limitToday: "Seu limite para hoje",
-            remainsMonth: "Restante do Mês",
-            addExpenseTitle: "Registrar Despesa",
-            amountPlaceholder: "Valor (Ex: 15.50)",
-            descPlaceholder: "Descrição (Ex: Café)",
-            btnAdd: "Adicionar Despesa",
-            expensesMonth: "Despesas deste mês",
-            btnExport: "Exportar Backup Anual",
-            btnReset: "Apagar todos os dados",
-            noExpenses: "Nenhuma despesa registrada ainda.",
-            prevExpense: "Despesa Anterior",
-            alertReset: "🚨 TEM CERTEZA? Isso apagará seu orçamento e todo o histórico do ano."
+            appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Calcular",
+            budgetLabel: "Orçamento Mensal", budgetPlaceholder: "Ex: 2000", incomeLabel: "Renda Total",
+            fixedLabel: "Despesas Fixas", investLabel: "Investimentos", calcResult: "Orçamento:",
+            spentLabel: "Já gastou algo?", btnStart: "Salvar e Continuar", limitToday: "Limite de hoje",
+            remainsMonth: "Restante", spentMonth: "Gasto",
+            addExpenseTitle: "Registrar Despesa", amountPlaceholder: "Valor", descPlaceholder: "Descrição",
+            btnAdd: "Adicionar", btnEdit: "Salvar Edição", analysisTitle: "Análise de Gastos", expensesMonth: "Histórico",
+            btnExport: "Exportar", btnImport: "Importar", btnReset: "Apagar App", noExpenses: "Sem despesas.",
+            prevExpense: "Despesa Anterior", alertReset: "🚨 TEM CERTEZA?", cat_comida: "Comida",
+            cat_transporte: "Transporte", cat_supermercado: "Mercado", cat_cuentas: "Contas",
+            cat_ocio: "Lazer", cat_otros: "Outros", newCategory: "Nova Categoria", catNamePlaceholder: "Nome (ex: Academia)",
+            catEmojiPlaceholder: "Emoji (ex: 🏋️)", btnSave: "Salvar", errorBudget: "Por favor, insira um orçamento maior que 0."
         }
     };
 
-    const userLocale = navigator.language || navigator.userLanguage; 
-    let lang = userLocale.substring(0, 2); 
-    if (!diccionario[lang]) { lang = 'en'; }
-    const t = diccionario[lang]; 
+    // State Variables Initialization (Moved to top to prevent TDZ Reference Errors)
+    let presupuestoMensual = 0;
+    let presupuestoCalculadoTemporal = 0; 
+    let historialGlobal = []; 
+    let monedaActual = 'BRL'; 
+    let gastoEnEdicion = null;
+    let categoriasCustom = JSON.parse(localStorage.getItem('floux_categorias_custom')) || [];
+
+    // Language Initialization
+    let lang = localStorage.getItem('floux_lang');
+    if (!lang) {
+        const userLocale = navigator.language || navigator.userLanguage; 
+        lang = userLocale.substring(0, 2); 
+        if (!diccionario[lang]) { lang = 'en'; }
+    }
+    
+    function t(key) { return diccionario[lang][key] || key; }
 
     function aplicarTraduccion() {
-        document.querySelectorAll('[data-i18n]').forEach(elem => {
-            const clave = elem.getAttribute('data-i18n');
-            elem.innerText = t[clave];
-        });
-        document.querySelectorAll('[data-i18n-ph]').forEach(elem => {
-            const clave = elem.getAttribute('data-i18n-ph');
-            elem.placeholder = t[clave];
-        });
+        document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = t(el.getAttribute('data-i18n')));
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-ph')));
+        
+        const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
+        if(btnGuardarGasto) {
+            if (gastoEnEdicion) { btnGuardarGasto.innerText = t('btnEdit'); } 
+            else { btnGuardarGasto.innerText = t('btnAdd'); }
+        }
     }
 
-    aplicarTraduccion();
+    function setLang(newLang) {
+        lang = newLang;
+        localStorage.setItem('floux_lang', lang);
+        document.querySelectorAll('.flag').forEach(f => f.classList.remove('active'));
+        document.querySelector(`.flag[data-lang="${lang}"]`).classList.add('active');
+        aplicarTraduccion();
+        renderizarSelectCategorias();
+        if(!document.getElementById('pantalla-principal').classList.contains('oculto')){
+            actualizarInterfaz();
+        }
+    }
 
-    let presupuestoMensual = 0;
-    let presupuestoCalculadoTemporal = 0; // Para el modo calculadora
-    let historialGlobal = []; 
-    let monedaActual = 'BRL'; // AHORA BRL ES EL PREDETERMINADO
+    // Flag Listeners
+    document.querySelectorAll('.flag').forEach(flag => {
+        flag.addEventListener('click', () => setLang(flag.getAttribute('data-lang')));
+    });
+    const currentFlag = document.querySelector(`.flag[data-lang="${lang}"]`);
+    if(currentFlag) currentFlag.classList.add('active');
+
+    // Initial Translation
+    aplicarTraduccion();
+    
+    function getCategoriasPorDefecto() {
+        return [
+            { id: 'comida', emoji: '🍔', nombre: t('cat_comida') },
+            { id: 'transporte', emoji: '🚕', nombre: t('cat_transporte') },
+            { id: 'supermercado', emoji: '🛒', nombre: t('cat_supermercado') },
+            { id: 'cuentas', emoji: '💡', nombre: t('cat_cuentas') },
+            { id: 'ocio', emoji: '🎉', nombre: t('cat_ocio') },
+            { id: 'otros', emoji: '📦', nombre: t('cat_otros') }
+        ];
+    }
+
+    function obtenerCategorias() { return [...getCategoriasPorDefecto(), ...categoriasCustom]; }
+
+    function renderizarSelectCategorias() {
+        const select = document.getElementById('input-categoria');
+        const currentValue = select.value;
+        select.innerHTML = '';
+        obtenerCategorias().forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.innerText = `${cat.emoji} ${cat.nombre}`;
+            select.appendChild(option);
+        });
+        if(currentValue && obtenerCategorias().find(c => c.id === currentValue)) select.value = currentValue;
+    }
 
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const añoActual = hoy.getFullYear();
 
-    const pantallaConfig = document.getElementById('pantalla-configuracion');
-    const pantallaPrincipal = document.getElementById('pantalla-principal');
-    const displayDiario = document.getElementById('display-diario');
-    const displayMensual = document.getElementById('display-mensual');
-    const barraProgreso = document.getElementById('progreso-mensual');
-    const listaUI = document.getElementById('lista-historial');
-    const btnEditar = document.getElementById('btn-editar-presupuesto');
-    const selectMoneda = document.getElementById('input-moneda');
-
-    // UI Pestañas
     const tabDirecto = document.getElementById('tab-directo');
     const tabCalc = document.getElementById('tab-calc');
     const modoDirecto = document.getElementById('modo-directo');
     const modoCalculadora = document.getElementById('modo-calculadora');
     let modoActual = 'directo';
 
-    const nombreMes = hoy.toLocaleString(userLocale, { month: 'long' });
-    document.getElementById('titulo-mes').innerText = t.appTitle + nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
-    
-    if (hoy.getDate() !== 1) { document.getElementById('area-gastos-previos').classList.remove('oculto'); }
+    tabDirecto.addEventListener('click', () => { modoActual = 'directo'; tabDirecto.classList.add('active'); tabCalc.classList.remove('active'); modoDirecto.classList.remove('oculto'); modoCalculadora.classList.add('oculto'); });
+    tabCalc.addEventListener('click', () => { modoActual = 'calculadora'; tabCalc.classList.add('active'); tabDirecto.classList.remove('active'); modoCalculadora.classList.remove('oculto'); modoDirecto.classList.add('oculto'); });
 
-    // --- LÓGICA DE PESTAÑAS Y CALCULADORA ---
-    tabDirecto.addEventListener('click', () => {
-        modoActual = 'directo';
-        tabDirecto.classList.add('active');
-        tabCalc.classList.remove('active');
-        modoDirecto.classList.remove('oculto');
-        modoCalculadora.classList.add('oculto');
-    });
-
-    tabCalc.addEventListener('click', () => {
-        modoActual = 'calculadora';
-        tabCalc.classList.add('active');
-        tabDirecto.classList.remove('active');
-        modoCalculadora.classList.remove('oculto');
-        modoDirecto.classList.add('oculto');
-    });
-
-    // Calcular en tiempo real
     document.querySelectorAll('.input-calc').forEach(input => {
         input.addEventListener('input', () => {
-            const ingresos = parseFloat(document.getElementById('input-ingresos').value) || 0;
-            const fijos = parseFloat(document.getElementById('input-fijos').value) || 0;
-            const inversiones = parseFloat(document.getElementById('input-inversiones').value) || 0;
-            
-            presupuestoCalculadoTemporal = ingresos - fijos - inversiones;
-            
-            // Evitar números negativos visuales si aún están escribiendo
-            if(presupuestoCalculadoTemporal < 0) presupuestoCalculadoTemporal = 0;
-            
-            const formatoTemp = new Intl.NumberFormat(userLocale, { style: 'currency', currency: selectMoneda.value });
-            document.getElementById('display-calculado').innerText = formatoTemp.format(presupuestoCalculadoTemporal);
+            const i = parseFloat(document.getElementById('input-ingresos').value) || 0;
+            const f = parseFloat(document.getElementById('input-fijos').value) || 0;
+            const v = parseFloat(document.getElementById('input-inversiones').value) || 0;
+            presupuestoCalculadoTemporal = Math.max(0, i - f - v);
+            const localeStr = lang === 'es' ? 'es-ES' : (lang === 'pt' ? 'pt-BR' : 'en-US');
+            document.getElementById('display-calculado').innerText = new Intl.NumberFormat(localeStr, { style: 'currency', currency: document.getElementById('input-moneda').value }).format(presupuestoCalculadoTemporal);
         });
     });
-
-    // Al cambiar la moneda en el selector, actualizamos el número calculado por si acaso
-    selectMoneda.addEventListener('change', () => {
-        const formatoTemp = new Intl.NumberFormat(userLocale, { style: 'currency', currency: selectMoneda.value });
-        document.getElementById('display-calculado').innerText = formatoTemp.format(presupuestoCalculadoTemporal);
-    });
-
-    // --- LÓGICA PRINCIPAL ---
-    function calcularDiasRestantes() {
-        const ultimoDia = new Date(añoActual, mesActual + 1, 0).getDate();
-        return (ultimoDia - hoy.getDate()) + 1;
-    }
 
     function actualizarInterfaz() {
-        const gastosMesActual = historialGlobal.filter(g => {
-            const fechaGasto = new Date(g.fecha);
-            return fechaGasto.getMonth() === mesActual && fechaGasto.getFullYear() === añoActual;
-        });
-
+        const localeStr = lang === 'es' ? 'es-ES' : (lang === 'pt' ? 'pt-BR' : 'en-US');
+        const formatoDinero = new Intl.NumberFormat(localeStr, { style: 'currency', currency: monedaActual });
+        const gastosMesActual = historialGlobal.filter(g => new Date(g.fecha).getMonth() === mesActual && new Date(g.fecha).getFullYear() === añoActual);
         const totalGastadoMes = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
         const dineroRestante = presupuestoMensual - totalGastadoMes;
-        const presupuestoDiario = dineroRestante / calcularDiasRestantes();
+        const diasRestantes = (new Date(añoActual, mesActual + 1, 0).getDate() - hoy.getDate()) + 1;
+        const presupuestoDiario = dineroRestante / diasRestantes;
         
-        const formatoDinero = new Intl.NumberFormat(userLocale, { style: 'currency', currency: monedaActual });
-        
-        displayDiario.innerText = formatoDinero.format(presupuestoDiario);
-        displayMensual.innerText = formatoDinero.format(dineroRestante);
+        document.getElementById('display-diario').innerText = formatoDinero.format(presupuestoDiario);
+        document.getElementById('display-mensual').innerText = formatoDinero.format(dineroRestante);
+        document.getElementById('display-gastado').innerText = formatoDinero.format(totalGastadoMes);
 
-        barraProgreso.max = presupuestoMensual;
-        barraProgreso.value = totalGastadoMes; 
+        const barraFill = document.getElementById('progreso-mensual-fill');
+        let porcentajeGastado = (totalGastadoMes / presupuestoMensual) * 100;
+        if (porcentajeGastado > 100) porcentajeGastado = 100;
+        barraFill.style.width = `${porcentajeGastado}%`;
         
-        if (dineroRestante < (presupuestoMensual * 0.2)) {
-            barraProgreso.classList.add('warning');
-            displayDiario.style.color = "var(--danger-color)";
+        if (dineroRestante < (presupuestoMensual * 0.2)) { 
+            barraFill.classList.add('warning'); 
+            document.getElementById('display-diario').style.color = "var(--danger-color)"; 
+        } else { 
+            barraFill.classList.remove('warning'); 
+            document.getElementById('display-diario').style.color = "var(--primary-color)"; 
+        }
+
+        const contGrafico = document.getElementById('grafico-categorias');
+        contGrafico.innerHTML = '';
+        if (gastosMesActual.length > 0) {
+            const sumasPorCat = {};
+            gastosMesActual.forEach(g => { sumasPorCat[g.categoria] = (sumasPorCat[g.categoria] || 0) + g.monto; });
+            
+            for (const catId in sumasPorCat) {
+                if(catId === 'otros_previo') continue; 
+                const porcentaje = (sumasPorCat[catId] / totalGastadoMes) * 100;
+                const infoCat = obtenerCategorias().find(c => c.id === catId) || { emoji: '📦', nombre: catId };
+                
+                contGrafico.innerHTML += `
+                    <div class="cat-bar-container">
+                        <div class="cat-bar-label">${infoCat.emoji} ${infoCat.nombre}</div>
+                        <div class="cat-bar-wrapper"><div class="cat-bar-fill" style="width: ${porcentaje}%"></div></div>
+                        <div class="cat-bar-amount">${formatoDinero.format(sumasPorCat[catId])}</div>
+                    </div>
+                `;
+            }
         } else {
-            barraProgreso.classList.remove('warning');
-            displayDiario.style.color = "var(--primary-color)";
+            contGrafico.innerHTML = `<p style="text-align:center; color: var(--text-muted); font-size: 0.85rem;">${t('noExpenses')}</p>`;
         }
 
+        const listaUI = document.getElementById('lista-historial');
         listaUI.innerHTML = '';
-        if(gastosMesActual.length === 0) {
-            listaUI.innerHTML = `<li style="color: var(--text-muted); justify-content:center;">${t.noExpenses}</li>`;
-        }
+        if(gastosMesActual.length === 0) listaUI.innerHTML = `<li style="color: var(--text-muted); justify-content:center; box-shadow: none; background: transparent; cursor: default;">${t('noExpenses')}</li>`;
 
         gastosMesActual.reverse().forEach(g => {
-            const fechaFormat = new Date(g.fecha).toLocaleString(userLocale, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+            const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+            const infoCat = obtenerCategorias().find(c => c.id === g.categoria) || { emoji: '📌', nombre: g.categoria };
             
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <div class="expense-info">
-                    <span class="expense-desc">${g.desc}</span>
-                    <span class="expense-date">${fechaFormat}</span>
-                </div>
-                <div style="display: flex; align-items: center;">
-                    <span class="expense-amount">${formatoDinero.format(g.monto)}</span>
-                    <button class="delete-btn" onclick="borrarGasto(${g.id})">✕</button>
-                </div>
+            listaUI.innerHTML += `
+                <li>
+                    <div class="cat-icon">${infoCat.emoji}</div>
+                    <div class="expense-info">
+                        <span class="expense-desc">${g.desc}</span>
+                        <span class="expense-cat">${infoCat.nombre}</span>
+                        <span class="expense-date">${fechaStr}</span>
+                    </div>
+                    <div class="actions-row">
+                        <span class="expense-amount" style="margin-right: 8px;">${formatoDinero.format(g.monto)}</span>
+                        <button class="edit-btn" onclick="editarGasto(${g.id})">✏️</button>
+                        <button class="delete-btn" onclick="borrarGasto(${g.id})">✕</button>
+                    </div>
+                </li>
             `;
-            listaUI.appendChild(li);
         });
     }
 
     document.getElementById('btn-comenzar').addEventListener('click', () => {
-        // Obtenemos el presupuesto dependiendo de la pestaña activa
-        if (modoActual === 'directo') {
-            presupuestoMensual = parseFloat(document.getElementById('input-presupuesto').value);
-        } else {
-            presupuestoMensual = presupuestoCalculadoTemporal;
+        presupuestoMensual = modoActual === 'directo' ? parseFloat(document.getElementById('input-presupuesto').value) : presupuestoCalculadoTemporal;
+        monedaActual = document.getElementById('input-moneda').value; 
+        
+        if (isNaN(presupuestoMensual) || presupuestoMensual <= 0) {
+            alert(t('errorBudget'));
+            return;
         }
 
-        monedaActual = selectMoneda.value; 
-        
-        const cajaGastosPrevios = document.getElementById('area-gastos-previos');
-        if (!cajaGastosPrevios.classList.contains('oculto')) {
+        if (!document.getElementById('area-gastos-previos').classList.contains('oculto')) {
             const inicial = parseFloat(document.getElementById('input-gastos-iniciales').value) || 0;
-            if (inicial > 0) {
-                historialGlobal.push({ id: Date.now(), monto: inicial, desc: t.prevExpense, fecha: new Date().toISOString() });
-            }
+            if (inicial > 0) historialGlobal.push({ id: Date.now(), monto: inicial, desc: t('prevExpense'), fecha: new Date().toISOString(), categoria: 'otros_previo' });
         }
 
-        if (presupuestoMensual > 0) {
-            localStorage.setItem('lucho_mes_guardado', mesActual);
-            guardarYMostrar();
-        }
-    });
-
-    btnEditar.addEventListener('click', () => {
-        pantallaPrincipal.classList.add('oculto');
-        btnEditar.classList.add('oculto');
-        pantallaConfig.classList.remove('oculto');
-        document.getElementById('area-gastos-previos').classList.add('oculto');
-        
-        // Volver al modo directo por defecto para editar
-        tabDirecto.click();
-        document.getElementById('input-presupuesto').value = presupuestoMensual;
-        selectMoneda.value = monedaActual; 
+        localStorage.setItem('floux_mes_guardado', mesActual); 
+        guardarYMostrar();
     });
 
     document.getElementById('form-gasto').addEventListener('submit', (e) => {
         e.preventDefault(); 
         const monto = parseFloat(document.getElementById('input-monto').value);
         const desc = document.getElementById('input-desc').value;
+        const cat = document.getElementById('input-categoria').value;
         
         if (monto > 0 && desc) {
-            historialGlobal.push({ id: Date.now(), monto: monto, desc: desc, fecha: new Date().toISOString() });
+            if (gastoEnEdicion) {
+                const index = historialGlobal.findIndex(g => g.id === gastoEnEdicion);
+                if (index !== -1) {
+                    historialGlobal[index].monto = monto;
+                    historialGlobal[index].desc = desc;
+                    historialGlobal[index].categoria = cat;
+                }
+                gastoEnEdicion = null;
+                document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
+            } else {
+                historialGlobal.push({ id: Date.now(), monto: monto, desc: desc, fecha: new Date().toISOString(), categoria: cat });
+            }
             document.getElementById('input-monto').value = '';
             document.getElementById('input-desc').value = '';
             guardarYMostrar();
         }
     });
 
-    window.borrarGasto = function(idGasto) {
-        historialGlobal = historialGlobal.filter(g => g.id !== idGasto);
-        guardarYMostrar();
+    window.borrarGasto = function(id) { 
+        historialGlobal = historialGlobal.filter(g => g.id !== id); 
+        guardarYMostrar(); 
     };
 
-    function guardarYMostrar() {
-        localStorage.setItem('lucho_presupuesto_v4', presupuestoMensual);
-        localStorage.setItem('lucho_historial_v4', JSON.stringify(historialGlobal));
-        localStorage.setItem('lucho_moneda', monedaActual);
-        
-        pantallaConfig.classList.add('oculto');
-        pantallaPrincipal.classList.remove('oculto');
-        btnEditar.classList.remove('oculto'); 
-        actualizarInterfaz();
-    }
+    window.editarGasto = function(id) {
+        const gasto = historialGlobal.find(g => g.id === id);
+        if (gasto) {
+            document.getElementById('input-monto').value = gasto.monto;
+            document.getElementById('input-desc').value = gasto.desc;
+            document.getElementById('input-categoria').value = gasto.categoria;
+            gastoEnEdicion = id;
+            document.getElementById('btn-guardar-gasto').innerText = t('btnEdit');
+            document.getElementById('input-monto').focus();
+            window.scrollTo({ top: document.getElementById('form-gasto').offsetTop - 20, behavior: 'smooth' });
+        }
+    };
+
+    document.getElementById('btn-toggle-nueva-cat').addEventListener('click', () => {
+        document.getElementById('area-nueva-categoria').classList.toggle('oculto');
+    });
+
+    document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () => {
+        const nombre = document.getElementById('input-nueva-cat-nombre').value.trim();
+        const emoji = document.getElementById('input-nueva-cat-emoji').value.trim();
+        if (nombre && emoji) {
+            const id = 'custom_' + Date.now();
+            categoriasCustom.push({ id, nombre, emoji });
+            localStorage.setItem('floux_categorias_custom', JSON.stringify(categoriasCustom));
+            renderizarSelectCategorias();
+            document.getElementById('input-categoria').value = id;
+            document.getElementById('input-nueva-cat-nombre').value = '';
+            document.getElementById('input-nueva-cat-emoji').value = '';
+            document.getElementById('area-nueva-categoria').classList.add('oculto');
+        }
+    });
+
+    document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
+        document.getElementById('pantalla-principal').classList.add('oculto');
+        document.getElementById('btn-editar-presupuesto').classList.add('oculto');
+        document.getElementById('pantalla-configuracion').classList.remove('oculto');
+        document.getElementById('area-gastos-previos').classList.add('oculto');
+        tabDirecto.click();
+        document.getElementById('input-presupuesto').value = presupuestoMensual;
+        document.getElementById('input-moneda').value = monedaActual; 
+    });
 
     document.getElementById('btn-exportar').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(historialGlobal));
-        const dlAnchor = document.createElement('a');
-        dlAnchor.setAttribute("href", dataStr);
-        dlAnchor.setAttribute("download", `LuchoTracker_${añoActual}.json`);
-        document.body.appendChild(dlAnchor);
-        dlAnchor.click();
-        dlAnchor.remove();
+        const anchor = document.createElement('a');
+        anchor.href = dataStr;
+        anchor.download = "floux_backup.json";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
     });
 
-    document.getElementById('btn-reiniciar').addEventListener('click', () => {
-        if(confirm(t.alertReset)) {
-            localStorage.clear();
-            location.reload();
-        }
+    document.getElementById('btn-importar').addEventListener('click', () => {
+        document.getElementById('input-archivo').click();
     });
+
+    document.getElementById('input-archivo').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            try {
+                const data = JSON.parse(event.target.result);
+                if (Array.isArray(data) && data.length > 0 && data[0].hasOwnProperty('monto')) {
+                    if (confirm("Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.")) {
+                        historialGlobal = data;
+                    } else {
+                        historialGlobal = historialGlobal.concat(data);
+                    }
+                    guardarYMostrar();
+                }
+            } catch (err) {
+                alert("Error: Archivo inválido.");
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    document.getElementById('btn-reiniciar').addEventListener('click', () => { if(confirm(t('alertReset'))) { localStorage.clear(); location.reload(); } });
+
+    function guardarYMostrar() {
+        localStorage.setItem('floux_presupuesto_v8', presupuestoMensual);
+        localStorage.setItem('floux_historial_v8', JSON.stringify(historialGlobal));
+        localStorage.setItem('floux_moneda', monedaActual);
+        document.getElementById('pantalla-configuracion').classList.add('oculto');
+        document.getElementById('pantalla-principal').classList.remove('oculto');
+        document.getElementById('btn-editar-presupuesto').classList.remove('oculto'); 
+        actualizarInterfaz();
+    }
 
     (function() {
-        const p = localStorage.getItem('lucho_presupuesto_v4');
-        const h = localStorage.getItem('lucho_historial_v4');
-        const m = localStorage.getItem('lucho_moneda'); 
-        const mesGuardado = localStorage.getItem('lucho_mes_guardado');
-
-        if (m) {
-            monedaActual = m;
-        }
-
-        // Forzar visualmente el select a la moneda cargada o la por defecto (BRL)
-        selectMoneda.value = monedaActual;
+        const p = localStorage.getItem('floux_presupuesto_v8');
+        const h = localStorage.getItem('floux_historial_v8');
+        if (localStorage.getItem('floux_moneda')) monedaActual = localStorage.getItem('floux_moneda'); 
+        document.getElementById('input-moneda').value = monedaActual;
+        
+        renderizarSelectCategorias();
 
         if (p) {
             presupuestoMensual = parseFloat(p);
             historialGlobal = JSON.parse(h) || [];
-
-            if (mesGuardado === null || parseInt(mesGuardado) !== mesActual) {
-                localStorage.setItem('lucho_mes_guardado', mesActual);
+            if (localStorage.getItem('floux_mes_guardado') === null || parseInt(localStorage.getItem('floux_mes_guardado')) !== mesActual) {
+                localStorage.setItem('floux_mes_guardado', mesActual);
             }
-
-            pantallaConfig.classList.add('oculto');
-            pantallaPrincipal.classList.remove('oculto');
-            btnEditar.classList.remove('oculto');
+            document.getElementById('pantalla-configuracion').classList.add('oculto');
+            document.getElementById('pantalla-principal').classList.remove('oculto');
+            document.getElementById('btn-editar-presupuesto').classList.remove('oculto');
             actualizarInterfaz();
         }
     })();
