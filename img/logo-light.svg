@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="35 10 130 40" width="100%" height="100%">
-  <text x="38" y="43" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="38" font-weight="800" fill="#0F766E">Fl</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 10 135 40" width="100%" height="100%">
+  <text x="78" y="43" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="38" font-weight="800" fill="#0F766E">Fl</text>
   <text x="122" y="43" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="38" font-weight="800" fill="#0F766E">ux</text>
   
   <g transform="translate(100, 30)">

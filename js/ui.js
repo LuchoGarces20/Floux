@@ -35,6 +35,16 @@ export function renderizarSelectCategorias(customCats) {
     if(currentValue && categorias.find(c => c.id === currentValue)) select.value = currentValue;
 }
 
+export function showToast(message) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 3000);
+}
+
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const formatoDinero = new Intl.NumberFormat(localeStr, { style: 'currency', currency: state.monedaActual });
@@ -113,8 +123,50 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         if(elDiario) elDiario.style.color = "var(--primary-color)"; 
     }
 
+    // Idea 9: Ritmo de Gasto (Sparkline)
+    const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
+    const porcentajeTiempo = diaCalculo / diasEnElMes;
+    const paceSparkline = document.getElementById('pace-sparkline');
+
+  if (paceSparkline) {
+        let porcentajePresupuesto = totalGastadoMesCents / state.presupuestoMensual;
+        if (!isFinite(porcentajePresupuesto)) porcentajePresupuesto = 0;
+        
+        // A largura agora representa o progresso do tempo no mês (Calendário)
+        paceSparkline.style.width = `${porcentajeTiempo * 100}%`;
+        // A cor avalia o ritmo: vermelho se a % do gasto for maior que a % do mês transcorrido
+        paceSparkline.className = (porcentajePresupuesto > porcentajeTiempo) ? 'pace-sparkline-fill bad' : 'pace-sparkline-fill good';
+    }
+
+    // Idea 10: Seguimiento de "Días Cero"
+    const zeroSpendBadge = document.getElementById('zero-spend-badge');
+    if (zeroSpendBadge) {
+        const diasConGasto = new Set(gastosMesActual.map(g => new Date(g.fecha).getDate()));
+        let diasCero = 0;
+        
+        for (let d = 1; d <= diaCalculo; d++) {
+            if (!diasConGasto.has(d)) diasCero++;
+        }
+
+        if (diasCero > 0) {
+            zeroSpendBadge.innerText = `🔥 ${diasCero}`;
+            zeroSpendBadge.title = `${diasCero} Días sin gastos`;
+            zeroSpendBadge.classList.remove('oculto');
+        } else {
+            zeroSpendBadge.classList.add('oculto');
+        }
+    }
+
     const contGrafico = document.getElementById('grafico-categorias');
     const categoriasActuales = obtenerCategorias(state.categoriasCustom);
+    
+    const emptyStateHTML = `
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="no-expenses-text">${t('noExpenses')}</div>
+        </div>
+    `;
     
     contGrafico.innerHTML = ''; 
     if (gastosMesActual.length > 0) {
@@ -125,33 +177,27 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         for (const catId in sumasPorCatCents) {
             if(catId === 'otros_previo') continue; 
             const porcentaje = (sumasPorCatCents[catId] / totalGastadoMesCents) * 100;
-            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📦', nombre: catId };
+            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📦', nombre: catId, color: 'var(--primary-color)' };
             
             const el = document.createElement('div');
             el.className = 'cat-bar-container';
             el.innerHTML = `
                 <div class="cat-bar-label" title="${escapeHTML(infoCat.nombre)}">${escapeHTML(infoCat.emoji)} ${escapeHTML(infoCat.nombre)}</div>
-                <div class="cat-bar-wrapper"><div class="cat-bar-fill" style="width: ${porcentaje}%"></div></div>
+                <div class="cat-bar-wrapper"><div class="cat-bar-fill" style="width: ${porcentaje}%; background-color: ${escapeHTML(infoCat.color || 'var(--primary-color)')};"></div></div>
                 <div class="cat-bar-amount">${escapeHTML(formatoDinero.format(sumasPorCatCents[catId] / 100))}</div>
             `;
             fragChart.appendChild(el);
         }
         contGrafico.appendChild(fragChart);
     } else {
-        const p = document.createElement('p');
-        p.className = 'no-expenses-text';
-        p.textContent = t('noExpenses');
-        contGrafico.appendChild(p);
+        contGrafico.innerHTML = emptyStateHTML;
     }
 
     const listaUI = document.getElementById('lista-historial');
     listaUI.innerHTML = '';
     
     if(gastosMesActual.length === 0) {
-        const li = document.createElement('li');
-        li.className = 'no-expenses-li';
-        li.textContent = t('noExpenses');
-        listaUI.appendChild(li);
+        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;">${emptyStateHTML}</li>`;
     } else {
         const fragList = document.createDocumentFragment();
         for (let i = gastosMesActual.length - 1; i >= 0; i--) {

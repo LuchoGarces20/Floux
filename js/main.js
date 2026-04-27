@@ -1,6 +1,6 @@
 import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS } from './store.js';
 import { currentLang, t, setLangStr } from './i18n.js';
-import { aplicarTraduccion, renderizarSelectCategorias, actualizarInterfaz, resetFormularioGasto } from './ui.js';
+import { aplicarTraduccion, renderizarSelectCategorias, actualizarInterfaz, resetFormularioGasto, showToast } from './ui.js';
 
 let gastoEnEdicion = null;
 const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
@@ -15,7 +15,6 @@ let viewYear = añoActual;
 let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
 
-// Cached DOM Elements
 const inputIngresos = document.getElementById('input-ingresos');
 const inputFijos = document.getElementById('input-fijos');
 const inputPctViver = document.getElementById('input-pct-viver');
@@ -24,12 +23,6 @@ const displayCalculado = document.getElementById('display-calculado');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
 
-const lsimMonto = document.getElementById('input-lsim-monto');
-const lsimAnos = document.getElementById('input-lsim-anos');
-const lsimTasa = document.getElementById('input-lsim-tasa');
-const lsimResultado = document.getElementById('display-lsim-resultado');
-
-// Application Initialization
 function init() {
     const hasData = loadStore();
     inputMoneda.value = state.monedaActual;
@@ -50,6 +43,7 @@ function init() {
 
 function mostrarPantallaPrincipal() {
     document.getElementById('pantalla-configuracion').classList.add('oculto');
+    document.getElementById('pantalla-simulador').classList.add('oculto');
     document.getElementById('pantalla-principal').classList.remove('oculto');
     document.getElementById('btn-editar-presupuesto').classList.remove('oculto');
     
@@ -65,7 +59,6 @@ function guardarYMostrar() {
     mostrarPantallaPrincipal();
 }
 
-// Event Listeners - Navigation Controls
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
@@ -82,7 +75,6 @@ document.getElementById('btn-next-month').addEventListener('click', () => {
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
-// Event Listeners - Setup & Config
 document.getElementById('lang-container').addEventListener('click', (e) => {
     if (e.target.classList.contains('flag')) {
         setLangStr(e.target.getAttribute('data-lang'));
@@ -150,6 +142,21 @@ document.getElementById('btn-comenzar').addEventListener('click', () => {
 });
 
 // Event Listeners - CRUD Operations
+
+// Auto-categorización Histórica
+document.getElementById('input-desc').addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (query.length > 2) {
+        const match = state.historialGlobal.slice().reverse().find(g => g.desc.toLowerCase() === query);
+        if (match) {
+            const select = document.getElementById('input-categoria');
+            if (Array.from(select.options).some(opt => opt.value === match.categoria)) {
+                select.value = match.categoria;
+            }
+        }
+    }
+});
+
 document.getElementById('form-gasto').addEventListener('submit', (e) => {
     e.preventDefault(); 
     const monto = parseFloat(document.getElementById('input-monto').value);
@@ -158,6 +165,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     const cat = document.getElementById('input-categoria').value;
     
     if (!isNaN(montoCents) && montoCents > 0 && desc) {
+        const wasEditing = gastoEnEdicion;
         if (gastoEnEdicion) {
             const index = state.historialGlobal.findIndex(g => g.id === gastoEnEdicion);
             if (index !== -1) {
@@ -172,6 +180,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
             document.getElementById('input-desc').value = '';
         }
         guardarYMostrar();
+        showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
     }
 });
 
@@ -184,6 +193,7 @@ document.getElementById('lista-historial').addEventListener('click', (e) => {
         state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion); 
         guardarYMostrar();
+        showToast("🗑️ Eliminado");
     } else if (btnEdit) {
         const id = parseInt(btnEdit.getAttribute('data-id'), 10);
         const gasto = state.historialGlobal.find(g => g.id === id);
@@ -199,7 +209,6 @@ document.getElementById('lista-historial').addEventListener('click', (e) => {
     }
 });
 
-// Event Listeners - Settings & Categories
 document.getElementById('btn-toggle-nueva-cat').addEventListener('click', () => {
     document.getElementById('area-nueva-categoria').classList.toggle('oculto');
 });
@@ -221,6 +230,7 @@ document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () =>
 document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
     resetFormularioGasto(setGastoEnEdicion); 
     document.getElementById('pantalla-principal').classList.add('oculto');
+    document.getElementById('pantalla-simulador').classList.add('oculto');
     document.getElementById('btn-editar-presupuesto').classList.add('oculto');
     document.getElementById('pantalla-configuracion').classList.remove('oculto');
     document.getElementById('area-gastos-previos').classList.add('oculto');
@@ -229,7 +239,6 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     inputMoneda.value = state.monedaActual; 
 });
 
-// Event Listeners - Data Management
 document.getElementById('btn-exportar').addEventListener('click', () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.historialGlobal));
     const anchor = document.createElement('a');
@@ -278,11 +287,22 @@ document.getElementById('btn-reiniciar').addEventListener('click', () => {
     } 
 });
 
-// --- LSim Logic ---
 const pantallaPrincipal = document.getElementById('pantalla-principal');
 const pantallaSimulador = document.getElementById('pantalla-simulador');
 const btnAbrirSimulador = document.getElementById('btn-abrir-simulador');
 const btnCerrarSimulador = document.getElementById('btn-cerrar-simulador');
+
+const lsimMonto = document.getElementById('input-lsim-monto');
+const sliderAnos = document.getElementById('slider-lsim-anos');
+const sliderTasa = document.getElementById('slider-lsim-tasa');
+const valAnos = document.getElementById('val-anos');
+const valTasa = document.getElementById('val-tasa');
+
+const lsimValCost = document.getElementById('lsim-val-cost');
+const lsimValFuture = document.getElementById('display-lsim-resultado');
+const lsimValDiff = document.getElementById('lsim-val-diff');
+const barCost = document.getElementById('lsim-bar-cost');
+const barFuture = document.getElementById('lsim-bar-future');
 
 btnAbrirSimulador.addEventListener('click', () => {
     pantallaPrincipal.classList.add('oculto');
@@ -297,21 +317,41 @@ btnCerrarSimulador.addEventListener('click', () => {
 
 function calcularPerdidaInvisible() {
     const pCents = Math.round((parseFloat(lsimMonto.value) || 0) * 100);
-    const tVal = parseFloat(lsimAnos.value) || 0;
-    const r = (parseFloat(lsimTasa.value) || 0) / 100;
+    const tVal = parseFloat(sliderAnos.value);
+    const rVal = parseFloat(sliderTasa.value);
+    
+    const pAnos = (tVal - sliderAnos.min) / (sliderAnos.max - sliderAnos.min);
+    const pTasa = (rVal - sliderTasa.min) / (sliderTasa.max - sliderTasa.min);
+    
+    sliderAnos.style.setProperty('--fill', `calc(${pAnos * 100}% + ${16 - (pAnos * 32)}px)`);
+    sliderTasa.style.setProperty('--fill', `calc(${pTasa * 100}% + ${16 - (pTasa * 32)}px)`);
+    
+    valAnos.innerText = tVal;
+    valTasa.innerText = rVal.toFixed(1) + '%';
 
+    const r = rVal / 100;
     const futureValueCents = pCents * Math.pow(1 + r, tVal);
+    const differenceCents = futureValueCents - pCents;
 
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
-    lsimResultado.innerText = new Intl.NumberFormat(localeStr, { 
-        style: 'currency', 
-        currency: state.monedaActual 
-    }).format(futureValueCents / 100);
+    const formatter = new Intl.NumberFormat(localeStr, { style: 'currency', currency: state.monedaActual });
+
+    lsimValCost.innerText = formatter.format(pCents / 100);
+    lsimValFuture.innerText = formatter.format(futureValueCents / 100);
+    lsimValDiff.innerText = formatter.format(differenceCents / 100);
+
+    if (futureValueCents > 0) {
+        const costPercentage = (pCents / futureValueCents) * 100;
+        barCost.style.width = `${costPercentage}%`;
+        barFuture.style.width = '100%';
+    } else {
+        barCost.style.width = '0%';
+        barFuture.style.width = '0%';
+    }
 }
 
-document.querySelectorAll('.input-lsim').forEach(input => {
+[lsimMonto, sliderAnos, sliderTasa].forEach(input => {
     input.addEventListener('input', calcularPerdidaInvisible);
 });
 
-// Boot
 init();
