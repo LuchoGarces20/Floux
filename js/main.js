@@ -22,10 +22,52 @@ const inputPctLivre = document.getElementById('input-pct-livre');
 const displayCalculado = document.getElementById('display-calculado');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+const btnPrivacidade = document.getElementById('btn-privacidade');
+const btnSettingsToggle = document.getElementById('btn-settings-toggle');
+const settingsDropdown = document.getElementById('settings-dropdown');
+
+// --- Lógica do Menu Dropdown (Configurações) ---
+if (btnSettingsToggle && settingsDropdown) {
+    btnSettingsToggle.addEventListener('click', (e) => {
+        e.stopPropagation(); 
+        settingsDropdown.classList.toggle('oculto');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!settingsDropdown.contains(e.target) && !btnSettingsToggle.contains(e.target)) {
+            settingsDropdown.classList.add('oculto');
+        }
+    });
+}
+
+// --- Lógica do Modo Privacidade ---
+function actualizarModoPrivacidade() {
+    if (!btnPrivacidade) return;
+    
+    if (state.privacyMode) {
+        document.body.classList.add('privacy-mode');
+        btnPrivacidade.innerText = '🙈';
+    } else {
+        document.body.classList.remove('privacy-mode');
+        btnPrivacidade.innerText = '👁️';
+    }
+}
+
+if (btnPrivacidade) {
+    btnPrivacidade.addEventListener('click', () => {
+        state.privacyMode = !state.privacyMode;
+        actualizarModoPrivacidade();
+        saveStore();
+    });
+}
+// ----------------------------------
 
 function init() {
     const hasData = loadStore();
     inputMoneda.value = state.monedaActual;
+    
+    // Aplica o estado visual da privacidade logo ao abrir o app
+    actualizarModoPrivacidade();
     
     const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
     if (activeFlag) activeFlag.classList.add('active');
@@ -45,7 +87,7 @@ function mostrarPantallaPrincipal() {
     document.getElementById('pantalla-configuracion').classList.add('oculto');
     document.getElementById('pantalla-simulador').classList.add('oculto');
     document.getElementById('pantalla-principal').classList.remove('oculto');
-    document.getElementById('btn-editar-presupuesto').classList.remove('oculto');
+    // document.getElementById('btn-editar-presupuesto').classList.remove('oculto'); // Removido daqui, agora fica no dropdown
     
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
@@ -85,6 +127,8 @@ document.getElementById('lang-container').addEventListener('click', (e) => {
         if(!document.getElementById('pantalla-principal').classList.contains('oculto')) {
             actualizarInterfaz(state, viewMonth, viewYear, hoy);
         }
+        // Fecha o dropdown ao selecionar o idioma
+       //  if (settingsDropdown) settingsDropdown.classList.add('oculto');
     }
 });
 
@@ -228,10 +272,13 @@ document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () =>
 });
 
 document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
+    // Fecha o dropdown antes de mudar de tela
+    if (settingsDropdown) settingsDropdown.classList.add('oculto');
+    
     resetFormularioGasto(setGastoEnEdicion); 
     document.getElementById('pantalla-principal').classList.add('oculto');
     document.getElementById('pantalla-simulador').classList.add('oculto');
-    document.getElementById('btn-editar-presupuesto').classList.add('oculto');
+    // document.getElementById('btn-editar-presupuesto').classList.add('oculto'); // Removido
     document.getElementById('pantalla-configuracion').classList.remove('oculto');
     document.getElementById('area-gastos-previos').classList.add('oculto');
     tabDirecto.click();

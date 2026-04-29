@@ -42,13 +42,12 @@ body {
     -webkit-overflow-scrolling: touch;
 }
 
+/* --- Novo Layout do Header (Grid) --- */
 .header-app {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 50px 1fr 50px; /* Garante o logo exatamente no centro */
     align-items: center;
-    gap: 16px;
-    padding: 24px 0 16px 0;
+    padding: 20px 0 16px 0;
     margin-bottom: 24px;
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
@@ -58,6 +57,9 @@ body {
     z-index: 100;
     border-bottom: 1px solid var(--border-color);
 }
+
+.action-left { justify-self: start; margin-left: 0; }
+.action-right { justify-self: end; margin-left: 0; }
 
 .brand-title {
     display: flex;
@@ -70,6 +72,67 @@ body {
 .brand-title img {
     height: 72px;
     width: auto;
+}
+
+/* --- Design do Dropdown --- */
+.settings-menu-container {
+    position: relative;
+}
+
+.settings-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 10px 25px var(--shadow-color);
+    padding: 12px;
+    min-width: 200px;
+    z-index: 200;
+    transform-origin: top right;
+}
+
+.dropdown-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dropdown-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.divider-small {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 12px 0;
+}
+
+.btn-dropdown {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    transition: background-color 0.2s ease;
+}
+
+.btn-dropdown:hover {
+    background-color: var(--bg-color);
 }
 
 .lang-flags {
@@ -112,7 +175,6 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
     font-size: 1.5rem; 
     cursor: pointer; 
     padding: 5px; 
-    margin-left: 10px; 
     color: var(--primary-color); 
     transition: transform 0.2s ease, max-width 0.4s ease; 
     max-width: 50px; 
@@ -369,13 +431,13 @@ input:not(:placeholder-shown):focus:invalid {
     -webkit-appearance: none;
     appearance: none;
     height: 20px;
-    width: 32px; /* Retorna ao formato de pílula original */
+    width: 32px; 
     border-radius: 10px;
     background: var(--surface-color);
     cursor: pointer;
-    margin-top: -6px; /* Centraliza (8 - 20) / 2 = -6 */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1); /* Sombra suave original */
-    border: none; /* Remove a borda */
+    margin-top: -6px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1); 
+    border: none; 
 }
 
 /* --- Firefox --- */
@@ -468,6 +530,7 @@ input:not(:placeholder-shown):focus:invalid {
     display: block;
     margin: 8px 0;
 }
+
 /* Idea 9: Pace Sparkline */
 .pace-label { 
     font-size: 0.65rem; 
@@ -503,4 +566,22 @@ input:not(:placeholder-shown):focus:invalid {
     display: inline-block; 
     margin-left: 8px; 
     border: 1px solid rgba(245, 158, 11, 0.2); 
+}
+
+/* --- Modo Privacidade --- */
+.b-amount, .expense-amount, #display-lsim-resultado, #lsim-val-cost, #lsim-val-diff, #display-calculado, .cat-bar-amount {
+    transition: filter 0.3s ease;
+}
+
+/* Aplica o blur quando a classe está ativa no body, EXCETO no limite diário */
+body.privacy-mode .b-amount:not(#display-diario),
+body.privacy-mode .expense-amount,
+body.privacy-mode #display-lsim-resultado,
+body.privacy-mode #lsim-val-cost,
+body.privacy-mode #lsim-val-diff,
+body.privacy-mode #display-calculado,
+body.privacy-mode .cat-bar-amount {
+    filter: blur(8px);
+    user-select: none; 
+    opacity: 0.8; 
 }

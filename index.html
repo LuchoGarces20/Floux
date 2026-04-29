@@ -12,18 +12,36 @@
 </head>
 <body>
 <main id="app-movil">
-  <div class="header-app">
+<div class="header-app">
+    <!-- Esquerda: Botão Privacidade -->
+    <button id="btn-privacidade" class="btn-icono action-left" aria-label="Modo Privacidade">👁️</button>
+
+    <!-- Centro: Logo -->
     <div class="brand-title">
         <img src="img/logo-light.svg" alt="Floux" class="logo-light">
         <img src="img/logo-dark.svg" alt="Floux" class="logo-dark">
     </div>
-    <div class="header-actions">
-        <div class="lang-flags" id="lang-container">
-            <span class="flag" data-lang="es" title="Español">🇪🇸</span>
-            <span class="flag" data-lang="en" title="English">🇺🇸</span>
-            <span class="flag" data-lang="pt" title="Português">🇧🇷</span>
+
+    <!-- Direita: Menu de Configurações -->
+    <div class="settings-menu-container action-right">
+        <button id="btn-settings-toggle" class="btn-icono" aria-label="Configurações">⚙️</button>
+        
+        <!-- Dropdown Flutuante -->
+        <div id="settings-dropdown" class="settings-dropdown transicion-seccion oculto">
+            <div class="dropdown-section">
+                <span class="dropdown-label">Idioma / Language</span>
+                <div class="lang-flags" id="lang-container">
+                    <span class="flag" data-lang="es" title="Español">🇪🇸</span>
+                    <span class="flag" data-lang="en" title="English">🇺🇸</span>
+                    <span class="flag" data-lang="pt" title="Português">🇧🇷</span>
+                </div>
+            </div>
+            <hr class="divider-small">
+            <button id="btn-editar-presupuesto" class="btn-dropdown" aria-label="Editar Presupuesto">
+                <span class="dropdown-icon">📝</span>
+                <span data-i18n="menuAdjustBudget">Ajustar Orçamento</span>
+            </button>
         </div>
-        <button id="btn-editar-presupuesto" class="btn-icono transicion-seccion oculto" aria-label="Editar Presupuesto">⚙️</button>
     </div>
 </div>
 

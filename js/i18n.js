@@ -34,6 +34,7 @@ export const diccionario = {
         lsimTotalLossEnd: " en ganancias potenciales.",
         btnOpenFlouxVision: "🔮 Simulador FlouxVision", 
         btnClose: "Cerrar",
+        menuAdjustBudget: "Ajustar Presupuesto",
         paceLabel: "Ritmo vs. Calendario",
         summaryTitle: "Resumen del Mes", summaryPerf: "Rendimiento:", summaryGreatest: "Gasto Mayor:", summaryDaily: "Promedio Diario:", summarySave: "Ahorro: ", summaryDeficit: "Déficit: "
     },
@@ -71,6 +72,7 @@ export const diccionario = {
         btnOpenFlouxVision: "🔮 FlouxVision Simulator", 
         btnClose: "Close",
         paceLabel: "Pace vs. Calendar",
+        menuAdjustBudget: "Adjust Budget",
         summaryTitle: "Monthly Summary", summaryPerf: "Performance:", summaryGreatest: "Largest Expense:", summaryDaily: "Daily Average:", summarySave: "Saved: ", summaryDeficit: "Deficit: "
     },
     pt: {
@@ -107,6 +109,7 @@ export const diccionario = {
         btnOpenFlouxVision: "🔮 Simulador FlouxVision", 
         btnClose: "Fechar",
         paceLabel: "Ritmo vs. Calendário",
+        menuAdjustBudget: "Ajustar Orçamento",
         summaryTitle: "Resumo do Mês", summaryPerf: "Desempenho:", summaryGreatest: "Maior Despesa:", summaryDaily: "Média Diária:", summarySave: "Economia: ", summaryDeficit: "Déficit: "
     }
 };

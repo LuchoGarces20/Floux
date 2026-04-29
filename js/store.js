@@ -4,14 +4,16 @@ export const STORAGE_KEYS = {
     MONEDA: 'floux_moneda',
     CATEGORIAS: 'floux_categorias_custom',
     MES_GUARDADO: 'floux_mes_guardado',
-    LANG: 'floux_lang'
+    LANG: 'floux_lang',
+    PRIVACY: 'floux_privacy' 
 };
 
 export const state = {
-    presupuestoMensual: 0, // Stored as integer (cents)
-    historialGlobal: [],   // Monto stored as integer (cents)
+    presupuestoMensual: 0,
+    historialGlobal: [],
     monedaActual: 'BRL',
-    categoriasCustom: []
+    categoriasCustom: [],
+    privacyMode: false
 };
 
 export function loadStore() {
@@ -19,7 +21,9 @@ export function loadStore() {
     const h = localStorage.getItem(STORAGE_KEYS.HISTORIAL);
     const m = localStorage.getItem(STORAGE_KEYS.MONEDA);
     const c = localStorage.getItem(STORAGE_KEYS.CATEGORIAS);
-
+    const priv = localStorage.getItem(STORAGE_KEYS.PRIVACY);
+    
+    if (priv === 'true') state.privacyMode = true;
     if (m) state.monedaActual = m;
     
     if (c) {
@@ -47,6 +51,7 @@ export function saveStore() {
     localStorage.setItem(STORAGE_KEYS.HISTORIAL, JSON.stringify(state.historialGlobal));
     localStorage.setItem(STORAGE_KEYS.MONEDA, state.monedaActual);
     localStorage.setItem(STORAGE_KEYS.CATEGORIAS, JSON.stringify(state.categoriasCustom));
+    localStorage.setItem(STORAGE_KEYS.PRIVACY, state.privacyMode);
 }
 
 export function isValidoHistorialSchema(data) {
