@@ -29,7 +29,7 @@ export function renderizarSelectCategorias(customCats) {
     categorias.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.id;
-        option.textContent = `${cat.emoji} ${cat.nombre}`; 
+        option.textContent = `${cat.emoji} ${cat.nombre}`;
         select.appendChild(option);
     });
     if(currentValue && categorias.find(c => c.id === currentValue)) select.value = currentValue;
@@ -62,7 +62,6 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     }
 
     const gastosMesActual = state.historialGlobal.filter(g => new Date(g.fecha).getMonth() === viewMonth && new Date(g.fecha).getFullYear() === viewYear);
-    
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
     
@@ -89,10 +88,9 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 perfEl.innerText = `${t('summaryDeficit')}${formatoDinero.format(Math.abs(dineroRestanteCents) / 100)}`;
                 perfEl.style.color = 'var(--danger-color)';
             }
-
             const largest = gastosMesActual.length > 0 ? Math.max(...gastosMesActual.map(g => g.monto)) : 0;
             document.getElementById('summary-largest').innerText = formatoDinero.format(largest / 100);
-
+            
             const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
             const dailyAvg = totalGastadoMesCents / daysInMonth;
             document.getElementById('summary-daily').innerText = formatoDinero.format(dailyAvg / 100);
@@ -115,31 +113,29 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     if (porcentajeGastado > 100 || isNaN(porcentajeGastado)) porcentajeGastado = 100;
     if (barraFill) barraFill.style.width = `${porcentajeGastado}%`;
     
-    if (dineroRestanteCents < (state.presupuestoMensual * WARNING_THRESHOLD)) { 
-        if(barraFill) barraFill.classList.add('warning'); 
-        if(elDiario) elDiario.style.color = "var(--danger-color)"; 
-    } else { 
-        if(barraFill) barraFill.classList.remove('warning'); 
-        if(elDiario) elDiario.style.color = "var(--primary-color)"; 
+    if (dineroRestanteCents < (state.presupuestoMensual * WARNING_THRESHOLD)) {
+        if(barraFill) barraFill.classList.add('warning');
+        if(elDiario) elDiario.style.color = "var(--danger-color)";
+    } else {
+        if(barraFill) barraFill.classList.remove('warning');
+        if(elDiario) elDiario.style.color = "var(--primary-color)";
     }
 
-    // Idea 9: Ritmo de Gasto (Sparkline)
+    // Ritmo de Gasto (Sparkline)
     const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
     const porcentajeTiempo = diaCalculo / diasEnElMes;
+    
     const paceSparkline = document.getElementById('pace-sparkline');
-
-  if (paceSparkline) {
+    if (paceSparkline) {
         let porcentajePresupuesto = totalGastadoMesCents / state.presupuestoMensual;
         if (!isFinite(porcentajePresupuesto)) porcentajePresupuesto = 0;
         
-        // A largura agora representa o progresso do tempo no mês (Calendário)
         paceSparkline.style.width = `${porcentajeTiempo * 100}%`;
-        // A cor avalia o ritmo: vermelho se a % do gasto for maior que a % do mês transcorrido
         paceSparkline.className = (porcentajePresupuesto > porcentajeTiempo) ? 'pace-sparkline-fill bad' : 'pace-sparkline-fill good';
     }
 
-    // Idea 10: Seguimiento de "Días Cero"
+    // Seguimiento de "Días Cero"
     const zeroSpendBadge = document.getElementById('zero-spend-badge');
     if (zeroSpendBadge) {
         const diasConGasto = new Set(gastosMesActual.map(g => new Date(g.fecha).getDate()));
@@ -148,9 +144,9 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         for (let d = 1; d <= diaCalculo; d++) {
             if (!diasConGasto.has(d)) diasCero++;
         }
-
+        
         if (diasCero > 0) {
-            zeroSpendBadge.innerText = `🔥 ${diasCero}`;
+            zeroSpendBadge.innerText = `🔥 ${diasCero} Días sin gastos`;
             zeroSpendBadge.title = `${diasCero} Días sin gastos`;
             zeroSpendBadge.classList.remove('oculto');
         } else {
@@ -163,21 +159,23 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     
     const emptyStateHTML = `
         <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-icon">🤷</div>
             <div class="no-expenses-text">${t('noExpenses')}</div>
         </div>
     `;
     
-    contGrafico.innerHTML = ''; 
+    contGrafico.innerHTML = '';
+    
     if (gastosMesActual.length > 0) {
         const sumasPorCatCents = {};
         gastosMesActual.forEach(g => { sumasPorCatCents[g.categoria] = (sumasPorCatCents[g.categoria] || 0) + g.monto; });
         
         const fragChart = document.createDocumentFragment();
         for (const catId in sumasPorCatCents) {
-            if(catId === 'otros_previo') continue; 
+            if(catId === 'otros_previo') continue;
+            
             const porcentaje = (sumasPorCatCents[catId] / totalGastadoMesCents) * 100;
-            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📦', nombre: catId, color: 'var(--primary-color)' };
+            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '🏷️', nombre: catId, color: 'var(--primary-color)' };
             
             const el = document.createElement('div');
             el.className = 'cat-bar-container';
@@ -203,7 +201,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         for (let i = gastosMesActual.length - 1; i >= 0; i--) {
             const g = gastosMesActual[i];
             const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-            const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '📌', nombre: g.categoria };
+            const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
             
             const li = document.createElement('li');
             li.innerHTML = `
@@ -215,7 +213,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 </div>
                 <div class="actions-row">
                     <span class="expense-amount" style="margin-right: 8px;">${escapeHTML(formatoDinero.format(g.monto / 100))}</span>
-                    ${isCurrentMonth ? `<button class="edit-btn" data-id="${g.id}">✏️</button><button class="delete-btn" data-id="${g.id}">✕</button>` : ''}
+                    ${isCurrentMonth ? `<button class="edit-btn" data-id="${g.id}">✏️</button><button class="delete-btn" data-id="${g.id}">🗑️</button>` : ''}
                 </div>
             `;
             fragList.appendChild(li);
