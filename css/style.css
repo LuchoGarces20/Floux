@@ -120,7 +120,14 @@ h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
 .btn-icono.oculto { max-width: 0; }
 h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); padding-bottom: 5px; font-weight: 700; }
 
-.transicion-seccion { transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.4s ease; opacity: 1; transform: translateY(0); max-height: 2500px; overflow: hidden; }
+.transicion-seccion {
+    transition: opacity 0.4s ease, transform 0.4s ease, max-height 0.4s ease;
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 2500px;
+    overflow: hidden;
+    padding-bottom: 20px; /* Nova linha adicionada */
+}
 .oculto { opacity: 0; transform: translateY(10px); max-height: 0; pointer-events: none; margin: 0 !important; padding: 0 !important; border: none !important; }
 
 /* Tabs & Calc */
@@ -158,7 +165,7 @@ button.btn-principal {
     cursor: pointer;
     box-shadow: 0 6px 15px rgba(15, 118, 110, 0.3);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
-    margin-bottom: 10px;
+    margin-bottom: 25px;
 }
 
 /* Efeito ao pressionar o botão (reduz a escala sutilmente por ser um botão largo) */
@@ -396,4 +403,11 @@ body.privacy-mode .b-amount:not(#display-diario), body.privacy-mode .expense-amo
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
         border: 2px solid rgba(255, 255, 255, 0.1);
     }
+}
+
+.brand-title img,
+button.btn-principal,
+.tab-btn {
+    isolation: isolate;
+    color-scheme: light;
 }
