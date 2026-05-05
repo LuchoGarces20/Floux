@@ -13,7 +13,8 @@ export function escapeHTML(str) {
 export function aplicarTraduccion(gastoEnEdicion) {
     document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = t(el.getAttribute('data-i18n')));
     document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-ph')));
-    
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))));
+
     const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
     if(btnGuardarGasto) {
         btnGuardarGasto.innerText = gastoEnEdicion ? t('btnEdit') : t('btnAdd');
@@ -65,19 +66,22 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
     
-    const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
+const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
     const areaRegistro = document.getElementById('area-registrar-gasto');
     const areaResumen = document.getElementById('resumen-mes-pasado');
     const cardDiario = document.querySelector('.balance-card.highlight');
+    const fabGasto = document.getElementById('btn-fab-gasto'); // Nova referência
 
     if (isCurrentMonth) {
         if(areaRegistro) areaRegistro.classList.remove('oculto');
         if(areaResumen) areaResumen.classList.add('oculto');
         if(cardDiario) cardDiario.style.display = 'block';
+        if(fabGasto) fabGasto.classList.remove('oculto'); // Mostra o botão
     } else {
         if(areaRegistro) areaRegistro.classList.add('oculto');
         if(areaResumen) areaResumen.classList.remove('oculto');
         if(cardDiario) cardDiario.style.display = 'none';
+        if(fabGasto) fabGasto.classList.add('oculto'); // Oculta o botão
 
         if (areaResumen) {
             const perfEl = document.getElementById('summary-performance');
@@ -159,8 +163,11 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     
     const emptyStateHTML = `
         <div class="empty-state">
-            <div class="empty-state-icon">🤷</div>
-            <div class="no-expenses-text">${t('noExpenses')}</div>
+            <div class="empty-state-icon">🚀</div>
+            <div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div>
+            <div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">
+                ${t('emptyStateMsg')}
+            </div>
         </div>
     `;
     

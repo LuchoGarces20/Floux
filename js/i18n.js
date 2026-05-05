@@ -36,6 +36,8 @@ export const diccionario = {
         btnClose: "Cerrar",
         menuAdjustBudget: "Ajustar Presupuesto",
         paceLabel: "Ritmo vs. Calendario",
+        emptyStateTitle: "¡Un nuevo mes!",
+        emptyStateMsg: "Recuerda: el dinero que no gastas hoy aumenta automáticamente tu límite de mañana.<br><br>Registra tu primer gasto.",
         summaryTitle: "Resumen del Mes", summaryPerf: "Rendimiento:", summaryGreatest: "Gasto Mayor:", summaryDaily: "Promedio Diario:", summarySave: "Ahorro: ", summaryDeficit: "Déficit: "
     },
     en: {
@@ -73,6 +75,8 @@ export const diccionario = {
         btnClose: "Close",
         paceLabel: "Pace vs. Calendar",
         menuAdjustBudget: "Adjust Budget",
+        emptyStateTitle: "A new month!",
+        emptyStateMsg: "Remember: the money you don't spend today automatically increases tomorrow's limit.<br><br>Log your first expense.",
         summaryTitle: "Monthly Summary", summaryPerf: "Performance:", summaryGreatest: "Largest Expense:", summaryDaily: "Daily Average:", summarySave: "Saved: ", summaryDeficit: "Deficit: "
     },
     pt: {
@@ -110,6 +114,8 @@ export const diccionario = {
         btnClose: "Fechar",
         paceLabel: "Ritmo vs. Calendário",
         menuAdjustBudget: "Ajustar Orçamento",
+        emptyStateTitle: "Um novo mês!",
+        emptyStateMsg: "Lembre-se: o dinheiro que você não gasta hoje aumenta automaticamente seu limite de amanhã.<br><br>Registre seu primeiro gasto.",
         summaryTitle: "Resumo do Mês", summaryPerf: "Desempenho:", summaryGreatest: "Maior Despesa:", summaryDaily: "Média Diária:", summarySave: "Economia: ", summaryDeficit: "Déficit: "
     }
 };

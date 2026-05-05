@@ -177,13 +177,16 @@
 
     <section id="pantalla-principal" class="transicion-seccion oculto">
         <div class="month-navigation" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <button id="btn-prev-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;">◀</button>
-            <div style="display: flex; align-items: center;">
-                <h3 id="display-current-month" style="margin: 0; font-size: 1.1rem; color: var(--text-color);">Mes</h3>
-                <span id="zero-spend-badge" class="zero-spend-badge oculto"></span>
-            </div>
-            <button id="btn-next-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;" disabled>▶</button>
-        </div>
+    <button id="btn-prev-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;">◀</button>
+    
+    <!-- Contêiner modificado para empilhar em coluna -->
+           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+             <h3 id="display-current-month" style="margin: 0; font-size: 1.1rem; color: var(--text-color);">Mes</h3>
+             <span id="zero-spend-badge" class="zero-spend-badge oculto"></span>
+           </div>
+    
+    <button id="btn-next-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;" disabled>▶</button>
+       </div>
         
         <div class="grid-balances">
             <div class="balance-card highlight">
@@ -262,7 +265,13 @@
     </section>
     
     <div id="toast-container" class="toast-container"></div>
-</main>
+    <!-- Botão FAB para acesso rápido -->
+<button id="btn-fab-gasto" class="fab-btn oculto" data-i18n-aria="addExpenseTitle" aria-label="Registrar Gasto">
+    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+</button>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

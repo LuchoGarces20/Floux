@@ -361,12 +361,32 @@ function calcularPerdidaInvisible() {
     input.addEventListener('input', calcularPerdidaInvisible);
 });
 
+const fabGasto = document.getElementById('btn-fab-gasto');
+
+if (fabGasto) {
+    fabGasto.addEventListener('click', () => {
+        const areaRegistro = document.getElementById('area-registrar-gasto');
+        const inputMonto = document.getElementById('input-monto');
+        
+        if (areaRegistro) {
+            areaRegistro.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Aguarda a rolagem para aplicar o foco e abrir o teclado
+            setTimeout(() => {
+                inputMonto.focus();
+            }, 300);
+        }
+    });
+}
+
 // --- LÓGICA SWIPE-TO-ACTION UNIVERSAL (Tátil + Mouse) ---
 const listaHistorial = document.getElementById('lista-historial');
 let startX = 0;
+let startY = 0;
 let activeItem = null;
-const MAX_SWIPE = -110; 
-const SWIPE_THRESHOLD = -40; 
+let initialTranslateX = 0;
+let isSwiping = false;
+const MAX_SWIPE = -110;
+const SWIPE_THRESHOLD = -40;
 
 listaHistorial.addEventListener('pointerdown', (e) => {
     const target = e.target.closest('.swipe-content');
@@ -374,54 +394,84 @@ listaHistorial.addEventListener('pointerdown', (e) => {
 
     if (activeItem && activeItem !== target) {
         activeItem.style.transform = 'translateX(0px)';
+        activeItem.dataset.open = "false";
     }
 
-    startX = e.clientX; 
+    startX = e.clientX;
+    startY = e.clientY;
     activeItem = target;
-    activeItem.classList.add('no-transition'); 
-    
-    // Captura o ponteiro para arrastar sem perder o foco
+    isSwiping = false;
+
+    initialTranslateX = activeItem.dataset.open === "true" ? MAX_SWIPE : 0;
+
+    activeItem.classList.add('no-transition');
     activeItem.setPointerCapture(e.pointerId);
 });
 
 listaHistorial.addEventListener('pointermove', (e) => {
     if (!activeItem) return;
-    
-    const currentX = e.clientX;
-    const deltaX = currentX - startX;
 
-    if (deltaX < 0) {
-        const translateX = Math.max(deltaX, MAX_SWIPE);
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+
+    if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
+        activeItem.releasePointerCapture(e.pointerId);
+        activeItem.classList.remove('no-transition');
+        activeItem = null;
+        return;
+    }
+
+    if (Math.abs(deltaX) > 5) {
+        isSwiping = true;
+    }
+
+    if (isSwiping) {
+        let translateX = initialTranslateX + deltaX;
+        translateX = Math.max(MAX_SWIPE, Math.min(0, translateX));
         activeItem.style.transform = `translateX(${translateX}px)`;
     }
 });
 
 listaHistorial.addEventListener('pointerup', (e) => {
     if (!activeItem) return;
-    
-    activeItem.classList.remove('no-transition'); 
-    activeItem.releasePointerCapture(e.pointerId); // Solta o ponteiro
-    
-    const transformStr = activeItem.style.transform;
-    const match = transformStr.match(/translateX\(([-0-9.]+)px\)/);
-    const currentTranslateX = match ? parseFloat(match[1]) : 0;
 
-    if (currentTranslateX < SWIPE_THRESHOLD) {
-        activeItem.style.transform = `translateX(${MAX_SWIPE}px)`;
-        if (navigator.vibrate) navigator.vibrate(15); 
+    activeItem.classList.remove('no-transition');
+    activeItem.releasePointerCapture(e.pointerId);
+
+    if (isSwiping) {
+        const transformStr = activeItem.style.transform;
+        const match = transformStr.match(/translateX\(([-0-9.]+)px\)/);
+        const currentTranslateX = match ? parseFloat(match[1]) : 0;
+
+        if (currentTranslateX < SWIPE_THRESHOLD) {
+            activeItem.style.transform = `translateX(${MAX_SWIPE}px)`;
+            activeItem.dataset.open = "true";
+            if (navigator.vibrate) navigator.vibrate(15);
+        } else {
+            activeItem.style.transform = `translateX(0px)`;
+            activeItem.dataset.open = "false";
+            if (initialTranslateX === 0) activeItem = null;
+        }
     } else {
-        activeItem.style.transform = `translateX(0px)`;
-        activeItem = null;
+        const isOpen = activeItem.dataset.open === "true";
+        if (isOpen) {
+            activeItem.style.transform = `translateX(0px)`;
+            activeItem.dataset.open = "false";
+            activeItem = null;
+        } else {
+            activeItem.style.transform = `translateX(${MAX_SWIPE}px)`;
+            activeItem.dataset.open = "true";
+        }
     }
 });
 
-// Fecha se clicar em editar ou deletar
 listaHistorial.addEventListener('click', (e) => {
     const btnDelete = e.target.closest('.delete-btn');
     const btnEdit = e.target.closest('.edit-btn');
-    
+
     if (activeItem && (btnDelete || btnEdit)) {
         activeItem.style.transform = `translateX(0px)`;
+        activeItem.dataset.open = "false";
         activeItem = null;
     }
 
@@ -446,7 +496,6 @@ listaHistorial.addEventListener('click', (e) => {
         }
     }
 });
-// -----------------------------
 
 init();
 
