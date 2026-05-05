@@ -11,6 +11,8 @@
     --success-color: #10B981;
     --tab-bg: #F0FDFA;
     --shadow-color: rgb(0 0 0 / 0.05);
+    color-scheme: light dark; 
+    --bg-color: #F8FAFC;
 }
 
 .logo-dark { display: none; }
@@ -69,8 +71,6 @@ body {
     width: 100%; 
     object-fit: contain; 
     transform: translateZ(0);
-    /* Adiciona o brilho com a cor primária translúcida */
-    filter: drop-shadow(0 4px 10px rgba(15, 118, 110, 0.4));
     transition: filter 0.3s ease;
 }
 /* Dropdown */
@@ -290,10 +290,7 @@ button.btn-principal:active {
     .header-app { background: rgba(30, 41, 59, 0.85); }
     .logo-light { display: none; }
     .logo-dark { display: block; }
-    .brand-title img.logo-dark {
-        /* Brilho usando a cor primária mais clara do modo escuro */
-        filter: drop-shadow(0 4px 12px rgba(45, 212, 191, 0.4));
-    }
+
     button.btn-principal {
         box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
         border: 2px solid rgba(255, 255, 255, 0.1);
