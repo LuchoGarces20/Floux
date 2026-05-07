@@ -102,11 +102,20 @@ h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); paddin
 .oculto { opacity: 0; transform: translateY(10px); max-height: 0; pointer-events: none; margin: 0 !important; padding: 0 !important; border: none !important; }
 
 /* Tabs & Calc */
-.onboarding-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.onboarding-tabs { 
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 20px; 
+    padding: 2px; /* Added to prevent box-shadow clipping */
+}
 .tab-btn { flex: 1; padding: 10px; text-align: center; background: transparent; border: none; box-shadow: var(--dimensional-shadow); border-radius: 12px; color: var(--text-muted); font-weight: 500; cursor: pointer; transition: 0.2s; font-size: 0.85rem;}
 .tab-btn.active { background: var(--tab-bg); color: var(--primary-color); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--primary-color); }
 .calc-result { background-color: var(--tab-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--primary-color); }
 .calc-result strong { font-size: 1.5rem; color: var(--primary-color); display: block; margin-top: 5px; font-variant-numeric: tabular-nums;}
+
+#modo-calculadora, #modo-directo {
+    padding: 0 3px;
+}
 
 /* Grid & Progress */
 .grid-balances { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }

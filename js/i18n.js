@@ -4,6 +4,7 @@ export const diccionario = {
     es: { /* ... (Same existing dict mapping) ... */
         appTitle: "Floux - ", currencyLabel: "Moneda", tabDirect: "Ya sé mi presupuesto", tabCalc: "Ayúdame a calcular",
         budgetLabel: "Presupuesto total para gastar mensualmente", budgetPlaceholder: "Ej: 2000", incomeLabel: "Renta Mensual Total",
+        adjustPercentages: "Ajustar porcentajes recomendados",
         pctLongTerm: "Inversión Largo Plazo (%) - Rec: 20%", pctShortTerm: "Inversión Corto Plazo (%) - Rec: 10%",
         pctEdu: "Educación (%) - Rec: 5%", pctSurvival: "Supervivencia (%) - Rec: 55%", pctFree: "Gastos Libres (%) - Rec: 10%",
         fixedPixLabel: "Renta comprometida (PIX/Transferencia)", calcResult: "Valor seguro para gastar:",
@@ -26,6 +27,7 @@ export const diccionario = {
     en: { /* ... */
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
         budgetLabel: "Total monthly budget to spend", budgetPlaceholder: "E.g. 2000", incomeLabel: "Total Monthly Income",
+        adjustPercentages: "Adjust recommended percentages",
         pctLongTerm: "Long Term Investment (%) - Rec: 20%", pctShortTerm: "Short Term Investment (%) - Rec: 10%",
         pctEdu: "Education (%) - Rec: 5%", pctSurvival: "Survival (%) - Rec: 55%", pctFree: "Free to Spend (%) - Rec: 10%",
         fixedPixLabel: "Committed Income (Bank Transfer/Cash)", calcResult: "Safe value to spend:",
@@ -45,6 +47,7 @@ export const diccionario = {
     pt: { /* ... */
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
         budgetLabel: "Orçamento total para gastar mensalmente", budgetPlaceholder: "Ex: 2000", incomeLabel: "Renda Mensal Total",
+        adjustPercentages: "Ajustar porcentagens recomendadas",
         pctLongTerm: "Investimento Longo Prazo (%) - Rec: 20%", pctShortTerm: "Investimento Curto Prazo (%) - Rec: 10%",
         pctEdu: "Educação (%) - Rec: 5%", pctSurvival: "Sobrevivência (%) - Rec: 55%", pctFree: "Gastos Livres (%) - Rec: 10%",
         fixedPixLabel: "Renda comprometida (PIX/Boleto)", calcResult: "Valor seguro para gastar:",
