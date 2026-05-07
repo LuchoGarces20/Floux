@@ -1,7 +1,7 @@
 {
   "name": "Floux",
   "short_name": "Floux",
-"start_url": "./index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#0F766E",
@@ -29,7 +29,7 @@
       "name": "Registrar Gasto",
       "short_name": "Gasto",
       "description": "Agregar un nuevo gasto",
-      "url": "/?action=add-expense",
+      "url": "?action=add-expense",
       "icons": [
         {
           "src": "img/logo180.png",
@@ -41,7 +41,7 @@
       "name": "FlouxVision",
       "short_name": "Simulador",
       "description": "Abrir el simulador de pérdida",
-      "url": "/?action=simulador",
+      "url": "?action=simulador",
       "icons": [
         {
           "src": "img/logo180.png",
