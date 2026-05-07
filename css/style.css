@@ -13,7 +13,7 @@
     --tab-bg: #F0FDFA;
     --shadow-color: rgb(0 0 0 / 0.05);
     
-    --dimensional-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --dimensional-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04), inset 0 0 0 2px rgba(255, 255, 255, 1);    
     --divider-color: rgba(0, 0, 0, 0.04);
     --divider-shadow: 0 1px 0 rgba(255, 255, 255, 1);
     
@@ -124,6 +124,13 @@ h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); paddin
 .form-group { margin-bottom: 1rem; text-align: left;}
 label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; color: var(--text-color);}
 input, select { width: 100%; padding: 0.8rem; border: none; box-shadow: var(--dimensional-shadow); border-radius: 12px; background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-size: 1rem; font-family: inherit; -webkit-user-select: auto; user-select: auto; }
+
+/* Focus Enhancements */
+input:focus, select:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
 button { -webkit-appearance: none; appearance: none; outline: none; -webkit-tap-highlight-color: transparent; }
 
 /* Primary Button */
@@ -132,9 +139,13 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 
 /* Consolidating Secondary/Danger base classes */
 .btn-base {
-    width: 100%; padding: 1rem; border-radius: 12px; font-weight: 700; cursor: pointer;
-    border: 1px solid transparent; box-sizing: border-box; background-clip: padding-box; -webkit-background-clip: padding-box;
-    overflow: hidden; transform: translateZ(0);
+    width: 100%; 
+    padding: 1rem; 
+    border-radius: 12px; 
+    font-weight: 700; 
+    cursor: pointer;
+    border: none; 
+    box-sizing: border-box; 
     box-shadow: var(--dimensional-shadow), 0 2px 4px var(--shadow-color); 
     transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.1s;
 }
@@ -144,8 +155,8 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 .btn-danger-outline { margin-top: 10px; background: linear-gradient(180deg, var(--surface-color) 0%, var(--danger-gradient) 100%); color: var(--danger-color); }
 
 @media (hover: hover) {
-    .btn-secundario:hover, .btn-lsim:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--primary-color), 0 4px 6px var(--shadow-color); }
-    .btn-danger-outline:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--danger-color), 0 4px 6px var(--shadow-color); }
+    .btn-secundario:hover, .btn-lsim:hover { box-shadow: inset 0 0 0 1px var(--primary-color), inset 0 0 0 2px rgba(255, 255, 255, 1), 0 4px 6px var(--shadow-color); }
+    .btn-danger-outline:hover { box-shadow: inset 0 0 0 1px var(--danger-color), inset 0 0 0 2px rgba(255, 255, 255, 1), 0 4px 6px var(--shadow-color); }
 }
 
 .btn-base:active { transform: scale(0.97) translateZ(0); box-shadow: var(--dimensional-shadow), 0 1px 2px var(--shadow-color); }
@@ -205,7 +216,7 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 
 /* UX Enhancements */
 input:not(:placeholder-shown):invalid { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--danger-color); background-color: rgba(239, 68, 68, 0.05); }
-input:not(:placeholder-shown):focus:invalid { outline: none; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2); }
+input:not(:placeholder-shown):focus:invalid { outline: none; box-shadow: inset 0 0 0 2px var(--danger-color); }
 .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast { background-color: var(--text-color); color: var(--bg-color); padding: 12px 24px; border-radius: 30px; font-weight: 500; font-size: 0.9rem; box-shadow: 0 4px 12px var(--shadow-color); opacity: 0; transform: translateY(20px); animation: toast-enter 0.3s forwards, toast-exit 0.3s forwards 2.7s; }
 @keyframes toast-enter { to { opacity: 1; transform: translateY(0); } }
