@@ -1,4 +1,4 @@
-const CACHE_NAME = 'floux-cache-v1.01';
+const CACHE_NAME = 'floux-cache-v1.00';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',

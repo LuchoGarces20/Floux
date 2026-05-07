@@ -104,14 +104,55 @@ h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); paddin
 /* Tabs & Calc */
 .onboarding-tabs { 
     display: flex; 
-    gap: 10px; 
+    gap: 4px; 
     margin-bottom: 20px; 
-    padding: 2px; /* Added to prevent box-shadow clipping */
+    padding: 4px;
+    background: var(--bg-color);
+    border-radius: 16px; 
+    box-shadow: inset 0 2px 4px var(--shadow-color);
 }
-.tab-btn { flex: 1; padding: 10px; text-align: center; background: transparent; border: none; box-shadow: var(--dimensional-shadow); border-radius: 12px; color: var(--text-muted); font-weight: 500; cursor: pointer; transition: 0.2s; font-size: 0.85rem;}
-.tab-btn.active { background: var(--tab-bg); color: var(--primary-color); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--primary-color); }
-.calc-result { background-color: var(--tab-bg); padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; border: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 1), 0 0 0 1px var(--primary-color); }
-.calc-result strong { font-size: 1.5rem; color: var(--primary-color); display: block; margin-top: 5px; font-variant-numeric: tabular-nums;}
+
+.tab-btn { 
+    flex: 1; 
+    padding: 12px 10px; 
+    text-align: center; 
+    background: transparent; 
+    border: none; 
+    box-shadow: none;
+    border-radius: 12px; 
+    color: var(--text-muted); 
+    font-weight: 600; 
+    cursor: pointer; 
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+    font-size: 0.9rem;
+}
+
+.tab-btn.active { 
+    background: var(--surface-color);
+    color: var(--primary-color); 
+    font-weight: 700; 
+    box-shadow: 0 4px 8px var(--shadow-color), 0 1px 3px rgba(0,0,0,0.05); 
+}
+
+.calc-result { 
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--primary-gradient) 100%);
+    padding: 20px; 
+    border-radius: 16px; 
+    margin-bottom: 15px; 
+    text-align: center; 
+    border: none; 
+    box-shadow: var(--dimensional-shadow), 0 6px 12px -2px var(--shadow-color); 
+}
+
+.calc-result strong { 
+    font-size: 2.2rem; 
+    font-weight: 800;
+    color: var(--primary-color); 
+    display: block; 
+    margin-top: 8px; 
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
 
 #modo-calculadora, #modo-directo {
     padding: 0 3px;
@@ -152,16 +193,27 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
     padding: 1rem; 
     border-radius: 12px; 
     font-weight: 700; 
+    font-size: 0.85rem;
     cursor: pointer;
     border: none; 
     box-sizing: border-box; 
-    box-shadow: var(--dimensional-shadow), 0 2px 4px var(--shadow-color); 
-    transition: background-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.1s;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
 }
 
-.btn-secundario { margin-top: 10px; background: linear-gradient(180deg, var(--surface-color) 0%, var(--primary-gradient) 100%); color: var(--primary-color); }
-.btn-lsim { margin-top: 15px; background: linear-gradient(180deg, var(--surface-color) 0%, var(--primary-gradient) 100%); color: var(--primary-color); }
-.btn-danger-outline { margin-top: 10px; background: linear-gradient(180deg, var(--surface-color) 0%, var(--danger-gradient) 100%); color: var(--danger-color); }
+.btn-secundario, .btn-lsim {
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--primary-gradient) 100%);
+    color: var(--primary-color);
+    box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(15, 118, 110, 0.15);
+}
+.btn-secundario { margin-top: 10px; }
+.btn-lsim { margin-top: 15px; }
+
+.btn-danger-outline {
+    margin-top: 10px; 
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--danger-gradient) 100%); 
+    color: var(--danger-color);
+    box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(239, 68, 68, 0.15);
+}
 
 @media (hover: hover) {
     .btn-secundario:hover, .btn-lsim:hover { box-shadow: inset 0 0 0 1px var(--primary-color), inset 0 0 0 2px rgba(255, 255, 255, 1), 0 4px 6px var(--shadow-color); }
@@ -169,8 +221,12 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 }
 
 .btn-base:active { transform: scale(0.97) translateZ(0); box-shadow: var(--dimensional-shadow), 0 1px 2px var(--shadow-color); }
-.btn-pequeno { padding: 0.5rem; font-size: 0.85rem; margin-bottom: 10px;}
 
+.btn-pequeno { 
+    padding: 0.8rem; 
+    font-size: 0.85rem; 
+    margin-bottom: 10px;
+}
 /* Log */
 .log { list-style: none; padding: 0; margin: 0; }
 .log li { border-radius: 12px; margin-bottom: 8px; position: relative; overflow: hidden; padding: 0; box-shadow: var(--dimensional-shadow), 0 1px 2px var(--shadow-color); background-color: var(--surface-color); }
@@ -182,11 +238,32 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 .expense-cat { font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; font-weight: 700; margin-top: 2px;}
 .expense-date { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
 .expense-amount { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums;}
-.cat-icon { font-size: 1.5rem; width: 35px; text-align: center; }
+.cat-icon { 
+    font-size: 1.4rem; 
+    width: 44px; 
+    height: 44px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    background: var(--bg-color);
+    border-radius: 50%; 
+    box-shadow: var(--dimensional-shadow);
+    flex-shrink: 0; 
+}
 
 /* Wipe-Action Buttons */
 .delete-btn, .edit-btn { width: 42px; height: 42px; border-radius: 50%; font-size: 1.3rem; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; background-color: var(--surface-color); border: 1px solid transparent; box-sizing: border-box; background-clip: padding-box; -webkit-background-clip: padding-box; overflow: hidden; transform: translateZ(0); box-shadow: var(--dimensional-shadow), 0 2px 4px var(--shadow-color); transition: transform 0.1s ease, box-shadow 0.2s ease; }
 .delete-btn:active, .edit-btn:active { transform: scale(0.92) translateZ(0); box-shadow: var(--dimensional-shadow), 0 1px 2px var(--shadow-color); }
+
+.edit-btn {
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--primary-gradient) 100%);
+    box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(15, 118, 110, 0.15);
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, var(--surface-color) 0%, var(--danger-gradient) 100%);
+    box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(239, 68, 68, 0.15);
+}
 
 /* Categorías Chart */
 .cat-breakdown { margin-bottom: 20px; }
@@ -208,11 +285,42 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 
 /* Dark Mode Overrides */
 @media (prefers-color-scheme: dark) {
-    :root { --bg-color: #0f172a; --surface-color: #1e293b; --text-color: #f8fafc; --text-muted: #94a3b8; --border-color: transparent; --primary-color: #2DD4BF; --primary-hover: #14B8A6; --primary-gradient: rgba(45, 212, 191, 0.12); --danger-gradient: rgba(239, 68, 68, 0.12); --tab-bg: #134e4a; --shadow-color: rgb(0 0 0 / 0.2); --dimensional-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.2); --divider-color: rgba(0, 0, 0, 0.2); --divider-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); }
-    .header-app::before { background: linear-gradient(to bottom, rgba(30, 41, 59, 0.9) 40%, transparent 100%); }
+    :root { 
+        --bg-color: #0B1121; 
+        --surface-color: #151E32; 
+        --text-color: #f8fafc; 
+        --text-muted: #94a3b8; 
+        --border-color: transparent; 
+        --primary-color: #2DD4BF; 
+        --primary-hover: #14B8A6; 
+        --primary-gradient: rgba(45, 212, 191, 0.12); 
+        --danger-gradient: rgba(239, 68, 68, 0.12); 
+        --tab-bg: #112338; 
+        --shadow-color: rgb(0 0 0 / 0.3); 
+        --dimensional-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.2); 
+        --divider-color: rgba(0, 0, 0, 0.2); 
+        --divider-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); 
+    }
+    
+    .header-app::before { 
+        background: linear-gradient(to bottom, rgba(21, 30, 50, 0.9) 40%, transparent 100%); 
+    }
+    
     .logo-light { display: none; }
     .logo-dark { display: block; }
     button.btn-principal { box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 6px 15px rgba(0, 0, 0, 0.4); border: none; }
+
+    .btn-secundario, .btn-lsim, .btn-danger-outline {
+        box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .edit-btn { 
+        box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .delete-btn { 
+        box-shadow: var(--dimensional-shadow), 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
 }
 
 /* Summary Card */
@@ -266,8 +374,15 @@ input:not(:placeholder-shown):focus:invalid { outline: none; box-shadow: inset 0
 .zero-spend-badge { font-size: 0.75rem; color: #F59E0B; font-weight: bold; background: rgba(245, 158, 11, 0.1); padding: 2px 8px; border-radius: 12px; display: inline-block; margin: 0; border: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5), 0 0 0 1px rgba(245, 158, 11, 0.2); }
 
 /* Modo Privacidade */
-.b-amount, .expense-amount, #display-lsim-resultado, #lsim-val-cost, #lsim-val-diff, #display-calculado, .cat-bar-amount { transition: filter 0.3s ease; }
-body.privacy-mode .b-amount:not(#display-diario), .privacy-mode .expense-amount, .privacy-mode #display-lsim-resultado, .privacy-mode #lsim-val-cost, .privacy-mode #lsim-val-diff, .privacy-mode #display-calculado, .privacy-mode .cat-bar-amount { filter: blur(8px); user-select: none; opacity: 0.8; }
+.b-amount, .expense-amount, #display-lsim-resultado, #lsim-val-cost, #lsim-val-diff, #display-calculado, .cat-bar-amount { 
+    transition: filter 0.3s ease, opacity 0.3s ease; 
+}
+
+body.privacy-mode .b-amount:not(#display-diario), .privacy-mode .expense-amount, .privacy-mode #display-lsim-resultado, .privacy-mode #lsim-val-cost, .privacy-mode #lsim-val-diff, .privacy-mode #display-calculado, .privacy-mode .cat-bar-amount { 
+    filter: blur(4px); 
+    user-select: none; 
+    opacity: 0.4; 
+}
 
 /* Floating Action Button */
 .fab-btn { position: fixed; bottom: max(30px, env(safe-area-inset-bottom)); right: 20px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-hover), var(--primary-color)); color: white; border: none; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 20px rgba(15, 118, 110, 0.4); cursor: pointer; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease; }
