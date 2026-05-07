@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light-dark">
     <title>Floux</title>
-    <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">    <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
     <link rel="apple-touch-icon" href="img/logo180.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
@@ -14,18 +14,13 @@
 <body>
 <main id="app-movil">
     <div class="header-app">
-        <!-- Izquierda: Botón Privacidad -->
         <button id="btn-privacidade" class="btn-icono action-left" aria-label="Modo Privacidade">👁️</button>
-        <!-- Centro: Logo -->
         <div class="brand-title">
             <img src="img/logo-light.svg" alt="Floux" class="logo-light">
             <img src="img/logo-dark.svg" alt="Floux" class="logo-dark">
         </div>
-        <!-- Derecha: Menú de Configuraciones -->
         <div class="settings-menu-container action-right">
             <button id="btn-settings-toggle" class="btn-icono" aria-label="Configuraciones">⚙️</button>
-            
-            <!-- Dropdown Flotante -->
             <div id="settings-dropdown" class="settings-dropdown transicion-seccion oculto">
                 <div class="dropdown-section">
                     <span class="dropdown-label">Idioma / Language</span>
@@ -55,10 +50,10 @@
     </div>
 
     <section id="pantalla-simulador" class="transicion-seccion oculto">
-        <div style="text-align: center; margin-bottom: 24px;">
-            <div style="font-size: 3rem; margin-bottom: 10px;">📉</div>
+        <div class="text-center mb-24">
+            <div class="emoji-large">📉</div>
             <h3 data-i18n="flouxVisionTitle">FlouxVision - Pérdida Invisible</h3>
-            <p data-i18n="lsimExplanation" style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; padding: 0 10px;">
+            <p data-i18n="lsimExplanation" class="text-muted-small">
                 El costo de oportunidad es el dinero que dejas de ganar al elegir gastar en lugar de invertir. Calcula el valor real a futuro de esa compra.
             </p>
         </div>
@@ -68,16 +63,16 @@
             <input type="number" id="input-lsim-monto" placeholder="0.00" inputmode="decimal" class="input-destacado">
         </div>
         <div class="form-group lsim-slider-group">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <label data-i18n="lsimYears" style="margin: 0;">Años Proyectados</label>
+            <div class="flex-between mb-8">
+                <label data-i18n="lsimYears" class="m-0">Años Proyectados</label>
                 <span id="val-anos" class="lsim-badge">10</span>
             </div>
             <input type="range" id="slider-lsim-anos" min="1" max="40" value="10" class="input-slider">
             <div data-i18n="lsimHelpYears" class="lsim-helper">¿Cuánto tiempo el dinero estaría invirtiéndose?</div>
         </div>
         <div class="form-group lsim-slider-group">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <label data-i18n="lsimRate" style="margin: 0;">Tasa de Rendimiento Anual</label>
+            <div class="flex-between mb-8">
+                <label data-i18n="lsimRate" class="m-0">Tasa de Rendimiento Anual</label>
                 <span id="val-tasa" class="lsim-badge">8.0%</span>
             </div>
             <input type="range" id="slider-lsim-tasa" min="1" max="20" step="0.5" value="8" class="input-slider">
@@ -87,12 +82,12 @@
         <div class="lsim-resultado-card">
             <div class="lsim-bar-row">
                 <span class="lsim-bar-label" data-i18n="lsimCostLabel">Gasto Hoy:</span>
-                <div class="lsim-bar-track"><div class="lsim-bar-fill cost" id="lsim-bar-cost" style="width: 100%;"></div></div>
+                <div class="lsim-bar-track"><div class="lsim-bar-fill cost" id="lsim-bar-cost"></div></div>
                 <span class="lsim-bar-val" id="lsim-val-cost">0.00</span>
             </div>
             <div class="lsim-bar-row mt-20">
                 <span class="lsim-bar-label" data-i18n="lsimFutureLabel">Valor Futuro:</span>
-                <div class="lsim-bar-track"><div class="lsim-bar-fill future" id="lsim-bar-future" style="width: 100%;"></div></div>
+                <div class="lsim-bar-track"><div class="lsim-bar-fill future" id="lsim-bar-future"></div></div>
                 <span class="lsim-bar-val highlight" id="display-lsim-resultado">0.00</span>
             </div>
             
@@ -103,7 +98,7 @@
             </div>
         </div>
         
-        <button id="btn-cerrar-simulador" class="btn-secundario mt-20" data-i18n="btnClose">Cerrar</button>
+        <button id="btn-cerrar-simulador" class="btn-base btn-secundario mt-20" data-i18n="btnClose">Cerrar</button>
     </section>
 
     <section id="pantalla-configuracion" class="transicion-seccion">
@@ -139,8 +134,8 @@
                 <input type="number" id="input-fijos" placeholder="Ej: 1500" inputmode="decimal" class="input-calc">
             </div>
 
-            <details style="margin-bottom: 15px;">
-                <summary style="cursor: pointer; color: var(--primary-color); font-size: 0.9rem; font-weight: 500; margin-bottom: 10px;">Ajustar porcentajes recomendados</summary>
+            <details class="mb-15">
+                <summary class="summary-interactive">Ajustar porcentajes recomendados</summary>
                 <div class="form-group">
                     <label data-i18n="pctLongTerm">Inversión Largo Plazo (%) - Rec: 20%</label>
                     <input type="number" id="input-pct-largo" value="20" inputmode="decimal" class="input-calc">
@@ -177,17 +172,14 @@
     </section>
 
     <section id="pantalla-principal" class="transicion-seccion oculto">
-        <div class="month-navigation" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-    <button id="btn-prev-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;">◀</button>
-    
-    <!-- Contêiner modificado para empilhar em coluna -->
-           <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
-             <h3 id="display-current-month" style="margin: 0; font-size: 1.1rem; color: var(--text-color);">Mes</h3>
-             <span id="zero-spend-badge" class="zero-spend-badge oculto"></span>
-           </div>
-    
-    <button id="btn-next-month" class="btn-secundario btn-pequeno" style="width: auto; margin: 0;" disabled>▶</button>
-       </div>
+        <div class="month-navigation flex-between-center mb-15">
+            <button id="btn-prev-month" class="btn-base btn-secundario btn-pequeno w-auto m-0">◀</button>
+            <div class="flex-col-center gap-4">
+                <h3 id="display-current-month" class="m-0 text-color-inherit fs-1-1">Mes</h3>
+                <span id="zero-spend-badge" class="zero-spend-badge oculto"></span>
+            </div>
+            <button id="btn-next-month" class="btn-base btn-secundario btn-pequeno w-auto m-0" disabled>▶</button>
+        </div>
         
         <div class="grid-balances">
             <div class="balance-card highlight">
@@ -226,16 +218,16 @@
                 
                 <div class="form-group">
                     <select id="input-categoria"></select>
-                    
-                    <button type="button" id="btn-toggle-nueva-cat" class="btn-secundario btn-pequeno">➕ <span data-i18n="newCategory">Nueva Categoría</span></button>
-                    <div id="area-nueva-categoria" class="nueva-cat-container transicion-seccion oculto">
-                        <input type="text" id="input-nueva-cat-nombre" data-i18n-ph="catNamePlaceholder" placeholder="Nombre (ej: Gimnasio)" class="mb-5">
-                        <input type="text" id="input-nueva-cat-emoji" data-i18n-ph="catEmojiPlaceholder" placeholder="Emoji (ej: 🏋️)" class="mb-5" maxlength="2">
-                        <button type="button" id="btn-guardar-nueva-cat" class="btn-principal mb-0" data-i18n="btnSave" style="padding: 0.5rem; margin-bottom: 0;">Guardar</button>
-                    </div>
                 </div>
                 
-                <button type="submit" id="btn-guardar-gasto" class="btn-principal" data-i18n="btnAdd">Agregar</button>
+                <button type="submit" id="btn-guardar-gasto" class="btn-principal mb-10">Agregar</button>
+
+                <button type="button" id="btn-toggle-nueva-cat" class="btn-base btn-secundario btn-pequeno">➕ <span data-i18n="newCategory">Nueva Categoría</span></button>
+                <div id="area-nueva-categoria" class="nueva-cat-container transicion-seccion oculto">
+                    <input type="text" id="input-nueva-cat-nombre" data-i18n-ph="catNamePlaceholder" placeholder="Nombre (ej: Gimnasio)" class="mb-5">
+                    <input type="text" id="input-nueva-cat-emoji" data-i18n-ph="catEmojiPlaceholder" placeholder="Emoji (ej: 🏋️)" class="mb-5" maxlength="2">
+                    <button type="button" id="btn-guardar-nueva-cat" class="btn-principal mb-0 p-0-5" data-i18n="btnSave">Guardar</button>
+                </div>
             </form>
             <hr class="divider">
         </div>
@@ -260,19 +252,18 @@
         <div class="cat-breakdown" id="grafico-categorias"></div>
         <h3 data-i18n="expensesMonth">Historial</h3>
         <ul class="log" id="lista-historial"></ul>
-        <button id="btn-abrir-simulador" class="btn-secundario btn-lsim" data-i18n="btnOpenFlouxVision">🔮 Simulador FlouxVision</button>
+        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">🔮 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
         
-        <button id="btn-reiniciar" class="btn-secundario btn-danger-outline" data-i18n="btnReset">Borrar App</button>
+        <button id="btn-reiniciar" class="btn-base btn-danger-outline" data-i18n="btnReset">Borrar App</button>
     </section>
     
     <div id="toast-container" class="toast-container"></div>
-    <!-- Botão FAB para acesso rápido -->
-<button id="btn-fab-gasto" class="fab-btn oculto" data-i18n-aria="addExpenseTitle" aria-label="Registrar Gasto">
-    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-    </svg>
-</button>
+    <button id="btn-fab-gasto" class="fab-btn oculto" data-i18n-aria="addExpenseTitle" aria-label="Registrar Gasto">
+        <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

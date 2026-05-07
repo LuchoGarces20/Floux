@@ -1,6 +1,15 @@
-import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS } from './store.js';
-import { currentLang, t, setLangStr } from './i18n.js';
+import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, addExpense, updateExpense, removeExpense, replaceHistory } from './store.js';
+import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, actualizarInterfaz, resetFormularioGasto, showToast } from './ui.js';
+import { initSwipeActions } from './swipeHandler.js';
+
+const INTERACTION_CONFIG = {
+    KEYBOARD_FOCUS_DELAY_MS: 300,
+    DEBOUNCE_DELAY_MS: 300,
+    MAX_IMPORT_FILE_SIZE_BYTES: 5 * 1024 * 1024,
+    SWIPE: { MAX_PX: -110, THRESHOLD_PX: -40, MIN_DRAG_PX: 5 },
+    HAPTICS: { SHORT_MS: 15, DELETE_PATTERN_MS: [30, 50, 30] }
+};
 
 let gastoEnEdicion = null;
 const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
@@ -26,7 +35,6 @@ const btnPrivacidade = document.getElementById('btn-privacidade');
 const btnSettingsToggle = document.getElementById('btn-settings-toggle');
 const settingsDropdown = document.getElementById('settings-dropdown');
 
-// --- Lógica do Menu Dropdown (Configurações) ---
 if (btnSettingsToggle && settingsDropdown) {
     btnSettingsToggle.addEventListener('click', (e) => {
         e.stopPropagation(); 
@@ -39,10 +47,8 @@ if (btnSettingsToggle && settingsDropdown) {
     });
 }
 
-// --- Lógica do Modo Privacidade ---
-function actualizarModoPrivacidade() {
+async function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
-    
     if (state.privacyMode) {
         document.body.classList.add('privacy-mode');
         btnPrivacidade.innerText = '🙈';
@@ -53,18 +59,16 @@ function actualizarModoPrivacidade() {
 }
 
 if (btnPrivacidade) {
-    btnPrivacidade.addEventListener('click', () => {
+    btnPrivacidade.addEventListener('click', async () => {
         state.privacyMode = !state.privacyMode;
         actualizarModoPrivacidade();
-        saveStore();
+        await saveStore();
     });
 }
 
-// ----------------------------------
-function init() {
-    const hasData = loadStore();
+async function init() {
+    const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
-    
     actualizarModoPrivacidade();
     
     const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
@@ -78,6 +82,25 @@ function init() {
             localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, mesActual);
         }
         mostrarPantallaPrincipal();
+
+        // PWA Shortcut Actions Logic
+        const urlParams = new URLSearchParams(window.location.search);
+        const action = urlParams.get('action');
+        
+        if (action) {
+            if (action === 'add-expense') {
+                const areaRegistro = document.getElementById('area-registrar-gasto');
+                if (areaRegistro) {
+                    areaRegistro.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => document.getElementById('input-monto').focus(), INTERACTION_CONFIG.KEYBOARD_FOCUS_DELAY_MS);
+                }
+            } else if (action === 'simulador') {
+                document.getElementById('btn-abrir-simulador').click();
+            }
+            
+            // Clean the URL to prevent re-triggering on manual refresh
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     }
 }
 
@@ -85,15 +108,14 @@ function mostrarPantallaPrincipal() {
     document.getElementById('pantalla-configuracion').classList.add('oculto');
     document.getElementById('pantalla-simulador').classList.add('oculto');
     document.getElementById('pantalla-principal').classList.remove('oculto');
-    
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
     document.getElementById('btn-next-month').disabled = true;
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 }
 
-function guardarYMostrar() {
-    saveStore();
+async function guardarYMostrar() {
+    await saveStore();
     mostrarPantallaPrincipal();
 }
 
@@ -146,20 +168,16 @@ document.querySelectorAll('.input-calc').forEach(input => {
         const fixosCents = Math.round((parseFloat(inputFijos?.value) || 0) * 100);
         const pctViver = parseFloat(inputPctViver?.value) || 0;
         const pctLivre = parseFloat(inputPctLivre?.value) || 0;
-        const porcentajeLiquidez = (pctViver + pctLivre) / 100;
-        const liquidezTotalCents = Math.round(rentaCents * porcentajeLiquidez);
+        const liquidezTotalCents = Math.round(rentaCents * ((pctViver + pctLivre) / 100));
         
         presupuestoCalculadoTemporalCents = Math.max(0, liquidezTotalCents - fixosCents);
-        const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
-        displayCalculado.innerText = new Intl.NumberFormat(localeStr, { style: 'currency', currency: inputMoneda.value }).format(presupuestoCalculadoTemporalCents / 100);
+        displayCalculado.innerText = formatCurrency(presupuestoCalculadoTemporalCents, inputMoneda.value);
     });
 });
 
-document.getElementById('btn-comenzar').addEventListener('click', () => {
+document.getElementById('btn-comenzar').addEventListener('click', async () => {
     const inputVal = parseFloat(inputPresupuesto.value);
-    const presupuestoDirectoCents = Math.round((isNaN(inputVal) ? 0 : inputVal) * 100);
-    
-    state.presupuestoMensual = modoActual === 'directo' ? presupuestoDirectoCents : presupuestoCalculadoTemporalCents;
+    state.presupuestoMensual = modoActual === 'directo' ? Math.round((isNaN(inputVal) ? 0 : inputVal) * 100) : presupuestoCalculadoTemporalCents;
     state.monedaActual = inputMoneda.value;
     
     if (state.presupuestoMensual <= 0) {
@@ -168,52 +186,46 @@ document.getElementById('btn-comenzar').addEventListener('click', () => {
     }
 
     if (!document.getElementById('area-gastos-previos').classList.contains('oculto')) {
-        const inputInicial = parseFloat(document.getElementById('input-gastos-iniciales').value);
-        const inicialCents = Math.round((isNaN(inputInicial) ? 0 : inputInicial) * 100);
-        if (inicialCents > 0) state.historialGlobal.push({ id: Date.now(), monto: inicialCents, desc: t('prevExpense'), fecha: new Date().toISOString(), categoria: 'otros_previo' });
+        const inicialCents = Math.round((parseFloat(document.getElementById('input-gastos-iniciales').value) || 0) * 100);
+        if (inicialCents > 0) addExpense({ id: Date.now(), monto: inicialCents, desc: t('prevExpense'), fecha: new Date().toISOString(), categoria: 'otros_previo' });
     }
 
     localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, hoy.getMonth()); 
-    guardarYMostrar();
+    await guardarYMostrar();
 });
 
-// Auto-categorização Histórica
+let autoCatDebounceTimer;
 document.getElementById('input-desc').addEventListener('input', (e) => {
-    const query = e.target.value.trim().toLowerCase();
-    if (query.length > 2) {
-        const match = state.historialGlobal.slice().reverse().find(g => g.desc.toLowerCase() === query);
-        if (match) {
-            const select = document.getElementById('input-categoria');
-            if (Array.from(select.options).some(opt => opt.value === match.categoria)) {
-                select.value = match.categoria;
+    clearTimeout(autoCatDebounceTimer);
+    autoCatDebounceTimer = setTimeout(() => {
+        const query = e.target.value.trim().toLowerCase();
+        if (query.length > 2) {
+            const match = state.historialGlobal.slice().reverse().find(g => g.desc.toLowerCase() === query);
+            if (match) {
+                const select = document.getElementById('input-categoria');
+                if (Array.from(select.options).some(opt => opt.value === match.categoria)) select.value = match.categoria;
             }
         }
-    }
+    }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
 });
 
-document.getElementById('form-gasto').addEventListener('submit', (e) => {
+document.getElementById('form-gasto').addEventListener('submit', async (e) => {
     e.preventDefault(); 
-    const monto = parseFloat(document.getElementById('input-monto').value);
-    const montoCents = Math.round(monto * 100);
+    const montoCents = Math.round(parseFloat(document.getElementById('input-monto').value) * 100);
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
     
     if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
-        if (gastoEnEdicion) {
-            const index = state.historialGlobal.findIndex(g => g.id === gastoEnEdicion);
-            if (index !== -1) {
-                state.historialGlobal[index].monto = montoCents;
-                state.historialGlobal[index].desc = desc;
-                state.historialGlobal[index].categoria = cat;
-            }
+        if (wasEditing) {
+            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
-            state.historialGlobal.push({ id: Date.now(), monto: montoCents, desc: desc, fecha: new Date().toISOString(), categoria: cat });
+            addExpense({ id: Date.now(), monto: montoCents, desc, fecha: new Date().toISOString(), categoria: cat });
             document.getElementById('input-monto').value = '';
             document.getElementById('input-desc').value = '';
         }
-        guardarYMostrar();
+        await guardarYMostrar();
         showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
     }
 });
@@ -237,6 +249,7 @@ document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () =>
 });
 
 document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
+    history.pushState({ view: 'configuracion' }, '');
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     resetFormularioGasto(setGastoEnEdicion); 
     document.getElementById('pantalla-principal').classList.add('oculto');
@@ -265,24 +278,22 @@ document.getElementById('btn-importar').addEventListener('click', () => {
 document.getElementById('input-archivo').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > INTERACTION_CONFIG.MAX_IMPORT_FILE_SIZE_BYTES) {
+        alert("Error: El archivo excede el tamaño máximo permitido (5MB).");
+        e.target.value = '';
+        return;
+    }
     const reader = new FileReader();
-    reader.onload = function(event) {
+    reader.onload = async function(event) {
         try {
             const data = JSON.parse(event.target.result);
             if (isValidoHistorialSchema(data)) {
                 resetFormularioGasto(setGastoEnEdicion); 
-                if (confirm("Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.")) {
-                    state.historialGlobal = data;
-                } else {
-                    state.historialGlobal = state.historialGlobal.concat(data);
-                }
-                guardarYMostrar();
-            } else {
-                alert("Error: El arquivo não tem o formato correto.");
-            }
-        } catch (err) {
-            alert("Error: Arquivo inválido ou corrupto.");
-        }
+                if (confirm("Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.")) replaceHistory(data);
+                else replaceHistory(state.historialGlobal.concat(data));
+                await guardarYMostrar();
+            } else alert("Error: El archivo no tiene el formato correcto.");
+        } catch (err) { alert("Error: Archivo inválido o corrupto."); }
     };
     reader.readAsText(file);
     e.target.value = ''; 
@@ -291,65 +302,54 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
 document.getElementById('btn-reiniciar').addEventListener('click', () => { 
     if(confirm(t('alertReset'))) { 
         resetFormularioGasto(setGastoEnEdicion); 
+        indexedDB.deleteDatabase('FlouxDB');
         localStorage.clear(); 
         location.reload(); 
     } 
 });
 
-const pantallaPrincipal = document.getElementById('pantalla-principal');
-const pantallaSimulador = document.getElementById('pantalla-simulador');
-const btnAbrirSimulador = document.getElementById('btn-abrir-simulador');
-const btnCerrarSimulador = document.getElementById('btn-cerrar-simulador');
 const lsimMonto = document.getElementById('input-lsim-monto');
 const sliderAnos = document.getElementById('slider-lsim-anos');
 const sliderTasa = document.getElementById('slider-lsim-tasa');
-const valAnos = document.getElementById('val-anos');
-const valTasa = document.getElementById('val-tasa');
-const lsimValCost = document.getElementById('lsim-val-cost');
-const lsimValFuture = document.getElementById('display-lsim-resultado');
-const lsimValDiff = document.getElementById('lsim-val-diff');
-const barCost = document.getElementById('lsim-bar-cost');
-const barFuture = document.getElementById('lsim-bar-future');
 
-btnAbrirSimulador.addEventListener('click', () => {
-    pantallaPrincipal.classList.add('oculto');
-    pantallaSimulador.classList.remove('oculto');
-    calcularPerdidaInvisible(); 
+document.getElementById('btn-abrir-simulador').addEventListener('click', () => {
+    history.pushState({ view: 'simulador' }, '');
+    document.getElementById('pantalla-principal').classList.add('oculto');
+    document.getElementById('pantalla-simulador').classList.remove('oculto');
+    actualizarPerdidaInvisibleUI(); 
 });
 
-btnCerrarSimulador.addEventListener('click', () => {
-    pantallaSimulador.classList.add('oculto');
-    pantallaPrincipal.classList.remove('oculto');
+document.getElementById('btn-cerrar-simulador').addEventListener('click', () => {
+    document.getElementById('pantalla-simulador').classList.add('oculto');
+    document.getElementById('pantalla-principal').classList.remove('oculto');
 });
 
-function calcularPerdidaInvisible() {
+function calcularInteresCompuesto(pCents, tVal, rVal) {
+    const futureValueCents = pCents * Math.pow(1 + (rVal / 100), tVal);
+    return { futureValueCents, differenceCents: futureValueCents - pCents };
+}
+
+function actualizarPerdidaInvisibleUI() {
     const pCents = Math.round((parseFloat(lsimMonto.value) || 0) * 100);
     const tVal = parseFloat(sliderAnos.value);
     const rVal = parseFloat(sliderTasa.value);
     
     const pAnos = (tVal - sliderAnos.min) / (sliderAnos.max - sliderAnos.min);
     const pTasa = (rVal - sliderTasa.min) / (sliderTasa.max - sliderTasa.min);
-    
     sliderAnos.style.setProperty('--fill', `calc(${pAnos * 100}% + ${16 - (pAnos * 32)}px)`);
     sliderTasa.style.setProperty('--fill', `calc(${pTasa * 100}% + ${16 - (pTasa * 32)}px)`);
+    document.getElementById('val-anos').innerText = tVal;
+    document.getElementById('val-tasa').innerText = rVal.toFixed(1) + '%';
     
-    valAnos.innerText = tVal;
-    valTasa.innerText = rVal.toFixed(1) + '%';
+    const { futureValueCents, differenceCents } = calcularInteresCompuesto(pCents, tVal, rVal);
+    document.getElementById('lsim-val-cost').innerText = formatCurrency(pCents, state.monedaActual);
+    document.getElementById('display-lsim-resultado').innerText = formatCurrency(futureValueCents, state.monedaActual);
+    document.getElementById('lsim-val-diff').innerText = formatCurrency(differenceCents, state.monedaActual);
     
-    const r = rVal / 100;
-    const futureValueCents = pCents * Math.pow(1 + r, tVal);
-    const differenceCents = futureValueCents - pCents;
-    
-    const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
-    const formatter = new Intl.NumberFormat(localeStr, { style: 'currency', currency: state.monedaActual });
-    
-    lsimValCost.innerText = formatter.format(pCents / 100);
-    lsimValFuture.innerText = formatter.format(futureValueCents / 100);
-    lsimValDiff.innerText = formatter.format(differenceCents / 100);
-    
+    const barCost = document.getElementById('lsim-bar-cost');
+    const barFuture = document.getElementById('lsim-bar-future');
     if (futureValueCents > 0) {
-        const costPercentage = (pCents / futureValueCents) * 100;
-        barCost.style.width = `${costPercentage}%`;
+        barCost.style.width = `${(pCents / futureValueCents) * 100}%`;
         barFuture.style.width = '100%';
     } else {
         barCost.style.width = '0%';
@@ -357,133 +357,29 @@ function calcularPerdidaInvisible() {
     }
 }
 
-[lsimMonto, sliderAnos, sliderTasa].forEach(input => {
-    input.addEventListener('input', calcularPerdidaInvisible);
-});
+[lsimMonto, sliderAnos, sliderTasa].forEach(input => input.addEventListener('input', actualizarPerdidaInvisibleUI));
 
 const fabGasto = document.getElementById('btn-fab-gasto');
-
 if (fabGasto) {
     fabGasto.addEventListener('click', () => {
         const areaRegistro = document.getElementById('area-registrar-gasto');
-        const inputMonto = document.getElementById('input-monto');
-        
         if (areaRegistro) {
             areaRegistro.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Aguarda a rolagem para aplicar o foco e abrir o teclado
-            setTimeout(() => {
-                inputMonto.focus();
-            }, 300);
+            setTimeout(() => document.getElementById('input-monto').focus(), INTERACTION_CONFIG.KEYBOARD_FOCUS_DELAY_MS);
         }
     });
 }
 
-// --- LÓGICA SWIPE-TO-ACTION UNIVERSAL (Tátil + Mouse) ---
-const listaHistorial = document.getElementById('lista-historial');
-let startX = 0;
-let startY = 0;
-let activeItem = null;
-let initialTranslateX = 0;
-let isSwiping = false;
-const MAX_SWIPE = -110;
-const SWIPE_THRESHOLD = -40;
-
-listaHistorial.addEventListener('pointerdown', (e) => {
-    const target = e.target.closest('.swipe-content');
-    if (!target) return;
-
-    if (activeItem && activeItem !== target) {
-        activeItem.style.transform = 'translateX(0px)';
-        activeItem.dataset.open = "false";
-    }
-
-    startX = e.clientX;
-    startY = e.clientY;
-    activeItem = target;
-    isSwiping = false;
-
-    initialTranslateX = activeItem.dataset.open === "true" ? MAX_SWIPE : 0;
-
-    activeItem.classList.add('no-transition');
-    activeItem.setPointerCapture(e.pointerId);
-});
-
-listaHistorial.addEventListener('pointermove', (e) => {
-    if (!activeItem) return;
-
-    const deltaX = e.clientX - startX;
-    const deltaY = e.clientY - startY;
-
-    if (!isSwiping && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
-        activeItem.releasePointerCapture(e.pointerId);
-        activeItem.classList.remove('no-transition');
-        activeItem = null;
-        return;
-    }
-
-    if (Math.abs(deltaX) > 5) {
-        isSwiping = true;
-    }
-
-    if (isSwiping) {
-        let translateX = initialTranslateX + deltaX;
-        translateX = Math.max(MAX_SWIPE, Math.min(0, translateX));
-        activeItem.style.transform = `translateX(${translateX}px)`;
-    }
-});
-
-listaHistorial.addEventListener('pointerup', (e) => {
-    if (!activeItem) return;
-
-    activeItem.classList.remove('no-transition');
-    activeItem.releasePointerCapture(e.pointerId);
-
-    if (isSwiping) {
-        const transformStr = activeItem.style.transform;
-        const match = transformStr.match(/translateX\(([-0-9.]+)px\)/);
-        const currentTranslateX = match ? parseFloat(match[1]) : 0;
-
-        if (currentTranslateX < SWIPE_THRESHOLD) {
-            activeItem.style.transform = `translateX(${MAX_SWIPE}px)`;
-            activeItem.dataset.open = "true";
-            if (navigator.vibrate) navigator.vibrate(15);
-        } else {
-            activeItem.style.transform = `translateX(0px)`;
-            activeItem.dataset.open = "false";
-            if (initialTranslateX === 0) activeItem = null;
-        }
-    } else {
-        const isOpen = activeItem.dataset.open === "true";
-        if (isOpen) {
-            activeItem.style.transform = `translateX(0px)`;
-            activeItem.dataset.open = "false";
-            activeItem = null;
-        } else {
-            activeItem.style.transform = `translateX(${MAX_SWIPE}px)`;
-            activeItem.dataset.open = "true";
-        }
-    }
-});
-
-listaHistorial.addEventListener('click', (e) => {
-    const btnDelete = e.target.closest('.delete-btn');
-    const btnEdit = e.target.closest('.edit-btn');
-
-    if (activeItem && (btnDelete || btnEdit)) {
-        activeItem.style.transform = `translateX(0px)`;
-        activeItem.dataset.open = "false";
-        activeItem = null;
-    }
-
-    if (btnDelete) {
-        const id = parseInt(btnDelete.getAttribute('data-id'), 10);
-        state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
+// Initialize extracted swipe logic
+initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
+    onDelete: async (id) => {
+        removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
-        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
-        guardarYMostrar();
+        if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
+        await guardarYMostrar();
         showToast("🗑️ Eliminado");
-    } else if (btnEdit) {
-        const id = parseInt(btnEdit.getAttribute('data-id'), 10);
+    },
+    onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
         if (gasto) {
             document.getElementById('input-monto').value = (gasto.monto / 100).toFixed(2);
@@ -500,9 +396,11 @@ listaHistorial.addEventListener('click', (e) => {
 init();
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => {
-            console.error('SW Registration Failed: ', err);
-        });
-    });
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
 }
+
+window.addEventListener('popstate', () => {
+    document.getElementById('pantalla-simulador').classList.add('oculto');
+    document.getElementById('pantalla-configuracion').classList.add('oculto');
+    document.getElementById('pantalla-principal').classList.remove('oculto');
+});
