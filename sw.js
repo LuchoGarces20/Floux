@@ -1,4 +1,4 @@
-const CACHE_NAME = 'floux-cache-v1.01';
+const CACHE_NAME = 'floux-cache-v1.00';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -14,7 +14,9 @@ const ASSETS_TO_CACHE = [
     './img/logo-light.svg',
     './img/logo-dark.svg',
     './img/logo180.png',
-    './img/logo512.png'
+    './img/logo512.png',
+    './img/sc-icone-add.svg',
+    './img/sc-icone-sim.svg'
 ];
 
 self.addEventListener('install', event => {
