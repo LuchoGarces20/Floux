@@ -29,11 +29,12 @@
       "name": "Registrar Gasto",
       "short_name": "Gasto",
       "description": "Agregar un nuevo gasto",
-      "url": "?action=add-expense",
+      "url": "./?action=add-expense",
       "icons": [
         {
-          "src": "img/logo180.png",
-          "sizes": "180x180"
+          "src": "img/sc-icone-add.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -41,11 +42,12 @@
       "name": "FlouxVision",
       "short_name": "Simulador",
       "description": "Abrir el simulador de pérdida",
-      "url": "?action=simulador",
+      "url": "./?action=simulador",
       "icons": [
         {
-          "src": "img/logo180.png",
-          "sizes": "180x180"
+          "src": "img/sc-icone-sim.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     }
