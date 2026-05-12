@@ -1,7 +1,7 @@
 {
   "name": "Floux",
   "short_name": "Floux",
-  "start_url": "./index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#F8FAFC",
   "theme_color": "#0F766E",
@@ -22,6 +22,34 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar Gasto",
+      "short_name": "Gasto",
+      "description": "Agregar un nuevo gasto",
+      "url": "./?action=add-expense",
+      "icons": [
+        {
+          "src": "img/sc-icone-add.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "FlouxVision",
+      "short_name": "Simulador",
+      "description": "Abrir el simulador de pérdida",
+      "url": "./?action=simulador",
+      "icons": [
+        {
+          "src": "img/sc-icone-sim.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }
