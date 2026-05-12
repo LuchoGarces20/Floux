@@ -1,5 +1,6 @@
 import { t, currentLang, formatCurrency } from './i18n.js';
 import { obtenerCategorias } from './categories.js';
+import { state } from './store.js';
 
 export const UI_CONFIG = {
     WARNING_THRESHOLD: 0.2,
@@ -273,7 +274,18 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
-    const gastosMesActual = state.historialGlobal.filter(g => new Date(g.fecha).getMonth() === viewMonth && new Date(g.fecha).getFullYear() === viewYear);
+    
+    const gastosMesActual = state.historialGlobal.filter(g => {
+        let mes = new Date(g.fecha).getMonth();
+        let ano = new Date(g.fecha).getFullYear();
+        if (g.mesEfectivo) {
+            const [eAno, eMes] = g.mesEfectivo.split('-').map(Number);
+            mes = eMes - 1;
+            ano = eAno;
+        }
+        return mes === viewMonth && ano === viewYear;
+    });
+
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
@@ -322,5 +334,18 @@ export function resetFormularioGasto(setGastoCallback) {
     setGastoCallback(null);
     document.getElementById('input-monto').value = '';
     document.getElementById('input-desc').value = '';
+    
+    const cb = document.getElementById('input-proximo-mes');
+    if (cb) {
+        cb.checked = new Date().getDate() >= (state.cierreTC || 24);
+    }
+    
+    const inputCuotas = document.getElementById('input-cuotas');
+    if (inputCuotas) {
+        inputCuotas.value = '1';
+        const containerCuotas = inputCuotas.closest('.form-group');
+        if (containerCuotas) containerCuotas.style.display = '';
+    }
+    
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
 }
