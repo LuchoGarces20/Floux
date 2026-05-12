@@ -5,7 +5,8 @@ export const STORAGE_KEYS = {
     CATEGORIAS: 'floux_categorias_custom',
     MES_GUARDADO: 'floux_mes_guardado',
     LANG: 'floux_lang',
-    PRIVACY: 'floux_privacy' 
+    PRIVACY: 'floux_privacy',
+    CIERRE_TC: 'floux_cierre_tc'
 };
 
 export const state = {
@@ -13,7 +14,8 @@ export const state = {
     historialGlobal: [],
     monedaActual: 'BRL',
     categoriasCustom: [],
-    privacyMode: false
+    privacyMode: false,
+    cierreTC: 24
 };
 
 const DB_NAME = 'FlouxDB';
@@ -69,10 +71,12 @@ export async function loadStore() {
     const c = await dbGet(STORAGE_KEYS.CATEGORIAS);
     const p = await dbGet(STORAGE_KEYS.PRESUPUESTO);
     const h = await dbGet(STORAGE_KEYS.HISTORIAL);
+    const cierre = await dbGet(STORAGE_KEYS.CIERRE_TC);
 
     if (priv === true) state.privacyMode = true;
     if (m) state.monedaActual = m;
     if (c) state.categoriasCustom = c;
+    if (cierre !== undefined) state.cierreTC = cierre;
 
     if (p !== undefined) {
         state.presupuestoMensual = p;
@@ -90,6 +94,7 @@ export async function saveStore() {
     await dbPut(STORAGE_KEYS.MONEDA, state.monedaActual);
     await dbPut(STORAGE_KEYS.CATEGORIAS, state.categoriasCustom);
     await dbPut(STORAGE_KEYS.PRIVACY, state.privacyMode);
+    await dbPut(STORAGE_KEYS.CIERRE_TC, state.cierreTC);
 }
 
 async function migrateFromLocalStorage() {
@@ -98,6 +103,9 @@ async function migrateFromLocalStorage() {
     await dbPut(STORAGE_KEYS.MONEDA, localStorage.getItem(STORAGE_KEYS.MONEDA));
     await dbPut(STORAGE_KEYS.CATEGORIAS, JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIAS) || '[]'));
     await dbPut(STORAGE_KEYS.PRIVACY, localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
+    
+    const cierreLocal = localStorage.getItem(STORAGE_KEYS.CIERRE_TC);
+    await dbPut(STORAGE_KEYS.CIERRE_TC, cierreLocal !== null ? parseInt(cierreLocal, 10) : 24);
     
     Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
 }
@@ -110,7 +118,8 @@ export function isValidoHistorialSchema(data) {
         typeof item.monto === 'number' &&
         typeof item.desc === 'string' &&
         typeof item.fecha === 'string' &&
-        typeof item.categoria === 'string'
+        typeof item.categoria === 'string' &&
+        (item.mesEfectivo === undefined || typeof item.mesEfectivo === 'string')
     );
 }
 
