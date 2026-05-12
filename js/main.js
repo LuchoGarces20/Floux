@@ -69,6 +69,8 @@ if (btnPrivacidade) {
 async function init() {
     const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) inputCierre.value = state.cierreTC || 24;
     actualizarModoPrivacidade();
     
     const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
@@ -82,8 +84,8 @@ async function init() {
             localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, mesActual);
         }
         mostrarPantallaPrincipal();
+        resetFormularioGasto(setGastoEnEdicion);
 
-        // PWA Shortcut Actions Logic
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
         
@@ -97,8 +99,6 @@ async function init() {
             } else if (action === 'simulador') {
                 document.getElementById('btn-abrir-simulador').click();
             }
-            
-            // Clean the URL to prevent re-triggering on manual refresh
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
@@ -180,6 +180,12 @@ document.getElementById('btn-comenzar').addEventListener('click', async () => {
     state.presupuestoMensual = modoActual === 'directo' ? Math.round((isNaN(inputVal) ? 0 : inputVal) * 100) : presupuestoCalculadoTemporalCents;
     state.monedaActual = inputMoneda.value;
     
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) {
+        const cierreVal = parseInt(inputCierre.value, 10);
+        state.cierreTC = isNaN(cierreVal) ? 24 : cierreVal;
+    }
+    
     if (state.presupuestoMensual <= 0) {
         alert(t('errorBudget'));
         return;
@@ -215,15 +221,51 @@ document.getElementById('form-gasto').addEventListener('submit', async (e) => {
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
     
+    const checkboxProximo = document.getElementById('input-proximo-mes');
+    const inputCuotas = document.getElementById('input-cuotas');
+    const cuotas = parseInt(inputCuotas?.value) || 1;
+    const startOffset = (checkboxProximo && checkboxProximo.checked) ? 1 : 0;
+    
     if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
         if (wasEditing) {
-            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat });
+            let mesEfectivo = undefined;
+            if (startOffset > 0) {
+                const baseDate = new Date(state.historialGlobal.find(g => g.id === gastoEnEdicion).fecha);
+                baseDate.setMonth(baseDate.getMonth() + startOffset);
+                mesEfectivo = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}`;
+            }
+            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
-            addExpense({ id: Date.now(), monto: montoCents, desc, fecha: new Date().toISOString(), categoria: cat });
+            const montoCuotaCents = Math.round(montoCents / cuotas);
+            const baseIso = new Date().toISOString();
+            
+            for (let i = 0; i < cuotas; i++) {
+                const curDate = new Date();
+                const totalMonthOffset = startOffset + i;
+                let mesEfectivo = undefined;
+                
+                if (totalMonthOffset > 0) {
+                    curDate.setMonth(curDate.getMonth() + totalMonthOffset);
+                    mesEfectivo = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+                }
+                
+                const descCuota = cuotas > 1 ? `${desc} (${i + 1}/${cuotas})` : desc;
+                addExpense({ 
+                    id: Date.now() + i, 
+                    monto: montoCuotaCents, 
+                    desc: descCuota, 
+                    fecha: baseIso, 
+                    categoria: cat, 
+                    mesEfectivo 
+                });
+            }
+            
             document.getElementById('input-monto').value = '';
             document.getElementById('input-desc').value = '';
+            if (checkboxProximo) checkboxProximo.checked = false;
+            if (inputCuotas) inputCuotas.value = '1';
         }
         await guardarYMostrar();
         showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
@@ -259,6 +301,9 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     tabDirecto.click();
     inputPresupuesto.value = (state.presupuestoMensual / 100).toFixed(2);
     inputMoneda.value = state.monedaActual; 
+    
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) inputCierre.value = state.cierreTC || 24;
 });
 
 document.getElementById('btn-exportar').addEventListener('click', () => {
@@ -370,7 +415,6 @@ if (fabGasto) {
     });
 }
 
-// Initialize extracted swipe logic
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: async (id) => {
         removeExpense(id);
@@ -385,6 +429,13 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
             document.getElementById('input-monto').value = (gasto.monto / 100).toFixed(2);
             document.getElementById('input-desc').value = gasto.desc;
             document.getElementById('input-categoria').value = gasto.categoria;
+            
+            const checkboxProximo = document.getElementById('input-proximo-mes');
+            if (checkboxProximo) checkboxProximo.checked = !!gasto.mesEfectivo;
+            
+            const containerCuotas = document.getElementById('input-cuotas')?.closest('.form-group');
+            if (containerCuotas) containerCuotas.style.display = 'none';
+            
             setGastoEnEdicion(id);
             document.getElementById('btn-guardar-gasto').innerText = t('btnEdit');
             document.getElementById('input-monto').focus();
