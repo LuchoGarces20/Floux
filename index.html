@@ -215,14 +215,15 @@
             <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="form-group">
-                    <input type="number" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" step="0.01" required inputmode="decimal">
+                    <input type="text" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="numeric" data-cents="0">
                 </div>
                 <div class="form-group">
                     <input type="text" id="input-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción" required>
                 </div>
                 
                 <div class="form-group">
-                    <select id="input-categoria"></select>
+                    <input type="hidden" id="input-categoria">
+                    <div id="categoria-chips" class="chips-container"></div>
                 </div>
 
                 <div class="form-group flex-between-center">

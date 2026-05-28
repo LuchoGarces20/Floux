@@ -110,7 +110,7 @@ function mostrarPantallaPrincipal() {
     document.getElementById('pantalla-principal').classList.remove('oculto');
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
-    document.getElementById('btn-next-month').disabled = true;
+    resetFormularioGasto(setGastoEnEdicion);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 }
 
@@ -122,16 +122,12 @@ async function guardarYMostrar() {
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-    document.getElementById('btn-next-month').disabled = false;
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-    if (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear()) {
-        document.getElementById('btn-next-month').disabled = true;
-    }
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
@@ -200,16 +196,34 @@ document.getElementById('btn-comenzar').addEventListener('click', async () => {
     await guardarYMostrar();
 });
 
+document.getElementById('input-monto').addEventListener('input', (e) => {
+    let digits = e.target.value.replace(/\D/g, '');
+    if (!digits) {
+        e.target.value = '';
+        e.target.dataset.cents = '0';
+        return;
+    }
+    const cents = parseInt(digits, 10);
+    e.target.dataset.cents = cents;
+    e.target.value = formatCurrency(cents, state.monedaActual);
+});
+
 let autoCatDebounceTimer;
 document.getElementById('input-desc').addEventListener('input', (e) => {
     clearTimeout(autoCatDebounceTimer);
-    autoCatDebounceTimer = setTimeout(() => {
+autoCatDebounceTimer = setTimeout(() => {
         const query = e.target.value.trim().toLowerCase();
         if (query.length > 2) {
             const match = state.historialGlobal.slice().reverse().find(g => g.desc.toLowerCase() === query);
             if (match) {
-                const select = document.getElementById('input-categoria');
-                if (Array.from(select.options).some(opt => opt.value === match.categoria)) select.value = match.categoria;
+                const inputHidden = document.getElementById('input-categoria');
+                const chipTarget = document.querySelector(`.cat-chip[data-id="${match.categoria}"]`);
+                if (chipTarget && inputHidden) {
+                    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                    chipTarget.classList.add('active');
+                    inputHidden.value = match.categoria;
+                    chipTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
             }
         }
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
@@ -217,7 +231,8 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
 
 document.getElementById('form-gasto').addEventListener('submit', async (e) => {
     e.preventDefault(); 
-    const montoCents = Math.round(parseFloat(document.getElementById('input-monto').value) * 100);
+    const inputMonto = document.getElementById('input-monto');
+    const montoCents = parseInt(inputMonto.dataset.cents || '0', 10);
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
     
@@ -262,10 +277,7 @@ document.getElementById('form-gasto').addEventListener('submit', async (e) => {
                 });
             }
             
-            document.getElementById('input-monto').value = '';
-            document.getElementById('input-desc').value = '';
-            if (checkboxProximo) checkboxProximo.checked = false;
-            if (inputCuotas) inputCuotas.value = '1';
+        resetFormularioGasto(setGastoEnEdicion);
         }
         await guardarYMostrar();
         showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
@@ -347,9 +359,18 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
 document.getElementById('btn-reiniciar').addEventListener('click', () => { 
     if(confirm(t('alertReset'))) { 
         resetFormularioGasto(setGastoEnEdicion); 
-        indexedDB.deleteDatabase('FlouxDB');
         localStorage.clear(); 
-        location.reload(); 
+        const req = indexedDB.open('FlouxDB', 1);
+        req.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction('floux_store', 'readwrite');
+            tx.objectStore('floux_store').clear();
+            tx.oncomplete = () => {
+                db.close();
+                location.reload();
+            };
+        };
+        req.onerror = () => location.reload();
     } 
 });
 
@@ -423,12 +444,22 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         await guardarYMostrar();
         showToast("🗑️ Eliminado");
     },
-    onEdit: (id) => {
+onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
         if (gasto) {
-            document.getElementById('input-monto').value = (gasto.monto / 100).toFixed(2);
+            const inputMonto = document.getElementById('input-monto');
+            inputMonto.dataset.cents = gasto.monto;
+            inputMonto.value = formatCurrency(gasto.monto, state.monedaActual);
+            
             document.getElementById('input-desc').value = gasto.desc;
-            document.getElementById('input-categoria').value = gasto.categoria;
+            
+            const inputHidden = document.getElementById('input-categoria');
+            inputHidden.value = gasto.categoria;
+            document.querySelectorAll('.cat-chip').forEach(c => {
+                const isActive = c.dataset.id === gasto.categoria;
+                c.classList.toggle('active', isActive);
+                if (isActive) c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
             
             const checkboxProximo = document.getElementById('input-proximo-mes');
             if (checkboxProximo) checkboxProximo.checked = !!gasto.mesEfectivo;
