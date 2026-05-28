@@ -280,6 +280,14 @@ document.getElementById('form-gasto').addEventListener('submit', async (e) => {
         resetFormularioGasto(setGastoEnEdicion);
         }
         await guardarYMostrar();
+        
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+        if (navigator.vibrate) {
+            navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
+        }
+        
         showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
     }
 });

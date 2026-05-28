@@ -229,9 +229,12 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
         
-        const li = document.createElement('li');
+const li = document.createElement('li');
         li.className = 'swipe-item';
         
+        if (Date.now() - g.id < 2000) {
+            li.classList.add('new-item');
+        }        
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
         

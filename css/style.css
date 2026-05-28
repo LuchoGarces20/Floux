@@ -179,6 +179,84 @@ h3 { font-size: 1.2rem; margin-bottom: 1rem; color: var(--primary-color); paddin
 .cat-chip.active .chip-name { color: white; }
 .chip-emoji { font-size: 1.1rem; }
 .chip-name { font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
+
+/* UX: Label descritiva para elementos interativos */
+.field-label { 
+    display: block; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+    color: var(--text-color); 
+    margin-bottom: 12px; 
+    opacity: 0.9; 
+    padding-left: 4px; 
+}
+
+/* UI: Toggle Switch robusto via Label Wrapper */
+.switch-group {
+    display: flex;
+    align-items: center;
+    background: var(--bg-color);
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: var(--dimensional-shadow);
+    margin-top: 1rem;
+    gap: 14px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .3s ease-in-out;
+    border-radius: 28px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s ease-in-out;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.switch input:checked + .slider {
+    background-color: var(--primary-color);
+}
+
+.switch input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+.switch-label {
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    flex-grow: 1;
+    user-select: none;
+}
 label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; color: var(--text-color);}
 input, select { width: 100%; padding: 0.8rem; border: none; box-shadow: var(--dimensional-shadow); border-radius: 12px; background-color: var(--bg-color); color: var(--text-color); box-sizing: border-box; font-size: 1rem; font-family: inherit; -webkit-user-select: auto; user-select: auto; }
 
@@ -237,6 +315,31 @@ button.btn-principal:active { transform: scale(0.97); box-shadow: inset 0 1px 0 
 /* Log */
 .log { list-style: none; padding: 0; margin: 0; }
 .log li { border-radius: 12px; margin-bottom: 8px; position: relative; overflow: hidden; padding: 0; box-shadow: var(--dimensional-shadow), 0 1px 2px var(--shadow-color); background-color: var(--surface-color); }
+
+@keyframes highlight-new {
+    0% { 
+        background-color: #F0FDFA; /* O tom de verde azulado ultra suave do seu --tab-bg */
+        box-shadow: inset 0 0 0 1.5px var(--primary-color), var(--dimensional-shadow);
+    }
+    100% { 
+        background-color: var(--surface-color);
+        box-shadow: var(--dimensional-shadow);
+    }
+}
+
+.log li.new-item .swipe-content {
+    position: relative;
+    z-index: 3;
+    /* Força uma cor de fundo inicial opaca no Safari para cobrir os botões inferiores */
+    background-color: #F0FDFA; 
+    animation: highlight-new 2.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Mantém os botões em uma camada inferior absoluta durante o efeito */
+.log li.new-item .swipe-actions {
+    z-index: 1;
+}
+
 .swipe-actions { position: absolute; top: 0; right: 0; height: 100%; display: flex; align-items: center; padding: 0 10px; background-color: var(--bg-color); gap: 8px; }
 .swipe-content { position: relative; background-color: var(--surface-color); padding: 1rem 0.5rem; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; z-index: 1; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: inherit; }
 .swipe-content.no-transition { transition: none; }
