@@ -391,11 +391,21 @@ export function resetFormularioGasto(setGastoCallback) {
         cb.checked = new Date().getDate() > (state.cierreTC || 24);
     }
     
+    const selectCuotas = document.getElementById('select-cuotas');
+    if (selectCuotas) {
+        selectCuotas.value = '1';
+        selectCuotas.classList.remove('oculto');
+    }
+    
     const inputCuotas = document.getElementById('input-cuotas');
     if (inputCuotas) {
         inputCuotas.value = '1';
-        const containerCuotas = inputCuotas.closest('.form-group');
-        if (containerCuotas) containerCuotas.style.display = '';
+        inputCuotas.classList.add('oculto');
+    }
+
+    const containerCuotas = document.getElementById('container-cuotas');
+    if (containerCuotas) {
+        containerCuotas.style.display = '';
     }
     
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');

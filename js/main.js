@@ -30,6 +30,21 @@ const inputPctLivre = document.getElementById('input-pct-livre');
 const displayCalculado = document.getElementById('display-calculado');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+const selectCuotas = document.getElementById('select-cuotas');
+const inputCuotas = document.getElementById('input-cuotas');
+
+if (selectCuotas && inputCuotas) {
+    selectCuotas.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            selectCuotas.classList.add('oculto');
+            inputCuotas.classList.remove('oculto');
+            inputCuotas.value = '';
+            inputCuotas.focus();
+        } else {
+            inputCuotas.value = e.target.value;
+        }
+    });
+}
 
 const btnPrivacidade = document.getElementById('btn-privacidade');
 const btnSettingsToggle = document.getElementById('btn-settings-toggle');
@@ -472,7 +487,7 @@ onEdit: (id) => {
             const checkboxProximo = document.getElementById('input-proximo-mes');
             if (checkboxProximo) checkboxProximo.checked = !!gasto.mesEfectivo;
             
-            const containerCuotas = document.getElementById('input-cuotas')?.closest('.form-group');
+            const containerCuotas = document.getElementById('container-cuotas');
             if (containerCuotas) containerCuotas.style.display = 'none';
             
             setGastoEnEdicion(id);

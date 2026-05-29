@@ -23,7 +23,7 @@ export const diccionario = {
         btnOpenFlouxVision: "Simulador FlouxVision", btnClose: "Cerrar", menuAdjustBudget: "Ajustar Presupuesto",
         paceLabel: "Ritmo vs. Calendario", emptyStateTitle: "¡Un nuevo mes!", emptyStateMsg: "Recuerda: el dinero que no gastas hoy aumenta automáticamente tu límite de mañana.<br><br>Registra tu primer gasto.",
         summaryTitle: "Resumen del Mes", summaryPerf: "Rendimiento:", summaryGreatest: "Gasto Mayor:", summaryDaily: "Promedio Diario:", summarySave: "Ahorro: ", summaryDeficit: "Déficit: ",
-        applyNextMonth: "Cargar al próximo mes (Cierre TC)", installmentsLabel: "Cuotas / Parcelas", ccClosingLabel: "Día de Cierre de Tarjeta (TC)"
+        applyNextMonth: "Cargar al próximo mes (Cierre TC)", installmentsLabel: "Cuotas / Parcelas", ccClosingLabel: "Día de Cierre de Tarjeta (TC)", installments_1: "1x (Al contado)", installments_custom: "Otro..."
     },
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
@@ -44,7 +44,7 @@ export const diccionario = {
         btnOpenFlouxVision: "FlouxVision Simulator", btnClose: "Close", paceLabel: "Pace vs. Calendar", menuAdjustBudget: "Adjust Budget",
         emptyStateTitle: "A new month!", emptyStateMsg: "Remember: the money you don't spend today automatically increases tomorrow's limit.<br><br>Log your first expense.",
         summaryTitle: "Monthly Summary", summaryPerf: "Performance:", summaryGreatest: "Largest Expense:", summaryDaily: "Daily Average:", summarySave: "Saved: ", summaryDeficit: "Deficit: ",
-        applyNextMonth: "Charge to next month (CC closing)", installmentsLabel: "Installments", ccClosingLabel: "Credit Card Closing Day"
+        applyNextMonth: "Charge to next month (CC closing)", installmentsLabel: "Installments", ccClosingLabel: "Credit Card Closing Day", installments_1: "1x (Single Payment)", installments_custom: "Other..."
     },
     pt: {
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
@@ -65,7 +65,7 @@ export const diccionario = {
         btnOpenFlouxVision: "Simulador FlouxVision", btnClose: "Fechar", paceLabel: "Ritmo vs. Calendário", menuAdjustBudget: "Ajustar Orçamento",
         emptyStateTitle: "Um novo mês!", emptyStateMsg: "Lembre-se: o dinheiro que você não gasta hoje aumenta automaticamente seu limite de amanhã.<br><br>Registre seu primeiro gasto.",
         summaryTitle: "Resumo do Mês", summaryPerf: "Desempenho:", summaryGreatest: "Maior Despesa:", summaryDaily: "Média Diária:", summarySave: "Economia: ", summaryDeficit: "Déficit: ",
-        applyNextMonth: "Lançar no próximo mês (Fechamento TC)", installmentsLabel: "Parcelas", ccClosingLabel: "Dia de Fechamento do Cartão (TC)"
+        applyNextMonth: "Lançar no próximo mês (Fechamento TC)", installmentsLabel: "Parcelas", ccClosingLabel: "Dia de Fechamento do Cartão (TC)", installments_1: "1x (À vista)", installments_custom: "Outro..."
     }
 };
 
