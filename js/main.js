@@ -30,6 +30,21 @@ const inputPctLivre = document.getElementById('input-pct-livre');
 const displayCalculado = document.getElementById('display-calculado');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+const selectCuotas = document.getElementById('select-cuotas');
+const inputCuotas = document.getElementById('input-cuotas');
+
+if (selectCuotas && inputCuotas) {
+    selectCuotas.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            selectCuotas.classList.add('oculto');
+            inputCuotas.classList.remove('oculto');
+            inputCuotas.value = '';
+            inputCuotas.focus();
+        } else {
+            inputCuotas.value = e.target.value;
+        }
+    });
+}
 
 const btnPrivacidade = document.getElementById('btn-privacidade');
 const btnSettingsToggle = document.getElementById('btn-settings-toggle');
@@ -69,6 +84,8 @@ if (btnPrivacidade) {
 async function init() {
     const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) inputCierre.value = state.cierreTC || 24;
     actualizarModoPrivacidade();
     
     const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
@@ -82,8 +99,8 @@ async function init() {
             localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, mesActual);
         }
         mostrarPantallaPrincipal();
+        resetFormularioGasto(setGastoEnEdicion);
 
-        // PWA Shortcut Actions Logic
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action');
         
@@ -97,8 +114,6 @@ async function init() {
             } else if (action === 'simulador') {
                 document.getElementById('btn-abrir-simulador').click();
             }
-            
-            // Clean the URL to prevent re-triggering on manual refresh
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }
@@ -110,7 +125,7 @@ function mostrarPantallaPrincipal() {
     document.getElementById('pantalla-principal').classList.remove('oculto');
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
-    document.getElementById('btn-next-month').disabled = true;
+    resetFormularioGasto(setGastoEnEdicion);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 }
 
@@ -122,16 +137,12 @@ async function guardarYMostrar() {
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
-    document.getElementById('btn-next-month').disabled = false;
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
-    if (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear()) {
-        document.getElementById('btn-next-month').disabled = true;
-    }
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
@@ -180,6 +191,12 @@ document.getElementById('btn-comenzar').addEventListener('click', async () => {
     state.presupuestoMensual = modoActual === 'directo' ? Math.round((isNaN(inputVal) ? 0 : inputVal) * 100) : presupuestoCalculadoTemporalCents;
     state.monedaActual = inputMoneda.value;
     
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) {
+        const cierreVal = parseInt(inputCierre.value, 10);
+        state.cierreTC = isNaN(cierreVal) ? 24 : cierreVal;
+    }
+    
     if (state.presupuestoMensual <= 0) {
         alert(t('errorBudget'));
         return;
@@ -194,16 +211,34 @@ document.getElementById('btn-comenzar').addEventListener('click', async () => {
     await guardarYMostrar();
 });
 
+document.getElementById('input-monto').addEventListener('input', (e) => {
+    let digits = e.target.value.replace(/\D/g, '');
+    if (!digits) {
+        e.target.value = '';
+        e.target.dataset.cents = '0';
+        return;
+    }
+    const cents = parseInt(digits, 10);
+    e.target.dataset.cents = cents;
+    e.target.value = formatCurrency(cents, state.monedaActual);
+});
+
 let autoCatDebounceTimer;
 document.getElementById('input-desc').addEventListener('input', (e) => {
     clearTimeout(autoCatDebounceTimer);
-    autoCatDebounceTimer = setTimeout(() => {
+autoCatDebounceTimer = setTimeout(() => {
         const query = e.target.value.trim().toLowerCase();
         if (query.length > 2) {
             const match = state.historialGlobal.slice().reverse().find(g => g.desc.toLowerCase() === query);
             if (match) {
-                const select = document.getElementById('input-categoria');
-                if (Array.from(select.options).some(opt => opt.value === match.categoria)) select.value = match.categoria;
+                const inputHidden = document.getElementById('input-categoria');
+                const chipTarget = document.querySelector(`.cat-chip[data-id="${match.categoria}"]`);
+                if (chipTarget && inputHidden) {
+                    document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                    chipTarget.classList.add('active');
+                    inputHidden.value = match.categoria;
+                    chipTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
             }
         }
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
@@ -211,21 +246,63 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
 
 document.getElementById('form-gasto').addEventListener('submit', async (e) => {
     e.preventDefault(); 
-    const montoCents = Math.round(parseFloat(document.getElementById('input-monto').value) * 100);
+    const inputMonto = document.getElementById('input-monto');
+    const montoCents = parseInt(inputMonto.dataset.cents || '0', 10);
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
+    
+    const checkboxProximo = document.getElementById('input-proximo-mes');
+    const inputCuotas = document.getElementById('input-cuotas');
+    const cuotas = parseInt(inputCuotas?.value) || 1;
+    const startOffset = (checkboxProximo && checkboxProximo.checked) ? 1 : 0;
     
     if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
         if (wasEditing) {
-            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat });
+            let mesEfectivo = undefined;
+            if (startOffset > 0) {
+                const baseDate = new Date(state.historialGlobal.find(g => g.id === gastoEnEdicion).fecha);
+                baseDate.setMonth(baseDate.getMonth() + startOffset);
+                mesEfectivo = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}`;
+            }
+            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
-            addExpense({ id: Date.now(), monto: montoCents, desc, fecha: new Date().toISOString(), categoria: cat });
-            document.getElementById('input-monto').value = '';
-            document.getElementById('input-desc').value = '';
+            const montoCuotaCents = Math.round(montoCents / cuotas);
+            const baseIso = new Date().toISOString();
+            
+            for (let i = 0; i < cuotas; i++) {
+                const curDate = new Date();
+                const totalMonthOffset = startOffset + i;
+                let mesEfectivo = undefined;
+                
+                if (totalMonthOffset > 0) {
+                    curDate.setMonth(curDate.getMonth() + totalMonthOffset);
+                    mesEfectivo = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+                }
+                
+                const descCuota = cuotas > 1 ? `${desc} (${i + 1}/${cuotas})` : desc;
+                addExpense({ 
+                    id: Date.now() + i, 
+                    monto: montoCuotaCents, 
+                    desc: descCuota, 
+                    fecha: baseIso, 
+                    categoria: cat, 
+                    mesEfectivo 
+                });
+            }
+            
+        resetFormularioGasto(setGastoEnEdicion);
         }
         await guardarYMostrar();
+        
+        if (document.activeElement) {
+            document.activeElement.blur();
+        }
+        if (navigator.vibrate) {
+            navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
+        }
+        
         showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
     }
 });
@@ -259,6 +336,9 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     tabDirecto.click();
     inputPresupuesto.value = (state.presupuestoMensual / 100).toFixed(2);
     inputMoneda.value = state.monedaActual; 
+    
+    const inputCierre = document.getElementById('input-cierre-tc');
+    if (inputCierre) inputCierre.value = state.cierreTC || 24;
 });
 
 document.getElementById('btn-exportar').addEventListener('click', () => {
@@ -302,9 +382,18 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
 document.getElementById('btn-reiniciar').addEventListener('click', () => { 
     if(confirm(t('alertReset'))) { 
         resetFormularioGasto(setGastoEnEdicion); 
-        indexedDB.deleteDatabase('FlouxDB');
         localStorage.clear(); 
-        location.reload(); 
+        const req = indexedDB.open('FlouxDB', 1);
+        req.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction('floux_store', 'readwrite');
+            tx.objectStore('floux_store').clear();
+            tx.oncomplete = () => {
+                db.close();
+                location.reload();
+            };
+        };
+        req.onerror = () => location.reload();
     } 
 });
 
@@ -370,7 +459,6 @@ if (fabGasto) {
     });
 }
 
-// Initialize extracted swipe logic
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: async (id) => {
         removeExpense(id);
@@ -379,12 +467,29 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         await guardarYMostrar();
         showToast("🗑️ Eliminado");
     },
-    onEdit: (id) => {
+onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
         if (gasto) {
-            document.getElementById('input-monto').value = (gasto.monto / 100).toFixed(2);
+            const inputMonto = document.getElementById('input-monto');
+            inputMonto.dataset.cents = gasto.monto;
+            inputMonto.value = formatCurrency(gasto.monto, state.monedaActual);
+            
             document.getElementById('input-desc').value = gasto.desc;
-            document.getElementById('input-categoria').value = gasto.categoria;
+            
+            const inputHidden = document.getElementById('input-categoria');
+            inputHidden.value = gasto.categoria;
+            document.querySelectorAll('.cat-chip').forEach(c => {
+                const isActive = c.dataset.id === gasto.categoria;
+                c.classList.toggle('active', isActive);
+                if (isActive) c.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
+            
+            const checkboxProximo = document.getElementById('input-proximo-mes');
+            if (checkboxProximo) checkboxProximo.checked = !!gasto.mesEfectivo;
+            
+            const containerCuotas = document.getElementById('container-cuotas');
+            if (containerCuotas) containerCuotas.style.display = 'none';
+            
             setGastoEnEdicion(id);
             document.getElementById('btn-guardar-gasto').innerText = t('btnEdit');
             document.getElementById('input-monto').focus();

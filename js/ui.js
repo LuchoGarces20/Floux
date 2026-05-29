@@ -1,5 +1,6 @@
 import { t, currentLang, formatCurrency } from './i18n.js';
 import { obtenerCategorias } from './categories.js';
+import { state } from './store.js';
 
 export const UI_CONFIG = {
     WARNING_THRESHOLD: 0.2,
@@ -23,17 +24,41 @@ export function aplicarTraduccion(gastoEnEdicion) {
 }
 
 export function renderizarSelectCategorias(customCats) {
-    const select = document.getElementById('input-categoria');
-    const currentValue = select.value;
-    select.innerHTML = '';
+    const container = document.getElementById('categoria-chips');
+    const inputHidden = document.getElementById('input-categoria');
+    if (!container || !inputHidden) return;
+    
+    const currentValue = inputHidden.value;
+    container.innerHTML = '';
     const categorias = obtenerCategorias(customCats);
+    
     categorias.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = `${cat.emoji} ${cat.nombre}`;
-        select.appendChild(option);
+        const chip = document.createElement('div');
+        chip.className = 'cat-chip';
+        chip.dataset.id = cat.id;
+        chip.innerHTML = `<span class="chip-emoji">${cat.emoji}</span><span class="chip-name">${cat.nombre}</span>`;
+        
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            inputHidden.value = cat.id;
+            chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        });
+        
+        container.appendChild(chip);
     });
-    if(currentValue && categorias.find(c => c.id === currentValue)) select.value = currentValue;
+
+    if (!currentValue && categorias.length > 0) {
+        inputHidden.value = categorias[0].id;
+        container.firstChild.classList.add('active');
+    } else if (currentValue && categorias.find(c => c.id === currentValue)) {
+        inputHidden.value = currentValue;
+        const activeChip = container.querySelector(`[data-id="${currentValue}"]`);
+        if (activeChip) activeChip.classList.add('active');
+    } else if (categorias.length > 0) {
+        inputHidden.value = categorias[0].id;
+        container.firstChild.classList.add('active');
+    }
 }
 
 export function showToast(message) {
@@ -204,9 +229,12 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
         
-        const li = document.createElement('li');
+const li = document.createElement('li');
         li.className = 'swipe-item';
         
+        if (Date.now() - g.id < 2000) {
+            li.classList.add('new-item');
+        }        
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
         
@@ -273,7 +301,38 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
-    const gastosMesActual = state.historialGlobal.filter(g => new Date(g.fecha).getMonth() === viewMonth && new Date(g.fecha).getFullYear() === viewYear);
+    
+    const gastosMesActual = state.historialGlobal.filter(g => {
+        let mes = new Date(g.fecha).getMonth();
+        let ano = new Date(g.fecha).getFullYear();
+        if (g.mesEfectivo) {
+            const [eAno, eMes] = g.mesEfectivo.split('-').map(Number);
+            mes = eMes - 1;
+            ano = eAno;
+        }
+        return mes === viewMonth && ano === viewYear;
+    });
+
+    const viewDate = new Date(viewYear, viewMonth, 1);
+    const currentMonthDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    const isPastMonth = viewDate < currentMonthDate;
+    
+    const temDadosFuturos = state.historialGlobal.some(g => {
+        let mes = new Date(g.fecha).getMonth();
+        let ano = new Date(g.fecha).getFullYear();
+        if (g.mesEfectivo) {
+            const [eAno, eMes] = g.mesEfectivo.split('-').map(Number);
+            mes = eMes - 1;
+            ano = eAno;
+        }
+        return new Date(ano, mes, 1) > viewDate;
+    });
+    
+    const btnNext = document.getElementById('btn-next-month');
+    if (btnNext) {
+        btnNext.disabled = !(isPastMonth || temDadosFuturos);
+    }
+
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
@@ -320,7 +379,34 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
 
 export function resetFormularioGasto(setGastoCallback) {
     setGastoCallback(null);
-    document.getElementById('input-monto').value = '';
+    const inputMonto = document.getElementById('input-monto');
+    if (inputMonto) {
+        inputMonto.value = '';
+        inputMonto.dataset.cents = '0';
+    }
     document.getElementById('input-desc').value = '';
+    
+    const cb = document.getElementById('input-proximo-mes');
+    if (cb) {
+        cb.checked = new Date().getDate() > (state.cierreTC || 24);
+    }
+    
+    const selectCuotas = document.getElementById('select-cuotas');
+    if (selectCuotas) {
+        selectCuotas.value = '1';
+        selectCuotas.classList.remove('oculto');
+    }
+    
+    const inputCuotas = document.getElementById('input-cuotas');
+    if (inputCuotas) {
+        inputCuotas.value = '1';
+        inputCuotas.classList.add('oculto');
+    }
+
+    const containerCuotas = document.getElementById('container-cuotas');
+    if (containerCuotas) {
+        containerCuotas.style.display = '';
+    }
+    
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
 }

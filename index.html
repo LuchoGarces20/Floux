@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light-dark">
     <title>Floux</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">    <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">    
+    <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
     <link rel="apple-touch-icon" href="img/logo180.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
@@ -112,6 +113,10 @@
                 <option value="COP">COP ($)</option>
             </select>
         </div>
+        <div class="form-group">
+            <label data-i18n="ccClosingLabel">Día de Cierre de Tarjeta (TC)</label>
+            <input type="number" id="input-cierre-tc" min="1" max="31" value="24" inputmode="numeric">
+        </div>
         <div class="onboarding-tabs">
             <button id="tab-directo" class="tab-btn active" data-i18n="tabDirect">Ya sé mi presupuesto</button>
             <button id="tab-calc" class="tab-btn" data-i18n="tabCalc">Ayúdame a calcular</button>
@@ -135,7 +140,8 @@
             </div>
 
             <details class="mb-15">
-                 <summary class="summary-interactive" data-i18n="adjustPercentages">Ajustar porcentajes recomendados</summary>                <div class="form-group">
+                <summary class="summary-interactive" data-i18n="adjustPercentages">Ajustar porcentajes recomendados</summary>                
+                <div class="form-group">
                     <label data-i18n="pctLongTerm">Inversión Largo Plazo (%) - Rec: 20%</label>
                     <input type="number" id="input-pct-largo" value="20" inputmode="decimal" class="input-calc">
                 </div>
@@ -209,15 +215,41 @@
             <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="form-group">
-                    <input type="number" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" step="0.01" required inputmode="decimal">
+                    <input type="text" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="numeric" data-cents="0">
                 </div>
                 <div class="form-group">
                     <input type="text" id="input-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción" required>
                 </div>
                 
                 <div class="form-group">
-                    <select id="input-categoria"></select>
+                    <span class="field-label" data-i18n="selectCategory"></span>
+                    <input type="hidden" id="input-categoria">
+                    <div id="categoria-chips" class="chips-container"></div>
                 </div>
+
+                <div class="form-group switch-group">
+                    <label class="switch">
+                        <input type="checkbox" id="input-proximo-mes">
+                        <span class="slider"></span>
+                    </label>
+                    <label for="input-proximo-mes" data-i18n="applyNextMonth" class="switch-label">Cargar al próximo mes (Cierre TC)</label>
+                </div>
+
+                <div class="form-group" id="container-cuotas">
+    <label for="select-cuotas" data-i18n="installmentsLabel">Cuotas / Parcelas</label>
+    <select id="select-cuotas">
+        <option value="1" data-i18n="installments_1">1x (À vista)</option>
+        <option value="2">2x</option>
+        <option value="3">3x</option>
+        <option value="4">4x</option>
+        <option value="5">5x</option>
+        <option value="6">6x</option>
+        <option value="9">9x</option>
+        <option value="12">12x</option>
+        <option value="custom" data-i18n="installments_custom">Outro...</option>
+    </select>
+    <input type="number" id="input-cuotas" min="1" value="1" class="oculto" style="margin-top: 8px;" placeholder="Ej: 18">
+</div>
                 
                 <button type="submit" id="btn-guardar-gasto" class="btn-principal mb-10">Agregar</button>
 
