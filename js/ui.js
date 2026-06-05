@@ -112,17 +112,55 @@ function updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
     const diasRestantes = (new Date(viewYear, viewMonth + 1, 0).getDate() - hoy.getDate()) + 1;
-    const presupuestoDiarioCents = Math.max(0, Math.floor(dineroRestanteCents / diasRestantes));
 
-    animateValue(document.getElementById('display-diario'), presupuestoDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    animateValue(document.getElementById('display-mensual'), dineroRestanteCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    animateValue(document.getElementById('display-gastado'), totalGastadoMesCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
+    let limiteBaseDiarioCents = 0;
+    let saldoDisponivelHojeCents = 0;
 
-    const elDiario = document.getElementById('display-diario');
-    if (dineroRestanteCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
-        if(elDiario) elDiario.style.color = "var(--danger-color)";
+    if (isCurrentMonth) {
+        const hojeIso = hoy.toISOString().split('T')[0];
+        let gastosAteOntemCents = 0;
+        let gastosHojeCents = 0;
+
+        gastosMesActual.forEach(g => {
+            const gDateIso = new Date(g.fecha).toISOString().split('T')[0];
+            if (gDateIso === hojeIso) {
+                gastosHojeCents += g.monto;
+            } else if (gDateIso < hojeIso) {
+                gastosAteOntemCents += g.monto;
+            }
+        });
+
+        // Calcula a média base para o dia considerando apenas o que restava no início da manhã
+        limiteBaseDiarioCents = Math.floor((state.presupuestoMensual - gastosAteOntemCents) / diasRestantes);
+        
+        // Subtrai os gastos feitos HOJE do limite do dia (criando o saldo decrescente em tempo real)
+        saldoDisponivelHojeCents = limiteBaseDiarioCents - gastosHojeCents;
     } else {
-        if(elDiario) elDiario.style.color = "var(--primary-color)";
+        // Visualização de meses passados/futuros
+        limiteBaseDiarioCents = Math.floor(dineroRestanteCents / Math.max(1, diasRestantes));
+        saldoDisponivelHojeCents = limiteBaseDiarioCents;
+    }
+
+    // 1. Destaque: Saldo Dinâmico do Dia
+    animateValue(document.getElementById('display-diario'), saldoDisponivelHojeCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    
+    // 2. Meio: Restante Total
+    animateValue(document.getElementById('display-mensual'), dineroRestanteCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    
+    // 3. Direita: Média Diária Base (substitui o antigo "Gastado")
+    animateValue(document.getElementById('display-gastado'), limiteBaseDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+
+    // Sistema de Alertas Visuais
+    const elDiario = document.getElementById('display-diario');
+    if (elDiario) {
+        if (saldoDisponivelHojeCents < 0) {
+            elDiario.style.color = "var(--danger-color)"; // Ficou negativo hoje
+        } else if (dineroRestanteCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
+            elDiario.style.color = "var(--danger-color)"; // Orçamento geral crítico
+        } else {
+            elDiario.style.color = "var(--primary-color)";
+        }
     }
 }
 
