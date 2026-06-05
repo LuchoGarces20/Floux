@@ -108,56 +108,68 @@ function updateHeaderDisplays(hoy, viewMonth, viewYear, localeStr) {
     }
 }
 
-function updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
+function updateBalances(state, gastosMesActual, viewMonth, viewYear, _hoyStale) {
+    // 1. Instanciação dinâmica da data atual no fuso horário local.
+    // Ignoramos o parâmetro '_hoyStale' vindo do main.js, pois ele é uma constante estática
+    // que causa o congelamento dos cálculos ao simular a virada do dia sem recarregar a aplicação.
+    const hoyReal = new Date();
+    const anoReal = hoyReal.getFullYear();
+    const mesReal = hoyReal.getMonth();
+    const diaReal = hoyReal.getDate();
+
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
-    const diasRestantes = (new Date(viewYear, viewMonth + 1, 0).getDate() - hoy.getDate()) + 1;
+    
+    // Calcula o total de dias do mês sob visualização
+    const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
+    
+    const isCurrentMonth = (viewMonth === mesReal && viewYear === anoReal);
+    let diasRestantes = isCurrentMonth ? (totalDiasMes - diaReal + 1) : totalDiasMes;
+    if (diasRestantes < 1) diasRestantes = 1;
 
-    const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
     let limiteBaseDiarioCents = 0;
     let saldoDisponivelHojeCents = 0;
 
     if (isCurrentMonth) {
-        const hojeIso = hoy.toISOString().split('T')[0];
         let gastosAteOntemCents = 0;
         let gastosHojeCents = 0;
 
         gastosMesActual.forEach(g => {
-            const gDateIso = new Date(g.fecha).toISOString().split('T')[0];
-            if (gDateIso === hojeIso) {
+            // 2. Extração baseada estritamente no calendário local (evita desvios de fuso horário/UTC)
+            const gDate = new Date(g.fecha);
+            const isGastoHoje = (gDate.getFullYear() === anoReal && gDate.getMonth() === mesReal && gDate.getDate() === diaReal);
+            const isGastoPassado = gDate.getFullYear() < anoReal || 
+                                  (gDate.getFullYear() === anoReal && gDate.getMonth() < mesReal) || 
+                                  (gDate.getFullYear() === anoReal && gDate.getMonth() === mesReal && gDate.getDate() < diaReal);
+
+            if (isGastoHoje) {
                 gastosHojeCents += g.monto;
-            } else if (gDateIso < hojeIso) {
+            } else if (isGastoPassado) {
                 gastosAteOntemCents += g.monto;
             }
         });
 
-        // Calcula a média base para o dia considerando apenas o que restava no início da manhã
+        // Meta base diária calculada no início da manhã (Saldo restante do mês antes de hoje / Dias restantes)
         limiteBaseDiarioCents = Math.floor((state.presupuestoMensual - gastosAteOntemCents) / diasRestantes);
         
-        // Subtrai os gastos feitos HOJE do limite do dia (criando o saldo decrescente em tempo real)
+        // Dedução em tempo real: o limite do dia diminui linearmente conforme os gastos de hoje entram
         saldoDisponivelHojeCents = limiteBaseDiarioCents - gastosHojeCents;
     } else {
-        // Visualização de meses passados/futuros
-        limiteBaseDiarioCents = Math.floor(dineroRestanteCents / Math.max(1, diasRestantes));
+        // Comportamento padrão estável para meses futuros ou passados fora do escopo atual
+        limiteBaseDiarioCents = Math.floor(dineroRestanteCents / diasRestantes);
         saldoDisponivelHojeCents = limiteBaseDiarioCents;
     }
 
-    // 1. Destaque: Saldo Dinâmico do Dia
+    // Injeção reativa e animada nos nós correspondentes do DOM
     animateValue(document.getElementById('display-diario'), saldoDisponivelHojeCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    
-    // 2. Meio: Restante Total
     animateValue(document.getElementById('display-mensual'), dineroRestanteCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    
-    // 3. Direita: Média Diária Base (substitui o antigo "Gastado")
     animateValue(document.getElementById('display-gastado'), limiteBaseDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
 
-    // Sistema de Alertas Visuais
+    // Atualização de feedback visual (Alerta de saldo negativo para o dia)
     const elDiario = document.getElementById('display-diario');
     if (elDiario) {
         if (saldoDisponivelHojeCents < 0) {
-            elDiario.style.color = "var(--danger-color)"; // Ficou negativo hoje
-        } else if (dineroRestanteCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
-            elDiario.style.color = "var(--danger-color)"; // Orçamento geral crítico
+            elDiario.style.color = "var(--danger-color)";
         } else {
             elDiario.style.color = "var(--primary-color)";
         }
