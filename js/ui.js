@@ -108,71 +108,21 @@ function updateHeaderDisplays(hoy, viewMonth, viewYear, localeStr) {
     }
 }
 
-function updateBalances(state, gastosMesActual, viewMonth, viewYear, _hoyStale) {
-    // 1. Instanciação dinâmica da data atual no fuso horário local.
-    // Ignoramos o parâmetro '_hoyStale' vindo do main.js, pois ele é uma constante estática
-    // que causa o congelamento dos cálculos ao simular a virada do dia sem recarregar a aplicação.
-    const hoyReal = new Date();
-    const anoReal = hoyReal.getFullYear();
-    const mesReal = hoyReal.getMonth();
-    const diaReal = hoyReal.getDate();
-
+function updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
     const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
     const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
-    
-    // Calcula o total de dias do mês sob visualização
-    const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
-    
-    const isCurrentMonth = (viewMonth === mesReal && viewYear === anoReal);
-    let diasRestantes = isCurrentMonth ? (totalDiasMes - diaReal + 1) : totalDiasMes;
-    if (diasRestantes < 1) diasRestantes = 1;
+    const diasRestantes = (new Date(viewYear, viewMonth + 1, 0).getDate() - hoy.getDate()) + 1;
+    const presupuestoDiarioCents = Math.max(0, Math.floor(dineroRestanteCents / diasRestantes));
 
-    let limiteBaseDiarioCents = 0;
-    let saldoDisponivelHojeCents = 0;
-
-    if (isCurrentMonth) {
-        let gastosAteOntemCents = 0;
-        let gastosHojeCents = 0;
-
-        gastosMesActual.forEach(g => {
-            // 2. Extração baseada estritamente no calendário local (evita desvios de fuso horário/UTC)
-            const gDate = new Date(g.fecha);
-            const isGastoHoje = (gDate.getFullYear() === anoReal && gDate.getMonth() === mesReal && gDate.getDate() === diaReal);
-            const isGastoPassado = gDate.getFullYear() < anoReal || 
-                                  (gDate.getFullYear() === anoReal && gDate.getMonth() < mesReal) || 
-                                  (gDate.getFullYear() === anoReal && gDate.getMonth() === mesReal && gDate.getDate() < diaReal);
-
-            if (isGastoHoje) {
-                gastosHojeCents += g.monto;
-            } else if (isGastoPassado) {
-                gastosAteOntemCents += g.monto;
-            }
-        });
-
-        // Meta base diária calculada no início da manhã (Saldo restante do mês antes de hoje / Dias restantes)
-        limiteBaseDiarioCents = Math.floor((state.presupuestoMensual - gastosAteOntemCents) / diasRestantes);
-        
-        // Dedução em tempo real: o limite do dia diminui linearmente conforme os gastos de hoje entram
-        saldoDisponivelHojeCents = limiteBaseDiarioCents - gastosHojeCents;
-    } else {
-        // Comportamento padrão estável para meses futuros ou passados fora do escopo atual
-        limiteBaseDiarioCents = Math.floor(dineroRestanteCents / diasRestantes);
-        saldoDisponivelHojeCents = limiteBaseDiarioCents;
-    }
-
-    // Injeção reativa e animada nos nós correspondentes do DOM
-    animateValue(document.getElementById('display-diario'), saldoDisponivelHojeCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    animateValue(document.getElementById('display-diario'), presupuestoDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
     animateValue(document.getElementById('display-mensual'), dineroRestanteCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    animateValue(document.getElementById('display-gastado'), limiteBaseDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    animateValue(document.getElementById('display-gastado'), totalGastadoMesCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
 
-    // Atualização de feedback visual (Alerta de saldo negativo para o dia)
     const elDiario = document.getElementById('display-diario');
-    if (elDiario) {
-        if (saldoDisponivelHojeCents < 0) {
-            elDiario.style.color = "var(--danger-color)";
-        } else {
-            elDiario.style.color = "var(--primary-color)";
-        }
+    if (dineroRestanteCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
+        if(elDiario) elDiario.style.color = "var(--danger-color)";
+    } else {
+        if(elDiario) elDiario.style.color = "var(--primary-color)";
     }
 }
 
@@ -262,7 +212,7 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     }
 }
 
-function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
+function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     const listaUI = document.getElementById('lista-historial');
     listaUI.innerHTML = '';
     
@@ -279,7 +229,7 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
         
-const li = document.createElement('li');
+        const li = document.createElement('li');
         li.className = 'swipe-item';
         
         if (Date.now() - g.id < 2000) {
@@ -288,7 +238,8 @@ const li = document.createElement('li');
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
         
-        if (isCurrentMonth) {
+        // Renderiza os botões se for o mês atual OU um mês futuro
+        if (allowEdit) {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
             editBtn.dataset.id = g.id;
@@ -424,7 +375,9 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy);
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
-    renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth);
+    
+    // Injeção modificada para permitir edição/exclusão de parcelas no futuro
+    renderExpenseList(state, gastosMesActual, localeStr, !isPastMonth);
 }
 
 export function resetFormularioGasto(setGastoCallback) {
