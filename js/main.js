@@ -77,7 +77,13 @@ if (btnPrivacidade) {
     btnPrivacidade.addEventListener('click', async () => {
         state.privacyMode = !state.privacyMode;
         actualizarModoPrivacidade();
-        await saveStore();
+        try {
+            await saveStore();
+        } catch (error) {
+            if (error && error.name === 'QuotaExceededError') {
+                showToast("❌ Erro: Armazenamento cheio. Privacidade não salva.");
+            }
+        }
     });
 }
 
@@ -130,8 +136,17 @@ function mostrarPantallaPrincipal() {
 }
 
 async function guardarYMostrar() {
-    await saveStore();
-    mostrarPantallaPrincipal();
+    try {
+        await saveStore();
+        mostrarPantallaPrincipal();
+    } catch (error) {
+        if (error && error.name === 'QuotaExceededError') {
+            showToast("❌ Erro: Armazenamento cheio. Libere espaço para salvar.");
+        } else {
+            showToast("❌ Erro inesperado ao salvar os dados.");
+            console.error(error);
+        }
+    }
 }
 
 document.getElementById('btn-prev-month').addEventListener('click', () => {
@@ -461,13 +476,35 @@ if (fabGasto) {
 
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: async (id) => {
+        const gasto = state.historialGlobal.find(g => g.id === id);
+        if (!gasto) return;
+
+        const isInstallment = /\(\d+\/\d+\)$/.test((gasto.desc || '').trim());
+
+        if (isInstallment) {
+            const relatedExpenses = state.historialGlobal.filter(g => g.fecha === gasto.fecha);
+
+            if (relatedExpenses.length > 1) {
+                const deleteAll = confirm("Este gasto é uma parcela.\n\nDeseja apagar TODAS as parcelas associadas?\n\n[OK] = Apagar TODAS\n[Cancelar] = Apagar APENAS esta");
+
+                if (deleteAll) {
+                    relatedExpenses.forEach(relGasto => removeExpense(relGasto.id));
+                    if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
+                    if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
+                    await guardarYMostrar();
+                    showToast("🗑️ Todas as parcelas eliminadas");
+                    return; 
+                }
+            }
+        }
+
         removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
         await guardarYMostrar();
         showToast("🗑️ Eliminado");
     },
-onEdit: (id) => {
+    onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
         if (gasto) {
             const inputMonto = document.getElementById('input-monto');

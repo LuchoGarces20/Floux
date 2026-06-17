@@ -212,7 +212,7 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     }
 }
 
-function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
+function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     const listaUI = document.getElementById('lista-historial');
     listaUI.innerHTML = '';
     
@@ -229,7 +229,7 @@ function renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth) {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
         
-const li = document.createElement('li');
+        const li = document.createElement('li');
         li.className = 'swipe-item';
         
         if (Date.now() - g.id < 2000) {
@@ -238,7 +238,8 @@ const li = document.createElement('li');
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
         
-        if (isCurrentMonth) {
+        // Renderiza os botões se for o mês atual OU um mês futuro
+        if (allowEdit) {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
             editBtn.dataset.id = g.id;
@@ -374,7 +375,9 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy);
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
-    renderExpenseList(state, gastosMesActual, localeStr, isCurrentMonth);
+    
+    // Injeção modificada para permitir edição/exclusão de parcelas no futuro
+    renderExpenseList(state, gastosMesActual, localeStr, !isPastMonth);
 }
 
 export function resetFormularioGasto(setGastoCallback) {
