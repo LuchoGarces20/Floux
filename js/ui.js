@@ -1,6 +1,6 @@
 import { t, currentLang, formatCurrency } from './i18n.js';
 import { obtenerCategorias } from './categories.js';
-import { state } from './store.js';
+import { calculateBalances, calculateNetWorth } from './financeEngine.js';
 
 export const UI_CONFIG = {
     WARNING_THRESHOLD: 0.2,
@@ -19,6 +19,7 @@ export function aplicarTraduccion(gastoEnEdicion) {
     document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = t(el.getAttribute('data-i18n')));
     document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-ph')));
     document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))));
+    
     const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
     if(btnGuardarGasto) btnGuardarGasto.innerText = gastoEnEdicion ? t('btnEdit') : t('btnAdd');
 }
@@ -26,47 +27,143 @@ export function aplicarTraduccion(gastoEnEdicion) {
 export function renderizarSelectCategorias(customCats) {
     const container = document.getElementById('categoria-chips');
     const inputHidden = document.getElementById('input-categoria');
-    if (!container || !inputHidden) return;
+    const selectBoleto = document.getElementById('input-boleto-categoria');
+    const selectOnboardingBoleto = document.getElementById('input-onboarding-boleto-categoria');
     
-    const currentValue = inputHidden.value;
-    container.innerHTML = '';
     const categorias = obtenerCategorias(customCats);
     
-    categorias.forEach(cat => {
-        const chip = document.createElement('div');
-        chip.className = 'cat-chip';
-        chip.dataset.id = cat.id;
-        chip.innerHTML = `<span class="chip-emoji">${cat.emoji}</span><span class="chip-name">${cat.nombre}</span>`;
+    if (container && inputHidden) {
+        const currentValue = inputHidden.value;
+        container.innerHTML = '';
         
-        chip.addEventListener('click', () => {
-            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            inputHidden.value = cat.id;
-            chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        categorias.forEach(cat => {
+            const chip = document.createElement('div');
+            chip.className = 'cat-chip';
+            chip.dataset.id = cat.id;
+            chip.innerHTML = `<span class="chip-emoji">${cat.emoji}</span><span class="chip-name">${cat.nombre}</span>`;
+            
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                inputHidden.value = cat.id;
+                chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
+            
+            container.appendChild(chip);
         });
         
-        container.appendChild(chip);
-    });
-
-    if (!currentValue && categorias.length > 0) {
-        inputHidden.value = categorias[0].id;
-        container.firstChild.classList.add('active');
-    } else if (currentValue && categorias.find(c => c.id === currentValue)) {
-        inputHidden.value = currentValue;
-        const activeChip = container.querySelector(`[data-id="${currentValue}"]`);
-        if (activeChip) activeChip.classList.add('active');
-    } else if (categorias.length > 0) {
-        inputHidden.value = categorias[0].id;
-        container.firstChild.classList.add('active');
+        if (!currentValue && categorias.length > 0) {
+            inputHidden.value = categorias[0].id;
+            container.firstChild.classList.add('active');
+        } else if (currentValue && categorias.find(c => c.id === currentValue)) {
+            inputHidden.value = currentValue;
+            const activeChip = container.querySelector(`[data-id="${currentValue}"]`);
+            if (activeChip) activeChip.classList.add('active');
+        } else if (categorias.length > 0) {
+            inputHidden.value = categorias[0].id;
+            container.firstChild.classList.add('active');
+        }
     }
+    
+    const optionsHTML = categorias.map(c => `<option value="${c.id}">${c.emoji} ${c.nombre}</option>`).join('');
+    
+    if (selectBoleto) {
+        const currentBoletoVal = selectBoleto.value;
+        selectBoleto.innerHTML = optionsHTML;
+        if (currentBoletoVal && categorias.find(c => c.id === currentBoletoVal)) selectBoleto.value = currentBoletoVal;
+    }
+    
+    if (selectOnboardingBoleto) {
+        const currentBoletoVal = selectOnboardingBoleto.value;
+        selectOnboardingBoleto.innerHTML = optionsHTML;
+        if (currentBoletoVal && categorias.find(c => c.id === currentBoletoVal)) selectOnboardingBoleto.value = currentBoletoVal;
+    }
+}
+
+export function renderSelectCuentas(state) {
+    const select = document.getElementById('input-cuenta-origen');
+    if (!select) return;
+    const currentValue = select.value;
+    
+    select.innerHTML = state.cuentas.filter(c => c.tipo !== 'investment').map(c => 
+        `<option value="${c.id}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
+    ).join('');
+    
+    if (currentValue && state.cuentas.find(c => c.id === currentValue)) {
+        select.value = currentValue;
+    } else if (state.cuentas.length > 0) {
+        select.value = state.cuentas[0].id;
+    }
+}
+
+export function renderCuentasList(state) {
+    ['lista-cuentas', 'lista-onboarding-cuentas'].forEach(containerId => {
+        const ul = document.getElementById(containerId);
+        if(!ul) return;
+        ul.innerHTML = '';
+        state.cuentas.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'list-item-flex';
+            let typeLabel = t('accTypeCash');
+            let badgeClass = 'badge-cash';
+            
+            if (c.tipo === 'credit') {
+                typeLabel = `${t('accTypeCredit')} (Cierre: ${c.cierreTC})`;
+                badgeClass = 'badge-credit';
+            } else if (c.tipo === 'investment') {
+                typeLabel = t('accTypeInvestment');
+                badgeClass = 'badge-credit';
+            }
+            
+            li.innerHTML = `
+                <div class="info">
+                    <strong style="font-size: 1.1rem;">${escapeHTML(c.nombre)}</strong>
+                    <div><span class="badge-tipo ${badgeClass}">${typeLabel}</span></div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-eliminar-simple btn-eliminar-cuenta" data-id="${c.id}">🗑️</button>
+                </div>
+            `;
+            ul.appendChild(li);
+        });
+    });
+}
+
+export function renderBoletosList(state) {
+    ['lista-boletos', 'lista-onboarding-boletos'].forEach(containerId => {
+        const ul = document.getElementById(containerId);
+        if(!ul) return;
+        ul.innerHTML = '';
+        
+        const categorias = obtenerCategorias(state.categoriasCustom);
+        
+        state.boletos.forEach(b => {
+            const catInfo = categorias.find(c => c.id === b.categoria) || { emoji: '📍', nombre: b.categoria };
+            const li = document.createElement('li');
+            li.className = 'list-item-flex';
+            
+            li.innerHTML = `
+                <div class="info">
+                    <strong style="font-size: 1.1rem;">${escapeHTML(b.desc)}</strong>
+                    <div><span class="badge-tipo badge-credit" style="background: var(--bg-color); color: var(--text-color);">${catInfo.emoji} Dia ${b.diaVencimiento} - ${formatCurrency(b.monto, state.monedaActual)}</span></div>
+                </div>
+                <div class="actions">
+                    <button type="button" class="btn-eliminar-simple btn-eliminar-boleto" data-id="${b.id}">🗑️</button>
+                </div>
+            `;
+            ul.appendChild(li);
+        });
+    });
 }
 
 export function showToast(message) {
     const container = document.getElementById('toast-container');
     if (!container) return;
+    
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
+    
     container.appendChild(toast);
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, UI_CONFIG.TOAST_DURATION_MS);
 }
@@ -74,18 +171,22 @@ export function showToast(message) {
 export function animateValue(obj, endCents, duration, currency) {
     if (!obj) return;
     const startCents = parseInt(obj.dataset.rawVal || 0, 10);
+    
     if (startCents === endCents) {
         obj.innerText = formatCurrency(endCents, currency);
         obj.dataset.rawVal = endCents;
         return;
     }
+    
     let startTimestamp = null;
     const step = (timestamp) => {
         if (!startTimestamp) startTimestamp = timestamp;
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        const easeProgress = 1 - Math.pow(1 - progress, 4); 
+        const easeProgress = 1 - Math.pow(1 - progress, 4);
         const currentVal = Math.floor(startCents + (endCents - startCents) * easeProgress);
+        
         obj.innerText = formatCurrency(currentVal, currency);
+        
         if (progress < 1) {
             window.requestAnimationFrame(step);
         } else {
@@ -102,24 +203,26 @@ function updateHeaderDisplays(hoy, viewMonth, viewYear, localeStr) {
         const fechaFormateada = hoy.toLocaleDateString(localeStr, { weekday: 'short', day: 'numeric', month: 'short' });
         tituloLimite.innerText = `${t('limitToday')} - ${fechaFormateada}`;
     }
+    
     const displayMonthEl = document.getElementById('display-current-month');
     if (displayMonthEl) {
         displayMonthEl.innerText = new Date(viewYear, viewMonth, 1).toLocaleDateString(localeStr, { month: 'long', year: 'numeric' }).toUpperCase();
     }
 }
 
-function updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
-    const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
-    const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
-    const diasRestantes = (new Date(viewYear, viewMonth + 1, 0).getDate() - hoy.getDate()) + 1;
-    const presupuestoDiarioCents = Math.max(0, Math.floor(dineroRestanteCents / diasRestantes));
-
-    animateValue(document.getElementById('display-diario'), presupuestoDiarioCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    animateValue(document.getElementById('display-mensual'), dineroRestanteCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-    animateValue(document.getElementById('display-gastado'), totalGastadoMesCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
-
+function updateBalances(state, balances) {
+    animateValue(document.getElementById('display-diario'), balances.disponivelHojeCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    
+    const displayLimiteHoje = document.getElementById('display-limite-hoje');
+    if (displayLimiteHoje) {
+        animateValue(displayLimiteHoje, balances.tetoDoDiaCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    }
+    
+    animateValue(document.getElementById('display-mensual'), balances.liquidezLibreCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    animateValue(document.getElementById('display-gastado'), balances.totalGastadoMesCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    
     const elDiario = document.getElementById('display-diario');
-    if (dineroRestanteCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
+    if (balances.liquidezLibreCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
         if(elDiario) elDiario.style.color = "var(--danger-color)";
     } else {
         if(elDiario) elDiario.style.color = "var(--primary-color)";
@@ -139,16 +242,7 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
             barraFill.classList.remove('warning');
         }
     }
-
-    const paceSparkline = document.getElementById('pace-sparkline');
-    if (paceSparkline) {
-        const porcentajeTiempo = diaCalculo / diasEnElMes;
-        let porcentajePresupuesto = totalGastadoMesCents / state.presupuestoMensual;
-        if (!isFinite(porcentajePresupuesto)) porcentajePresupuesto = 0;
-        paceSparkline.style.width = `${porcentajeTiempo * 100}%`;
-        paceSparkline.className = (porcentajePresupuesto > porcentajeTiempo) ? 'pace-sparkline-fill bad' : 'pace-sparkline-fill good';
-    }
-
+    
     const zeroSpendBadge = document.getElementById('zero-spend-badge');
     if (zeroSpendBadge) {
         const diasConGasto = new Set(gastosMesActual.map(g => new Date(g.fecha).getDate()));
@@ -156,8 +250,8 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
         for (let d = 1; d <= diaCalculo; d++) if (!diasConGasto.has(d)) diasCero++;
         
         if (diasCero > 0) {
-            zeroSpendBadge.innerText = `🔥 ${diasCero} Días sem gastos`;
-            zeroSpendBadge.title = `${diasCero} Días sem gastos`;
+            zeroSpendBadge.innerText = `🔥 ${diasCero} Dias sem gastos`;
+            zeroSpendBadge.title = `${diasCero} Dias sem gastos`;
             zeroSpendBadge.classList.remove('oculto');
         } else {
             zeroSpendBadge.classList.add('oculto');
@@ -172,13 +266,14 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     if (gastosMesActual.length > 0) {
         const sumasPorCatCents = {};
         gastosMesActual.forEach(g => { sumasPorCatCents[g.categoria] = (sumasPorCatCents[g.categoria] || 0) + g.monto; });
+        
         const categoriasActuales = obtenerCategorias(state.categoriasCustom);
         const fragChart = document.createDocumentFragment();
         
         for (const catId in sumasPorCatCents) {
             if(catId === 'otros_previo') continue;
             const porcentaje = (sumasPorCatCents[catId] / totalGastadoMesCents) * 100;
-            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '🏷️', nombre: catId, color: 'var(--primary-color)' };
+            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📍', nombre: catId, color: 'var(--primary-color)' };
             
             const el = document.createElement('div');
             el.className = 'cat-bar-container';
@@ -208,7 +303,7 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
         }
         contGrafico.appendChild(fragChart);
     } else {
-        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚀</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
+        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">☕</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
     }
 }
 
@@ -217,28 +312,27 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     listaUI.innerHTML = '';
     
     if(gastosMesActual.length === 0) {
-        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">🚀</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
+        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">☕</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
         return;
     }
-
     const categoriasActuales = obtenerCategorias(state.categoriasCustom);
     const fragList = document.createDocumentFragment();
     
     for (let i = gastosMesActual.length - 1; i >= 0; i--) {
         const g = gastosMesActual[i];
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '🏷️', nombre: g.categoria };
+        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '📍', nombre: g.categoria };
         
         const li = document.createElement('li');
         li.className = 'swipe-item';
         
         if (Date.now() - g.id < 2000) {
             li.classList.add('new-item');
-        }        
+        }
+        
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
         
-        // Renderiza os botões se for o mês atual OU um mês futuro
         if (allowEdit) {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
@@ -249,13 +343,12 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.dataset.id = g.id;
-            deleteBtn.setAttribute('aria-label', 'Eliminar');
+            deleteBtn.setAttribute('aria-label', t('btnDeleteAria'));
             deleteBtn.textContent = '🗑️';
             
             swipeActions.appendChild(editBtn);
             swipeActions.appendChild(deleteBtn);
         }
-
         const swipeContent = document.createElement('div');
         swipeContent.className = 'swipe-content';
         
@@ -273,7 +366,13 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
         
         const expCat = document.createElement('span');
         expCat.className = 'expense-cat';
-        expCat.textContent = infoCat.nombre;
+        
+        let walletBadge = '';
+        if (g.cuentaId) {
+            const accountInfo = state.cuentas.find(c => c.id === g.cuentaId);
+            if (accountInfo) walletBadge = ` - ${accountInfo.nombre}`;
+        }
+        expCat.textContent = infoCat.nombre + walletBadge;
         
         const expDate = document.createElement('span');
         expDate.className = 'expense-date';
@@ -299,6 +398,82 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     listaUI.appendChild(fragList);
 }
 
+function drawSVGChart(dataPoints) {
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 400 160");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.classList.add("nw-svg");
+
+    if(dataPoints.length === 0) return svg;
+    if(dataPoints.length === 1) dataPoints = [ { date: dataPoints[0].date - 86400000, value: 0 }, dataPoints[0] ];
+
+    const minX = dataPoints[0].date;
+    const maxX = dataPoints[dataPoints.length - 1].date;
+    const minY = Math.min(...dataPoints.map(d => d.value));
+    const maxY = Math.max(...dataPoints.map(d => d.value));
+
+    const padY = (maxY - minY) * 0.1 || 1000;
+    const yMin = Math.max(0, minY - padY);
+    const yMax = maxY + padY;
+    
+    const xRange = maxX - minX || 1;
+    const yRange = yMax - yMin;
+
+    const getX = (date) => ((date - minX) / xRange) * 390 + 5;
+    const getY = (val) => 150 - (((val - yMin) / yRange) * 140);
+
+    let polylinePoints = "";
+    const frag = document.createDocumentFragment();
+
+    dataPoints.forEach((dp, index) => {
+        const x = getX(dp.date);
+        const y = getY(dp.value);
+        polylinePoints += `${x},${y} `;
+
+        const circle = document.createElementNS(svgNS, "circle");
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", "4");
+        circle.classList.add("nw-point");
+        if (index === dataPoints.length - 1) circle.classList.add("nw-point-newest");
+        frag.appendChild(circle);
+    });
+
+    const polyline = document.createElementNS(svgNS, "polyline");
+    polyline.setAttribute("points", polylinePoints.trim());
+    polyline.classList.add("nw-line");
+    
+    svg.appendChild(polyline);
+    svg.appendChild(frag);
+    return svg;
+}
+
+export function renderNetWorthSection(state) {
+    const nwData = calculateNetWorth(state);
+    const container = document.getElementById('nw-chart-container');
+    const select = document.getElementById('input-nw-cuenta');
+    if (!container || !select) return;
+
+    document.getElementById('nw-display-total').innerText = formatCurrency(nwData.totalCents, state.monedaActual);
+    
+    const varEl = document.getElementById('nw-display-variation');
+    const signal = nwData.variationCents >= 0 ? '+' : '';
+    varEl.innerText = `${signal}${formatCurrency(nwData.variationCents, state.monedaActual)} (${signal}${nwData.pct.toFixed(2)}%)`;
+    varEl.className = nwData.variationCents >= 0 ? 'fs-1-1 variation-positive' : 'fs-1-1 variation-negative';
+
+    container.innerHTML = '';
+    if (nwData.contasInvestimento.length === 0) {
+        container.innerHTML = `<div class="empty-state text-center mt-20"><p class="text-muted-small">${t('nwEmpty')}</p></div>`;
+    } else {
+        container.appendChild(drawSVGChart(nwData.history));
+    }
+
+    select.innerHTML = nwData.contasInvestimento.map(c => 
+        `<option value="${c.id}">${escapeHTML(c.nombre)} (Atual: ${formatCurrency(nwData.saldosAtuais[c.id] || 0, state.monedaActual)})</option>`
+    ).join('');
+}
+
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
@@ -313,7 +488,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         }
         return mes === viewMonth && ano === viewYear;
     });
-
+    
     const viewDate = new Date(viewYear, viewMonth, 1);
     const currentMonthDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     const isPastMonth = viewDate < currentMonthDate;
@@ -333,32 +508,36 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     if (btnNext) {
         btnNext.disabled = !(isPastMonth || temDadosFuturos);
     }
-
-    const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
+    
+    const balances = calculateBalances(state, gastosMesActual, viewMonth, viewYear, hoy);
+    const totalGastadoMesCents = balances.totalGastadoMesCents;
+    
     const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
-
+    
     updateHeaderDisplays(hoy, viewMonth, viewYear, localeStr);
-
+    renderSelectCuentas(state);
+    
     const areaRegistro = document.getElementById('area-registrar-gasto');
     const areaResumen = document.getElementById('resumen-mes-pasado');
-    const cardDiario = document.querySelector('.balance-card.highlight');
+    const dailyCards = document.querySelectorAll('.daily-card');
     const fabGasto = document.getElementById('btn-fab-gasto');
-
+    
     if (isCurrentMonth) {
         if(areaRegistro) areaRegistro.classList.remove('oculto');
         if(areaResumen) areaResumen.classList.add('oculto');
-        if(cardDiario) cardDiario.style.display = 'block';
+        dailyCards.forEach(c => c.style.display = 'block');
         if(fabGasto) fabGasto.classList.remove('oculto');
     } else {
         if(areaRegistro) areaRegistro.classList.add('oculto');
         if(areaResumen) areaResumen.classList.remove('oculto');
-        if(cardDiario) cardDiario.style.display = 'none';
+        dailyCards.forEach(c => c.style.display = 'none');
         if(fabGasto) fabGasto.classList.add('oculto');
-
+        
         if (areaResumen) {
             const perfEl = document.getElementById('summary-performance');
             const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
+            
             if (dineroRestanteCents >= 0) {
                 perfEl.innerText = `${t('summarySave')}${formatCurrency(dineroRestanteCents, state.monedaActual)}`;
                 perfEl.style.color = 'var(--success-color)';
@@ -366,18 +545,18 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 perfEl.innerText = `${t('summaryDeficit')}${formatCurrency(Math.abs(dineroRestanteCents), state.monedaActual)}`;
                 perfEl.style.color = 'var(--danger-color)';
             }
+            
             const largest = gastosMesActual.length > 0 ? Math.max(...gastosMesActual.map(g => g.monto)) : 0;
             document.getElementById('summary-largest').innerText = formatCurrency(largest, state.monedaActual);
             document.getElementById('summary-daily').innerText = formatCurrency(totalGastadoMesCents / diasEnElMes, state.monedaActual);
         }
     }
-
-    updateBalances(state, gastosMesActual, viewMonth, viewYear, hoy);
+    
+    updateBalances(state, balances);
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
-    
-    // Injeção modificada para permitir edição/exclusão de parcelas no futuro
     renderExpenseList(state, gastosMesActual, localeStr, !isPastMonth);
+    renderNetWorthSection(state);
 }
 
 export function resetFormularioGasto(setGastoCallback) {
@@ -388,11 +567,6 @@ export function resetFormularioGasto(setGastoCallback) {
         inputMonto.dataset.cents = '0';
     }
     document.getElementById('input-desc').value = '';
-    
-    const cb = document.getElementById('input-proximo-mes');
-    if (cb) {
-        cb.checked = new Date().getDate() > (state.cierreTC || 24);
-    }
     
     const selectCuotas = document.getElementById('select-cuotas');
     if (selectCuotas) {
@@ -405,7 +579,6 @@ export function resetFormularioGasto(setGastoCallback) {
         inputCuotas.value = '1';
         inputCuotas.classList.add('oculto');
     }
-
     const containerCuotas = document.getElementById('container-cuotas');
     if (containerCuotas) {
         containerCuotas.style.display = '';

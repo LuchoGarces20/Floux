@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light-dark">
     <title>Floux</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">    
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
     <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
     <link rel="apple-touch-icon" href="img/logo180.png">
     <link rel="stylesheet" href="css/style.css">
@@ -32,9 +32,13 @@
                     </div>
                 </div>
                 <hr class="divider-small">
-                <button id="btn-editar-presupuesto" class="btn-dropdown" aria-label="Editar Presupuesto">
-                    <span class="dropdown-icon">⚙️</span>
-                    <span data-i18n="menuAdjustBudget">Ajustar Presupuesto</span>
+                <button id="btn-menu-cuentas" class="btn-dropdown">
+                    <span class="dropdown-icon">💳</span>
+                    <span data-i18n="menuAccounts">Cuentas y Tarjetas</span>
+                </button>
+                <button id="btn-menu-boletos" class="btn-dropdown">
+                    <span class="dropdown-icon">📄</span>
+                    <span data-i18n="menuBills">Gastos Fijos</span>
                 </button>
                 <hr class="divider-small">
                 <button id="btn-exportar" class="btn-dropdown" aria-label="Exportar">
@@ -45,20 +49,76 @@
                     <span class="dropdown-icon">📥</span>
                     <span data-i18n="btnImport">Importar</span>
                 </button>
+                <hr class="divider-small">
+                <button id="btn-reiniciar" class="btn-dropdown text-danger" aria-label="Borrar App">
+                    <span class="dropdown-icon">🗑️</span>
+                    <span data-i18n="btnReset">Borrar App</span>
+                </button>
                 <input type="file" id="input-archivo" accept=".json" class="hidden-file">
             </div>
         </div>
     </div>
 
+    <!-- TELA DE CONTAS (WALLETS) -->
+    <section id="pantalla-cuentas" class="transicion-seccion oculto">
+        <div class="header-actions mb-15">
+            <button type="button" id="btn-cerrar-cuentas" class="btn-base btn-secundario btn-pequeno w-auto m-0">🔙</button>
+            <h3 data-i18n="accountsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Cuentas y Tarjetas</h3>
+        </div>
+        <form id="form-cuenta">
+            <div class="form-group">
+                <input type="text" id="input-cuenta-nombre" data-i18n-ph="accountNamePh" placeholder="Nombre (ej: Nubank)" required>
+            </div>
+            <div class="form-group">
+                <select id="input-cuenta-tipo">
+                    <option value="cash" data-i18n="accTypeCash">Débito / Efectivo</option>
+                    <option value="credit" data-i18n="accTypeCredit">Tarjeta de Crédito</option>
+                    <option value="investment" data-i18n="accTypeInvestment">Inversión / Patrimonio</option>
+                </select>
+            </div>
+            <div class="form-group oculto" id="group-cuenta-cierre">
+                <label data-i18n="ccClosingLabel">Día de Cierre de Tarjeta (TC)</label>
+                <input type="number" id="input-cuenta-cierre" min="1" max="31" placeholder="Ej: 24">
+            </div>
+            <button type="submit" class="btn-principal mb-10" data-i18n="btnAddAccount">Agregar Cuenta</button>
+        </form>
+        <ul class="log mt-20" id="lista-cuentas"></ul>
+    </section>
+
+    <!-- TELA DE BOLETOS -->
+    <section id="pantalla-boletos" class="transicion-seccion oculto">
+        <div class="header-actions mb-15">
+            <button type="button" id="btn-cerrar-boletos" class="btn-base btn-secundario btn-pequeno w-auto m-0">🔙</button>
+            <h3 data-i18n="billsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Boletos y Gastos Fijos</h3>
+        </div>
+        <p data-i18n="billsExplanation" class="text-muted-small text-center mb-15">Registra tus gastos fijos. Floux los restará automáticamente de tu liquidez antes de calcular tu límite diario.</p>
+        <form id="form-boleto">
+            <div class="form-group">
+                <input type="text" id="input-boleto-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción (ej: Alquiler)" required>
+            </div>
+            <div class="form-group">
+                <input type="text" id="input-boleto-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="decimal" data-cents="0">
+            </div>
+            <div class="form-group">
+                <label data-i18n="dueDateLabel">Día de Vencimiento en el mes (1-31)</label>
+                <input type="number" id="input-boleto-dia" min="1" max="31" required inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label data-i18n="selectCategory">Categoría</label>
+                <select id="input-boleto-categoria" required></select>
+            </div>
+            <button type="submit" class="btn-principal mb-10" data-i18n="btnAddBill">Agregar Gasto Fijo</button>
+        </form>
+        <ul class="log mt-20" id="lista-boletos"></ul>
+    </section>
+
+    <!-- TELA DE SIMULADOR (FLOUXVISION) -->
     <section id="pantalla-simulador" class="transicion-seccion oculto">
         <div class="text-center mb-24">
-            <div class="emoji-large">📉</div>
+            <div class="emoji-large">👁️</div>
             <h3 data-i18n="flouxVisionTitle">FlouxVision - Pérdida Invisible</h3>
-            <p data-i18n="lsimExplanation" class="text-muted-small">
-                El costo de oportunidad es el dinero que dejas de ganar al elegir gastar en lugar de invertir. Calcula el valor real a futuro de esa compra.
-            </p>
+            <p data-i18n="lsimExplanation" class="text-muted-small">El costo de oportunidad es el dinero que dejas de ganar al elegir gastar en lugar de invertir. Calcula el valor real a futuro de esa compra.</p>
         </div>
-        
         <div class="form-group">
             <label data-i18n="lsimAmount">Costo Inicial de la Compra</label>
             <input type="number" id="input-lsim-monto" placeholder="0.00" inputmode="decimal" class="input-destacado">
@@ -79,7 +139,6 @@
             <input type="range" id="slider-lsim-tasa" min="1" max="20" step="0.5" value="8" class="input-slider">
             <div data-i18n="lsimHelpRate" class="lsim-helper">Retorno promedio del mercado (ej. S&P 500 = 8-10%)</div>
         </div>
-        
         <div class="lsim-resultado-card">
             <div class="lsim-bar-row">
                 <span class="lsim-bar-label" data-i18n="lsimCostLabel">Gasto Hoy:</span>
@@ -91,164 +150,257 @@
                 <div class="lsim-bar-track"><div class="lsim-bar-fill future" id="lsim-bar-future"></div></div>
                 <span class="lsim-bar-val highlight" id="display-lsim-resultado">0.00</span>
             </div>
-            
             <div class="lsim-summary-loss">
                 <span data-i18n="lsimTotalLoss">Estás perdiendo </span>
                 <strong id="lsim-val-diff">0.00</strong>
                 <span data-i18n="lsimTotalLossEnd"> en ganancias potenciales.</span>
             </div>
         </div>
-        
         <button id="btn-cerrar-simulador" class="btn-base btn-secundario mt-20" data-i18n="btnClose">Cerrar</button>
     </section>
 
-    <section id="pantalla-configuracion" class="transicion-seccion">
-        <div class="form-group">
-            <label data-i18n="currencyLabel">Moneda</label>
-            <select id="input-moneda">
-                <option value="BRL">BRL (R$)</option>
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="MXN">MXN ($)</option>
-                <option value="COP">COP ($)</option>
-            </select>
+    <!-- TELA DE PATRIMÔNIO (NET WORTH) -->
+    <section id="pantalla-patrimonio" class="transicion-seccion oculto">
+        <div class="text-center mb-24">
+            <div class="emoji-large">📈</div>
+            <h3 data-i18n="nwTitle">Evolución del Patrimonio</h3>
+            <p data-i18n="nwExplanation" class="text-muted-small">Rastrea el crecimiento de tus inversiones a lo largo del tiempo.</p>
         </div>
-        <div class="form-group">
-            <label data-i18n="ccClosingLabel">Día de Cierre de Tarjeta (TC)</label>
-            <input type="number" id="input-cierre-tc" min="1" max="31" value="24" inputmode="numeric">
+
+        <div id="nw-dashboard" class="summary-card mb-24">
+            <div class="nw-header flex-between mb-15">
+                <div>
+                    <span class="text-muted-small d-block" data-i18n="nwTotalLabel">Patrimonio Total</span>
+                    <strong id="nw-display-total" class="fs-1-1">0.00</strong>
+                </div>
+                <div class="text-right">
+                    <span class="text-muted-small d-block" data-i18n="nwVarLabel">Variación</span>
+                    <strong id="nw-display-variation" class="fs-1-1">0.00 (0%)</strong>
+                </div>
+            </div>
+            <div id="nw-chart-container" class="nw-chart-wrapper"></div>
         </div>
-        <div class="onboarding-tabs">
-            <button id="tab-directo" class="tab-btn active" data-i18n="tabDirect">Ya sé mi presupuesto</button>
-            <button id="tab-calc" class="tab-btn" data-i18n="tabCalc">Ayúdame a calcular</button>
-        </div>
-        <div id="modo-directo" class="transicion-seccion">
+
+        <h4 data-i18n="nwUpdateFormTitle">Actualizar Inversión</h4>
+        <form id="form-patrimonio">
             <div class="form-group">
-                <label data-i18n="budgetLabel">Presupuesto Total para el Mes</label>
-                <input type="number" id="input-presupuesto" data-i18n-ph="budgetPlaceholder" placeholder="Ej: 2000" inputmode="decimal">
+                <label data-i18n="nwSelectAcc">Activo / Cuenta</label>
+                <select id="input-nw-cuenta" required></select>
             </div>
-        </div>
-
-        <div id="modo-calculadora" class="transicion-seccion oculto">
             <div class="form-group">
-                <label data-i18n="incomeLabel">Renta Mensual Total</label>
-                <input type="number" id="input-ingresos" placeholder="Ej: 5000" inputmode="decimal" class="input-calc">
+                <input type="text" id="input-nw-monto" data-i18n-ph="nwAmountPh" placeholder="Nuevo Saldo (Total)" required inputmode="decimal" data-cents="0">
             </div>
-            
-            <div class="form-group">
-                <label data-i18n="fixedPixLabel">Renta comprometida (PIX/Boleto)</label>
-                <input type="number" id="input-fijos" placeholder="Ej: 1500" inputmode="decimal" class="input-calc">
-            </div>
-
-            <details class="mb-15">
-                <summary class="summary-interactive" data-i18n="adjustPercentages">Ajustar porcentajes recomendados</summary>                
-                <div class="form-group">
-                    <label data-i18n="pctLongTerm">Inversión Largo Plazo (%) - Rec: 20%</label>
-                    <input type="number" id="input-pct-largo" value="20" inputmode="decimal" class="input-calc">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="pctShortTerm">Inversión Corto Plazo (%) - Rec: 10%</label>
-                    <input type="number" id="input-pct-corto" value="10" inputmode="decimal" class="input-calc">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="pctEdu">Educación (%) - Rec: 5%</label>
-                    <input type="number" id="input-pct-edu" value="5" inputmode="decimal" class="input-calc">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="pctSurvival">Supervivencia (%) - Rec: 55%</label>
-                    <input type="number" id="input-pct-viver" value="55" inputmode="decimal" class="input-calc">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="pctFree">Gastos Libres (%) - Rec: 10%</label>
-                    <input type="number" id="input-pct-livre" value="10" inputmode="decimal" class="input-calc">
-                </div>
-            </details>
-
-            <div class="calc-result">
-                <span data-i18n="calcResult">Valor seguro para gastar:</span>
-                <strong id="display-calculado">0.00</strong>
-            </div>
-        </div>
-
-        <div class="form-group transicion-seccion oculto" id="area-gastos-previos">
-            <label data-i18n="spentLabel">¿Ya gastaste algo este mes?</label>
-            <input type="number" id="input-gastos-iniciales" value="0" inputmode="decimal">
-        </div>
-        <button id="btn-comenzar" class="btn-principal" data-i18n="btnStart">Guardar y Continuar</button>
+            <button type="submit" class="btn-principal mb-10" data-i18n="btnSave">Guardar</button>
+        </form>
+        <button id="btn-cerrar-patrimonio" class="btn-base btn-secundario mt-20" data-i18n="btnClose">Cerrar</button>
     </section>
 
+    <!-- TELA DE CONFIGURAÇÃO / ONBOARDING WIZARD -->
+    <section id="pantalla-configuracion" class="transicion-seccion">
+        <div class="wizard-header">
+            <div class="wizard-step-indicator active" id="wizard-ind-1">1</div>
+            <div class="wizard-step-line"></div>
+            <div class="wizard-step-indicator" id="wizard-ind-2">2</div>
+            <div class="wizard-step-line"></div>
+            <div class="wizard-step-indicator" id="wizard-ind-3">3</div>
+        </div>
+        <div id="wizard-step-1" class="transicion-seccion">
+            <h3 data-i18n="wizardStep1Title" class="text-center mb-15">Moneda y Presupuesto</h3>
+            <div class="form-group">
+                <label data-i18n="currencyLabel">Moneda</label>
+                <select id="input-moneda">
+                    <option value="BRL">BRL (R$)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="MXN">MXN ($)</option>
+                    <option value="COP">COP ($)</option>
+                </select>
+            </div>
+            <div class="onboarding-tabs">
+                <button id="tab-directo" class="tab-btn active" data-i18n="tabDirect">Ya sé mi presupuesto</button>
+                <button id="tab-calc" class="tab-btn" data-i18n="tabCalc">Ayúdame a calcular</button>
+            </div>
+            <div id="modo-directo" class="transicion-seccion">
+                <div class="form-group">
+                    <label data-i18n="budgetLabel">Presupuesto Total Libre al Mes</label>
+                    <input type="number" id="input-presupuesto" data-i18n-ph="budgetPlaceholder" placeholder="Ej: 2000" inputmode="decimal">
+                </div>
+            </div>
+            <div id="modo-calculadora" class="transicion-seccion oculto">
+                <div class="form-group">
+                    <label data-i18n="incomeLabel">Renta Mensual Total</label>
+                    <input type="number" id="input-ingresos" placeholder="Ej: 5000" inputmode="decimal" class="input-calc">
+                </div>
+                <div class="onboarding-embedded-section mb-15">
+                    <h4 data-i18n="billsTitle" class="m-0 mb-10 text-color-inherit">Boletos y Gastos Fijos</h4>
+                    <p data-i18n="billsExplanationShort" class="text-muted-small mb-10">Ingresa tus cuentas (Ej: Alquiler, Luz).</p>
+                    <form id="form-onboarding-boleto" class="mb-10">
+                        <div class="flex-between gap-10 mb-5">
+                            <input type="text" id="input-onboarding-boleto-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción" required style="flex:2;">
+                            <input type="text" id="input-onboarding-boleto-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="decimal" data-cents="0" style="flex:1;">
+                        </div>
+                        <div class="flex-between gap-10 mb-5">
+                            <input type="number" id="input-onboarding-boleto-dia" min="1" max="31" placeholder="Día" required inputmode="numeric" style="flex:1;">
+                            <select id="input-onboarding-boleto-categoria" required style="flex:2;"></select>
+                        </div>
+                        <button type="submit" class="btn-base btn-secundario btn-pequeno m-0" data-i18n="btnAddBill">Agregar Gasto Fijo</button>
+                    </form>
+                    <ul class="log" id="lista-onboarding-boletos"></ul>
+                </div>
+                <details class="mb-15">
+                    <summary class="summary-interactive" data-i18n="adjustPercentages">Ajustar porcentajes recomendados</summary>
+                    <div class="form-group">
+                        <label data-i18n="pctLongTerm">Inversión Largo Plazo (%) - Rec: 20%</label>
+                        <input type="number" id="input-pct-largo" value="20" inputmode="decimal" class="input-calc">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pctShortTerm">Inversión Corto Plazo (%) - Rec: 10%</label>
+                        <input type="number" id="input-pct-corto" value="10" inputmode="decimal" class="input-calc">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pctEdu">Educación (%) - Rec: 5%</label>
+                        <input type="number" id="input-pct-edu" value="5" inputmode="decimal" class="input-calc">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pctSurvival">Supervivencia (%) - Rec: 55%</label>
+                        <input type="number" id="input-pct-viver" value="55" inputmode="decimal" class="input-calc">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="pctFree">Gastos Libres (%) - Rec: 10%</label>
+                        <input type="number" id="input-pct-livre" value="10" inputmode="decimal" class="input-calc">
+                    </div>
+                </details>
+                <div class="calc-result">
+                    <div class="flex-between text-muted-small mb-5">
+                        <span data-i18n="netSurvival">Supervivencia Líquida:</span>
+                        <span id="display-net-survival">0.00</span>
+                    </div>
+                    <div class="flex-between text-muted-small mb-10">
+                        <span data-i18n="freeSpending">Teto Gastos Libres:</span>
+                        <span id="display-free-spending">0.00</span>
+                    </div>
+                    <span data-i18n="calcResult">Valor seguro para gastar:</span>
+                    <strong id="display-calculado">0.00</strong>
+                </div>
+            </div>
+            <button id="btn-wizard-next-1" class="btn-principal" data-i18n="wizardNextAccounts">Siguiente: Cuentas ➡️</button>
+        </div>
+        <div id="wizard-step-2" class="transicion-seccion oculto">
+            <h3 data-i18n="wizardStep2Title" class="text-center mb-15">Cuentas y Tarjetas</h3>
+            <p data-i18n="wizardStep2Desc" class="text-muted-small text-center mb-15">Agrega tus cuentas corrientes o tarjetas de crédito para organizar tus pagos.</p>
+            <div class="onboarding-embedded-section mb-15">
+                <form id="form-onboarding-cuenta" class="mb-10">
+                    <div class="form-group mb-8">
+                        <input type="text" id="input-onboarding-cuenta-nombre" data-i18n-ph="accountNamePh" placeholder="Nombre (ej: Nubank)" required>
+                    </div>
+                    <div class="form-group mb-8">
+                        <select id="input-onboarding-cuenta-tipo">
+                            <option value="cash" data-i18n="accTypeCash">Débito / Efectivo</option>
+                            <option value="credit" data-i18n="accTypeCredit">Tarjeta de Crédito</option>
+                            <option value="investment" data-i18n="accTypeInvestment">Inversión / Patrimonio</option>
+                        </select>
+                    </div>
+                    <div class="form-group oculto mb-8" id="group-onboarding-cuenta-cierre">
+                        <input type="number" id="input-onboarding-cuenta-cierre" min="1" max="31" data-i18n-ph="ccClosingPh" placeholder="Día Cierre (ej: 24)">
+                    </div>
+                    <button type="submit" class="btn-base btn-secundario btn-pequeno m-0" data-i18n="btnAddAccount">Agregar Cuenta</button>
+                </form>
+                <ul class="log" id="lista-onboarding-cuentas"></ul>
+            </div>
+            <div class="wizard-actions">
+                <button id="btn-wizard-back-1" class="btn-base btn-secundario" data-i18n="wizardBack">⬅️ Volver</button>
+                <button id="btn-wizard-next-2" class="btn-principal" data-i18n="wizardNextFinal">Siguiente ➡️</button>
+            </div>
+        </div>
+        <div id="wizard-step-3" class="transicion-seccion oculto">
+            <h3 data-i18n="wizardStep3Title" class="text-center mb-15">Ajustes Finales</h3>
+            <div class="form-group" id="area-gastos-previos">
+                <label data-i18n="spentLabel">¿Ya gastaste algo este mes?</label>
+                <input type="number" id="input-gastos-iniciales" value="0" inputmode="decimal">
+            </div>
+            <div class="wizard-actions">
+                <button id="btn-wizard-back-2" class="btn-base btn-secundario" data-i18n="wizardBack">⬅️ Volver</button>
+                <button id="btn-comenzar" class="btn-principal" data-i18n="wizardFinish">Concluir 🚀</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELA PRINCIPAL (DASHBOARD) -->
     <section id="pantalla-principal" class="transicion-seccion oculto">
         <div class="month-navigation flex-between-center mb-15">
-            <button id="btn-prev-month" class="btn-base btn-secundario btn-pequeno w-auto m-0">◀</button>
+            <button id="btn-prev-month" class="btn-base btn-secundario btn-pequeno w-auto m-0" aria-label="Mes anterior">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
             <div class="flex-col-center gap-4">
                 <h3 id="display-current-month" class="m-0 text-color-inherit fs-1-1">Mes</h3>
                 <span id="zero-spend-badge" class="zero-spend-badge oculto"></span>
             </div>
-            <button id="btn-next-month" class="btn-base btn-secundario btn-pequeno w-auto m-0" disabled>▶</button>
+            <button id="btn-next-month" class="btn-base btn-secundario btn-pequeno w-auto m-0" disabled aria-label="Próximo mes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
         </div>
-        
-<div class="grid-balances">
-            <div class="balance-card highlight">
+
+        <div class="grid-balances">
+            <div class="balance-card highlight daily-card" style="grid-column: span 2;">
                 <span class="b-title" id="titulo-disponivel-hoje">Disponível Hoje</span>
                 <span class="b-amount" id="display-diario">0.00</span>
             </div>
-            
+            <div class="balance-card daily-card">
+                <span class="b-title" id="titulo-limite-hoy" data-i18n="limitToday">Teto do Dia</span>
+                <span class="b-amount" id="display-limite-hoje">0.00</span>
+            </div>
             <div class="balance-card">
-                <span class="b-title" data-i18n="remainsMonth">Restante</span>
+                <span class="b-title" data-i18n="remainsMonth">Liquidez</span>
                 <span class="b-amount" id="display-mensual">0.00</span>
                 <div class="custom-progress">
                     <div class="custom-progress-fill" id="progreso-mensual-fill"></div>
                 </div>
-            </div>
-            <div class="balance-card">
-                <span class="b-title" id="titulo-limite-hoy" data-i18n="limitToday">Tu límite de hoy</span>
-                <span class="b-amount" id="display-gastado">0.00</span>
+                <div class="spent-inline">
+                    <span data-i18n="spentMonth">Gasto:</span>
+                    <span id="display-gastado">0.00</span>
+                </div>
             </div>
         </div>
-
         <hr class="divider">
-
+        
         <div id="area-registrar-gasto" class="transicion-seccion">
             <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="form-group">
-                    <input type="text" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="numeric" data-cents="0">
+                    <input type="text" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="decimal" data-cents="0">
                 </div>
                 <div class="form-group">
                     <input type="text" id="input-desc" data-i18n-ph="descPlaceholder" placeholder="Descripción" required>
                 </div>
-                
                 <div class="form-group">
                     <span class="field-label" data-i18n="selectCategory"></span>
                     <input type="hidden" id="input-categoria">
                     <div id="categoria-chips" class="chips-container"></div>
                 </div>
-
-                <div class="form-group switch-group">
-                    <label class="switch">
-                        <input type="checkbox" id="input-proximo-mes">
-                        <span class="slider"></span>
-                    </label>
-                    <label for="input-proximo-mes" data-i18n="applyNextMonth" class="switch-label">Cargar al próximo mes (Cierre TC)</label>
+                <div class="form-group">
+                    <label data-i18n="selectAccountLabel">Cuenta / Origen</label>
+                    <select id="input-cuenta-origen"></select>
                 </div>
-
                 <div class="form-group" id="container-cuotas">
-    <label for="select-cuotas" data-i18n="installmentsLabel">Cuotas / Parcelas</label>
-    <select id="select-cuotas">
-        <option value="1" data-i18n="installments_1">1x (À vista)</option>
-        <option value="2">2x</option>
-        <option value="3">3x</option>
-        <option value="4">4x</option>
-        <option value="5">5x</option>
-        <option value="6">6x</option>
-        <option value="9">9x</option>
-        <option value="12">12x</option>
-        <option value="custom" data-i18n="installments_custom">Outro...</option>
-    </select>
-    <input type="number" id="input-cuotas" min="1" value="1" class="oculto" style="margin-top: 8px;" placeholder="Ej: 18">
-</div>
-                
+                    <label for="select-cuotas" data-i18n="installmentsLabel">Cuotas / Parcelas</label>
+                    <select id="select-cuotas">
+                        <option value="1" data-i18n="installments_1">1x (A vista)</option>
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="4">4x</option>
+                        <option value="5">5x</option>
+                        <option value="6">6x</option>
+                        <option value="9">9x</option>
+                        <option value="12">12x</option>
+                        <option value="custom" data-i18n="installments_custom">Outro...</option>
+                    </select>
+                    <input type="number" id="input-cuotas" min="1" value="1" class="oculto" style="margin-top: 8px;" placeholder="Ej: 18">
+                </div>
                 <button type="submit" id="btn-guardar-gasto" class="btn-principal mb-10">Agregar</button>
-
                 <button type="button" id="btn-toggle-nueva-cat" class="btn-base btn-secundario btn-pequeno">➕ <span data-i18n="newCategory">Nueva Categoría</span></button>
                 <div id="area-nueva-categoria" class="nueva-cat-container transicion-seccion oculto">
                     <input type="text" id="input-nueva-cat-nombre" data-i18n-ph="catNamePlaceholder" placeholder="Nombre (ej: Gimnasio)" class="mb-5">
@@ -256,9 +408,9 @@
                     <button type="button" id="btn-guardar-nueva-cat" class="btn-principal mb-0 p-0-5" data-i18n="btnSave">Guardar</button>
                 </div>
             </form>
-            <hr class="divider">
         </div>
-
+        <hr class="divider">
+        
         <div id="resumen-mes-pasado" class="summary-card transicion-seccion oculto">
             <h4 data-i18n="summaryTitle">Resumen del Mes</h4>
             <div class="summary-row">
@@ -274,14 +426,17 @@
                 <span class="summary-value" id="summary-daily"></span>
             </div>
         </div>
-
         <h3 data-i18n="analysisTitle">Análisis del Mes</h3>
         <div class="cat-breakdown" id="grafico-categorias"></div>
         <h3 data-i18n="expensesMonth">Historial</h3>
         <ul class="log" id="lista-historial"></ul>
-        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">🔮 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
         
-        <button id="btn-reiniciar" class="btn-base btn-danger-outline" data-i18n="btnReset">Borrar App</button>
+        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">👁️ <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
+        <button id="btn-abrir-patrimonio" class="btn-base btn-secundario btn-lsim mt-10">📈 <span data-i18n="nwTitle">Evolución del Patrimonio</span></button>
+        
+        <button id="btn-editar-presupuesto" class="btn-base btn-secundario btn-lsim mt-20" aria-label="Editar Presupuesto">
+            ✏️ <span data-i18n="menuAdjustBudget">Ajustar Presupuesto</span>
+        </button>
     </section>
     
     <div id="toast-container" class="toast-container"></div>
@@ -291,6 +446,7 @@
             <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
     </button>
+</main>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

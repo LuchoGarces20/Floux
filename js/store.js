@@ -6,17 +6,34 @@ export const STORAGE_KEYS = {
     MES_GUARDADO: 'floux_mes_guardado',
     LANG: 'floux_lang',
     PRIVACY: 'floux_privacy',
-    CIERRE_TC: 'floux_cierre_tc'
+    CIERRE_TC: 'floux_cierre_tc',
+    CUENTAS: 'floux_cuentas_v1',
+    BOLETOS: 'floux_boletos_v1',
+    PATRIMONIO: 'floux_patrimonio_v1'
 };
 
-export const state = {
+const rawState = {
     presupuestoMensual: 0,
     historialGlobal: [],
     monedaActual: 'BRL',
     categoriasCustom: [],
     privacyMode: false,
-    cierreTC: 24
+    cierreTC: 24,
+    cuentas: [],
+    boletos: [],
+    historialPatrimonio: []
 };
+
+const listeners = new Set();
+export const subscribe = (fn) => listeners.add(fn);
+
+export const state = new Proxy(rawState, {
+    set(target, property, value) {
+        target[property] = value;
+        listeners.forEach(fn => fn(property, value));
+        return true;
+    }
+});
 
 const DB_NAME = 'FlouxDB';
 const STORE_NAME = 'floux_store';
@@ -48,41 +65,41 @@ async function dbPut(key, value) {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const req = tx.objectStore(STORE_NAME).put(value, key);
         req.onsuccess = () => resolve();
-        req.onerror = (e) => {
-            if (e.target.error && e.target.error.name === 'QuotaExceededError') {
-                console.error('[Storage] QuotaExceededError: Local capacity reached.');
-            }
-            reject(e.target.error);
-        };
+        req.onerror = (e) => reject(e.target.error);
     });
 }
 
 export async function loadStore() {
-    if (navigator.storage && navigator.storage.persist) {
-        await navigator.storage.persist();
-    }
-
-    if (localStorage.getItem(STORAGE_KEYS.PRESUPUESTO) !== null) {
-        await migrateFromLocalStorage();
-    }
-
+    if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
+    if (localStorage.getItem(STORAGE_KEYS.PRESUPUESTO) !== null) await migrateFromLocalStorage();
+    
     const priv = await dbGet(STORAGE_KEYS.PRIVACY);
     const m = await dbGet(STORAGE_KEYS.MONEDA);
     const c = await dbGet(STORAGE_KEYS.CATEGORIAS);
     const p = await dbGet(STORAGE_KEYS.PRESUPUESTO);
     const h = await dbGet(STORAGE_KEYS.HISTORIAL);
     const cierre = await dbGet(STORAGE_KEYS.CIERRE_TC);
+    const cuentas = await dbGet(STORAGE_KEYS.CUENTAS);
+    const boletos = await dbGet(STORAGE_KEYS.BOLETOS);
+    const pat = await dbGet(STORAGE_KEYS.PATRIMONIO);
 
-    if (priv === true) state.privacyMode = true;
-    if (m) state.monedaActual = m;
-    if (c) state.categoriasCustom = c;
-    if (cierre !== undefined) state.cierreTC = cierre;
+    if (priv === true) rawState.privacyMode = true;
+    if (m) rawState.monedaActual = m;
+    if (c) rawState.categoriasCustom = c;
+    if (cierre !== undefined) rawState.cierreTC = cierre;
+    
+    if (cuentas && cuentas.length > 0) {
+        rawState.cuentas = cuentas;
+    } else {
+        rawState.cuentas = [{ id: 'acc_default', nombre: 'Conta Principal', tipo: 'cash', cierreTC: null }];
+    }
+    
+    if (boletos) rawState.boletos = boletos;
+    if (pat) rawState.historialPatrimonio = pat;
 
     if (p !== undefined) {
-        state.presupuestoMensual = p;
-        if (isValidoHistorialSchema(h)) {
-            state.historialGlobal = h;
-        }
+        rawState.presupuestoMensual = p;
+        if (isValidoHistorialSchema(h)) rawState.historialGlobal = h;
         return true; 
     }
     return false;
@@ -95,6 +112,9 @@ export async function saveStore() {
     await dbPut(STORAGE_KEYS.CATEGORIAS, state.categoriasCustom);
     await dbPut(STORAGE_KEYS.PRIVACY, state.privacyMode);
     await dbPut(STORAGE_KEYS.CIERRE_TC, state.cierreTC);
+    await dbPut(STORAGE_KEYS.CUENTAS, state.cuentas);
+    await dbPut(STORAGE_KEYS.BOLETOS, state.boletos);
+    await dbPut(STORAGE_KEYS.PATRIMONIO, state.historialPatrimonio);
 }
 
 async function migrateFromLocalStorage() {
@@ -103,10 +123,8 @@ async function migrateFromLocalStorage() {
     await dbPut(STORAGE_KEYS.MONEDA, localStorage.getItem(STORAGE_KEYS.MONEDA));
     await dbPut(STORAGE_KEYS.CATEGORIAS, JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIAS) || '[]'));
     await dbPut(STORAGE_KEYS.PRIVACY, localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
-    
     const cierreLocal = localStorage.getItem(STORAGE_KEYS.CIERRE_TC);
     await dbPut(STORAGE_KEYS.CIERRE_TC, cierreLocal !== null ? parseInt(cierreLocal, 10) : 24);
-    
     Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
 }
 
@@ -114,30 +132,20 @@ export function isValidoHistorialSchema(data) {
     if (!Array.isArray(data)) return false;
     return data.every(item => 
         typeof item === 'object' && item !== null &&
-        typeof item.id === 'number' &&
-        typeof item.monto === 'number' &&
-        typeof item.desc === 'string' &&
-        typeof item.fecha === 'string' &&
-        typeof item.categoria === 'string' &&
-        (item.mesEfectivo === undefined || typeof item.mesEfectivo === 'string')
+        typeof item.id === 'number' && typeof item.monto === 'number' &&
+        typeof item.desc === 'string' && typeof item.fecha === 'string' &&
+        typeof item.categoria === 'string'
     );
 }
 
-export function addExpense(expense) {
-    state.historialGlobal.push(expense);
-}
-
+export function addExpense(expense) { state.historialGlobal = [...state.historialGlobal, expense]; }
+export function addMultipleExpenses(expensesArray) { state.historialGlobal = [...state.historialGlobal, ...expensesArray]; }
 export function updateExpense(id, updatedData) {
-    const index = state.historialGlobal.findIndex(g => g.id === id);
-    if (index !== -1) {
-        state.historialGlobal[index] = { ...state.historialGlobal[index], ...updatedData };
-    }
+    state.historialGlobal = state.historialGlobal.map(g => g.id === id ? { ...g, ...updatedData } : g);
 }
+export function removeExpense(id) { state.historialGlobal = state.historialGlobal.filter(g => g.id !== id); }
+export function replaceHistory(newHistory) { state.historialGlobal = newHistory; }
 
-export function removeExpense(id) {
-    state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
-}
-
-export function replaceHistory(newHistory) {
-    state.historialGlobal = newHistory;
+export function addRegistroPatrimonio(registro) {
+    state.historialPatrimonio = [...state.historialPatrimonio, registro];
 }

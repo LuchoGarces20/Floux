@@ -1,4 +1,4 @@
-const CACHE_NAME = 'floux-cache-v1.00';
+const CACHE_NAME = 'floux-cache-v1.00'; 
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -7,6 +7,8 @@ const ASSETS_TO_CACHE = [
     './js/main.js',
     './js/store.js',
     './js/ui.js',
+    './js/financeEngine.js',
+    './js/flouxVision.js', // <- Nosso novo módulo aqui!
     './js/i18n.js',
     './js/categories.js',
     './js/swipeHandler.js',
