@@ -1,7 +1,8 @@
 import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe, addRegistroPatrimonio } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
-import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, renderNetWorthSection } from './ui.js';
+import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
+import { initFlouxVault } from './flouxVault.js'; // <- IMPORT DO FLOUXVAULT AQUI
 import { initSwipeActions } from './swipeHandler.js';
 
 const INTERACTION_CONFIG = {
@@ -14,15 +15,17 @@ const INTERACTION_CONFIG = {
 
 let gastoEnEdicion = null;
 const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
+
 const hoy = new Date();
 const mesActual = hoy.getMonth();
 const anoActual = hoy.getFullYear();
+
 let viewMonth = mesActual;
 let viewYear = anoActual;
 let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
-let saveTimeout;
 
+let saveTimeout;
 subscribe((property, value) => {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(async () => {
@@ -57,9 +60,9 @@ const displayNetSurvival = document.getElementById('display-net-survival');
 const displayFreeSpending = document.getElementById('display-free-spending');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+
 const selectCuotas = document.getElementById('select-cuotas');
 const inputCuotas = document.getElementById('input-cuotas');
-
 if (selectCuotas && inputCuotas) {
     selectCuotas.addEventListener('change', (e) => {
         if (e.target.value === 'custom') {
@@ -94,7 +97,7 @@ function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
     if (state.privacyMode) {
         document.body.classList.add('privacy-mode');
-        btnPrivacidade.innerText = '🔒';
+        btnPrivacidade.innerText = '🙈';
     } else {
         document.body.classList.remove('privacy-mode');
         btnPrivacidade.innerText = '👁️';
@@ -377,7 +380,6 @@ function formatInputCents(e) {
 document.getElementById('input-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-boleto-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-onboarding-boleto-monto').addEventListener('input', formatInputCents);
-
 const inputNwMonto = document.getElementById('input-nw-monto');
 if (inputNwMonto) inputNwMonto.addEventListener('input', formatInputCents);
 
@@ -499,6 +501,10 @@ document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () =>
 
 document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
+    
+    // CORREÇÃO: Adiciona a tela no histórico para o botão 'Voltar' do celular funcionar
+    history.pushState({ view: 'cuentas' }, ''); 
+    
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
         document.getElementById('pantalla-cuentas').classList.remove('oculto');
@@ -506,7 +512,11 @@ document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     renderCuentasList(state);
 });
 
-document.getElementById('btn-cerrar-cuentas').addEventListener('click', mostrarPantallaPrincipal);
+const btnCerrarCuentas = document.getElementById('btn-cerrar-cuentas');
+if (btnCerrarCuentas) {
+    btnCerrarCuentas.addEventListener('click', mostrarPantallaPrincipal);
+}
+
 
 document.getElementById('input-cuenta-tipo').addEventListener('change', (e) => {
     const groupCierre = document.getElementById('group-cuenta-cierre');
@@ -550,6 +560,10 @@ document.addEventListener('click', (e) => {
 
 document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
+    
+    // CORREÇÃO: Adiciona a tela no histórico
+    history.pushState({ view: 'boletos' }, ''); 
+    
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
         document.getElementById('pantalla-boletos').classList.remove('oculto');
@@ -707,40 +721,15 @@ initFlouxVision(
     mostrarPantallaPrincipal
 );
 
-// Eventos da Tela de Patrimônio
-document.getElementById('btn-abrir-patrimonio').addEventListener('click', () => {
-    history.pushState({ view: 'patrimonio' }, '');
-    transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-        document.getElementById('pantalla-patrimonio').classList.remove('oculto');
-    });
-});
-
-document.getElementById('btn-cerrar-patrimonio').addEventListener('click', mostrarPantallaPrincipal);
-
-document.getElementById('form-patrimonio')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const cuentaId = document.getElementById('input-nw-cuenta').value;
-    const montoCents = parseInt(inputNwMonto.dataset.cents || '0', 10);
-
-    if (cuentaId && !isNaN(montoCents)) {
-        addRegistroPatrimonio({
-            id: Date.now(),
-            cuentaId: cuentaId,
-            monto: montoCents,
-            fecha: new Date().toISOString()
+initFlouxVault(
+    () => {
+        transicionPantalla(() => {
+            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            document.getElementById('pantalla-flouxvault').classList.remove('oculto');
         });
-
-        inputNwMonto.value = '';
-        inputNwMonto.dataset.cents = '0';
-        
-        if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
-        showToast("✅ " + t('btnSave'));
-        
-        saveStore();
-        renderNetWorthSection(state);
-    }
-});
+    },
+    mostrarPantallaPrincipal
+);
 
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: (id) => {
@@ -767,7 +756,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-        showToast("✅ " + t('toastDeleted'));
+        showToast("🗑️ " + t('toastDeleted'));
     },
     onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);

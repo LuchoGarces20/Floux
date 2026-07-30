@@ -8,7 +8,8 @@ const ASSETS_TO_CACHE = [
     './js/store.js',
     './js/ui.js',
     './js/financeEngine.js',
-    './js/flouxVision.js', // <- Nosso novo módulo aqui!
+    './js/flouxVision.js', 
+    './js/flouxVault.js',
     './js/i18n.js',
     './js/categories.js',
     './js/swipeHandler.js',

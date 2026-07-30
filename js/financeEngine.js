@@ -50,7 +50,9 @@ export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, h
 }
 
 export function calculateNetWorth(state) {
-    const contasInvestimento = state.cuentas.filter(c => c.tipo === 'investment');
+    // Agora o Vault busca APENAS as contas isoladas de renda fixa/variável
+    const contasInvestimento = state.cuentas.filter(c => c.tipo === 'vault_fixa' || c.tipo === 'vault_variavel');
+    
     if (contasInvestimento.length === 0) return { totalCents: 0, variationCents: 0, pct: 0, history: [], contasInvestimento, saldosAtuais: {} };
 
     // Ordena o histórico de patrimônio cronologicamente

@@ -85,7 +85,8 @@ export function renderSelectCuentas(state) {
     if (!select) return;
     const currentValue = select.value;
     
-    select.innerHTML = state.cuentas.filter(c => c.tipo !== 'investment').map(c => 
+    // FILTRO RIGOROSO: Só puxa cash e credit
+    select.innerHTML = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit').map(c => 
         `<option value="${c.id}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
     ).join('');
     
@@ -101,7 +102,11 @@ export function renderCuentasList(state) {
         const ul = document.getElementById(containerId);
         if(!ul) return;
         ul.innerHTML = '';
-        state.cuentas.forEach(c => {
+
+        // FILTRO RIGOROSO: Impede os ativos do vault de aparecerem na lista de gerenciar contas
+        const contasNormais = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
+
+        contasNormais.forEach(c => {
             const li = document.createElement('li');
             li.className = 'list-item-flex';
             let typeLabel = t('accTypeCash');
@@ -398,82 +403,6 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     listaUI.appendChild(fragList);
 }
 
-function drawSVGChart(dataPoints) {
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("viewBox", "0 0 400 160");
-    svg.setAttribute("preserveAspectRatio", "none");
-    svg.classList.add("nw-svg");
-
-    if(dataPoints.length === 0) return svg;
-    if(dataPoints.length === 1) dataPoints = [ { date: dataPoints[0].date - 86400000, value: 0 }, dataPoints[0] ];
-
-    const minX = dataPoints[0].date;
-    const maxX = dataPoints[dataPoints.length - 1].date;
-    const minY = Math.min(...dataPoints.map(d => d.value));
-    const maxY = Math.max(...dataPoints.map(d => d.value));
-
-    const padY = (maxY - minY) * 0.1 || 1000;
-    const yMin = Math.max(0, minY - padY);
-    const yMax = maxY + padY;
-    
-    const xRange = maxX - minX || 1;
-    const yRange = yMax - yMin;
-
-    const getX = (date) => ((date - minX) / xRange) * 390 + 5;
-    const getY = (val) => 150 - (((val - yMin) / yRange) * 140);
-
-    let polylinePoints = "";
-    const frag = document.createDocumentFragment();
-
-    dataPoints.forEach((dp, index) => {
-        const x = getX(dp.date);
-        const y = getY(dp.value);
-        polylinePoints += `${x},${y} `;
-
-        const circle = document.createElementNS(svgNS, "circle");
-        circle.setAttribute("cx", x);
-        circle.setAttribute("cy", y);
-        circle.setAttribute("r", "4");
-        circle.classList.add("nw-point");
-        if (index === dataPoints.length - 1) circle.classList.add("nw-point-newest");
-        frag.appendChild(circle);
-    });
-
-    const polyline = document.createElementNS(svgNS, "polyline");
-    polyline.setAttribute("points", polylinePoints.trim());
-    polyline.classList.add("nw-line");
-    
-    svg.appendChild(polyline);
-    svg.appendChild(frag);
-    return svg;
-}
-
-export function renderNetWorthSection(state) {
-    const nwData = calculateNetWorth(state);
-    const container = document.getElementById('nw-chart-container');
-    const select = document.getElementById('input-nw-cuenta');
-    if (!container || !select) return;
-
-    document.getElementById('nw-display-total').innerText = formatCurrency(nwData.totalCents, state.monedaActual);
-    
-    const varEl = document.getElementById('nw-display-variation');
-    const signal = nwData.variationCents >= 0 ? '+' : '';
-    varEl.innerText = `${signal}${formatCurrency(nwData.variationCents, state.monedaActual)} (${signal}${nwData.pct.toFixed(2)}%)`;
-    varEl.className = nwData.variationCents >= 0 ? 'fs-1-1 variation-positive' : 'fs-1-1 variation-negative';
-
-    container.innerHTML = '';
-    if (nwData.contasInvestimento.length === 0) {
-        container.innerHTML = `<div class="empty-state text-center mt-20"><p class="text-muted-small">${t('nwEmpty')}</p></div>`;
-    } else {
-        container.appendChild(drawSVGChart(nwData.history));
-    }
-
-    select.innerHTML = nwData.contasInvestimento.map(c => 
-        `<option value="${c.id}">${escapeHTML(c.nombre)} (Atual: ${formatCurrency(nwData.saldosAtuais[c.id] || 0, state.monedaActual)})</option>`
-    ).join('');
-}
-
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
@@ -556,7 +485,6 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
     renderExpenseList(state, gastosMesActual, localeStr, !isPastMonth);
-    renderNetWorthSection(state);
 }
 
 export function resetFormularioGasto(setGastoCallback) {

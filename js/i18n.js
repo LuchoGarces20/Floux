@@ -20,7 +20,7 @@ export const diccionario = {
         lsimAmount: "Costo Inicial de la Compra", lsimYears: "Años Proyectados", lsimHelpYears: "¿Cuánto tiempo el dinero estaría invirtiéndose?",
         lsimRate: "Tasa de Rendimiento Anual", lsimHelpRate: "Retorno promedio del mercado (ej. S&P 500 = 8-10%)",
         lsimCostLabel: "Gasto Hoy:", lsimFutureLabel: "Valor Futuro:", lsimTotalLoss: "Estás perdiendo ", lsimTotalLossEnd: " en ganancias potenciales.",
-        btnOpenFlouxVision: "Simulador FlouxVision", btnClose: "Cerrar", menuAdjustBudget: "Ajustar Presupuesto",
+        btnOpenFlouxVision: "FlouxVision", btnClose: "Cerrar", menuAdjustBudget: "Ajustar Presupuesto",
         emptyStateTitle: "¡Un nuevo mes!", emptyStateMsg: "Recuerda: el dinero que no gastas hoy aumenta automáticamente tu límite de mañana.<br><br>Registra tu primer gasto.",
         summaryTitle: "Resumen del Mes", summaryPerf: "Rendimiento:", summaryGreatest: "Gasto Mayor:", summaryDaily: "Promedio Diario:", summarySave: "Ahorro: ", summaryDeficit: "Déficit: ",
         installmentsLabel: "Cuotas / Parcelas", ccClosingLabel: "Día de Cierre de Tarjeta (TC)", ccClosingPh: "Día Cierre (ej: 24)", installments_1: "1x (Al contado)", installments_custom: "Otro...",
@@ -37,9 +37,10 @@ export const diccionario = {
         toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado",
         
         // Net Worth
-        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "Evolución del Patrimonio", nwExplanation: "Rastrea el crecimiento de tus inversiones a lo largo del tiempo.", 
-        nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión", 
-        nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico."
+accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.", 
+nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión", 
+nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico."
+      
     },
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
@@ -58,7 +59,7 @@ export const diccionario = {
         lsimAmount: "Initial Purchase Cost", lsimYears: "Projected Years", lsimHelpYears: "How long would the money be invested?",
         lsimRate: "Annual Return Rate", lsimHelpRate: "Average market return (e.g., S&P 500 = 8-10%)",
         lsimCostLabel: "Spent Today:", lsimFutureLabel: "Future Value:", lsimTotalLoss: "You are losing ", lsimTotalLossEnd: " in potential gains.",
-        btnOpenFlouxVision: "FlouxVision Simulator", btnClose: "Close", menuAdjustBudget: "Adjust Budget",
+        btnOpenFlouxVision: "FlouxVision", btnClose: "Close", menuAdjustBudget: "Adjust Budget",
         emptyStateTitle: "A new month!", emptyStateMsg: "Remember: the money you don't spend today automatically increases tomorrow's limit.<br><br>Log your first expense.",
         summaryTitle: "Monthly Summary", summaryPerf: "Performance:", summaryGreatest: "Largest Expense:", summaryDaily: "Daily Average:", summarySave: "Saved: ", summaryDeficit: "Deficit: ",
         installmentsLabel: "Installments", ccClosingLabel: "Credit Card Closing Day", ccClosingPh: "Closing Day (e.g. 24)", installments_1: "1x (Single Payment)", installments_custom: "Other...",
@@ -74,10 +75,11 @@ export const diccionario = {
         confirmDeleteAllInst: "This expense is an installment.\n\nDo you want to delete ALL associated installments?\n\n[OK] = Delete ALL\n[Cancel] = Delete ONLY this one",
         toastAllDeleted: "All installments deleted", toastDeleted: "Deleted",
 
-        // Net Worth
-        accTypeInvestment: "Investment / Wealth", nwTitle: "Net Worth Evolution", nwExplanation: "Track your investment growth over time.", 
-        nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment", 
-        nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart."
+// Net Worth
+accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.", 
+nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment", 
+nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart."
+
     },
     pt: {
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
@@ -96,7 +98,7 @@ export const diccionario = {
         lsimAmount: "Custo Inicial da Compra", lsimYears: "Anos Projetados", lsimHelpYears: "Por quanto tempo o dinheiro ficaria investido?",
         lsimRate: "Taxa de Retorno Anual", lsimHelpRate: "Retorno médio do mercado (ex: S&P 500 = 8-10%)",
         lsimCostLabel: "Gasto Hoje:", lsimFutureLabel: "Valor Futuro:", lsimTotalLoss: "Você está perdendo ", lsimTotalLossEnd: " em ganhos potenciais.",
-        btnOpenFlouxVision: "Simulador FlouxVision", btnClose: "Fechar", menuAdjustBudget: "Ajustar Orçamento",
+        btnOpenFlouxVision: "FlouxVision", btnClose: "Fechar", menuAdjustBudget: "Ajustar Orçamento",
         emptyStateTitle: "Um novo mês!", emptyStateMsg: "Lembre-se: o dinheiro que você não gasta hoje aumenta automaticamente seu limite de amanhã.<br><br>Registre seu primeiro gasto.",
         summaryTitle: "Resumo do Mês", summaryPerf: "Desempenho:", summaryGreatest: "Maior Despesa:", summaryDaily: "Média Diária:", summarySave: "Economia: ", summaryDeficit: "Déficit: ",
         installmentsLabel: "Parcelas", ccClosingLabel: "Dia de Fechamento do Cartão (TC)", ccClosingPh: "Dia Fech. (ex: 24)", installments_1: "1x (À vista)", installments_custom: "Outro...",
@@ -113,9 +115,10 @@ export const diccionario = {
         toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado",
 
         // Net Worth
-        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "Evolução do Patrimônio", nwExplanation: "Acompanhe o crescimento dos seus investimentos ao longo do tempo.", 
-        nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 
-        nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico."
+accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.", 
+nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 
+nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico."
+
     }
 };
 
