@@ -50,17 +50,18 @@ export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, h
 }
 
 export function calculateNetWorth(state) {
-    // Agora o Vault busca APENAS as contas isoladas de renda fixa/variável
     const contasInvestimento = state.cuentas.filter(c => c.tipo === 'vault_fixa' || c.tipo === 'vault_variavel');
     
-    if (contasInvestimento.length === 0) return { totalCents: 0, variationCents: 0, pct: 0, history: [], contasInvestimento, saldosAtuais: {} };
+    if (contasInvestimento.length === 0) {
+        return { totalCents: 0, variationCents: 0, pct: 0, history: [], contasInvestimento, saldosAtuais: {}, benchmarkLabel: '' };
+    }
 
     // Ordena o histórico de patrimônio cronologicamente
     const records = [...(state.historialPatrimonio || [])].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
     
     const timeline = [];
     const saldosAtuais = {};
-
+    
     records.forEach(r => {
         saldosAtuais[r.cuentaId] = r.monto;
         const totalNoMomento = contasInvestimento.reduce((acc, c) => acc + (saldosAtuais[c.id] || 0), 0);
@@ -70,19 +71,40 @@ export function calculateNetWorth(state) {
     const currentTotal = timeline.length > 0 ? timeline[timeline.length - 1].value : 0;
     let variationCents = 0;
     let pct = 0;
+    let benchmarkLabel = "vs. Início";
 
     if (timeline.length > 1) {
-        const pastRecord = timeline[timeline.length - 2];
-        variationCents = currentTotal - pastRecord.value;
-        pct = pastRecord.value > 0 ? (variationCents / pastRecord.value) * 100 : 0;
+        const currentYear = new Date().getFullYear();
+        
+        // Busca o primeiro registro do ano atual (YTD - Year to Date)
+        let benchmarkRecord = timeline.find(t => new Date(t.date).getFullYear() === currentYear);
+
+        // Se não houver registro neste ano ou for o único, cai de volta para o primeiro registro histórico
+        if (!benchmarkRecord || benchmarkRecord.date === timeline[timeline.length - 1].date) {
+            benchmarkRecord = timeline.find(t => new Date(t.date).getFullYear() === currentYear && t !== timeline[timeline.length -1]);
+            if (!benchmarkRecord) {
+                benchmarkRecord = timeline[0];
+                benchmarkLabel = "vs. Início Histórico";
+            } else {
+                benchmarkLabel = "vs. Início do Ano";
+            }
+        } else {
+            benchmarkLabel = "vs. Início do Ano";
+        }
+
+        if (benchmarkRecord) {
+            variationCents = currentTotal - benchmarkRecord.value;
+            pct = benchmarkRecord.value > 0 ? (variationCents / benchmarkRecord.value) * 100 : 0;
+        }
     }
 
     return { 
         totalCents: currentTotal, 
         variationCents, 
         pct, 
-        history: timeline,
-        contasInvestimento,
-        saldosAtuais
+        history: timeline, 
+        contasInvestimento, 
+        saldosAtuais,
+        benchmarkLabel
     };
 }
