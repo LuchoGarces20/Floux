@@ -490,6 +490,15 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
 export function resetFormularioGasto(setGastoCallback) {
     setGastoCallback(null);
     const inputMonto = document.getElementById('input-monto');
+    
+    const inputFecha = document.getElementById('input-fecha-gasto');
+    if (inputFecha) {
+        const hojeLocal = new Date();
+        const ano = hojeLocal.getFullYear();
+        const mes = String(hojeLocal.getMonth() + 1).padStart(2, '0');
+        const dia = String(hojeLocal.getDate()).padStart(2, '0');
+        inputFecha.value = `${ano}-${mes}-${dia}`;
+    }
     if (inputMonto) {
         inputMonto.value = '';
         inputMonto.dataset.cents = '0';

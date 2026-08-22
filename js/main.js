@@ -430,37 +430,42 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
     const startOffset = autoStartOffset;
     
-    if (!isNaN(montoCents) && montoCents > 0 && desc) {
+  if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
         
+        // 1. LER A DATA DO CAMPO (Colocamos 12:00:00 para evitar bug de fuso horário)
+        const inputFecha = document.getElementById('input-fecha-gasto').value;
+        const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
+        const baseIso = dataBase.toISOString();
+                 
         if (wasEditing) {
             let mesEfectivo = undefined;
             if (startOffset > 0) {
-                const baseDate = new Date(state.historialGlobal.find(g => g.id === gastoEnEdicion).fecha);
-                baseDate.setMonth(baseDate.getMonth() + startOffset);
-                mesEfectivo = `${baseDate.getFullYear()}-${String(baseDate.getMonth() + 1).padStart(2, '0')}`;
+                const baseDateEdit = new Date(baseIso);
+                baseDateEdit.setMonth(baseDateEdit.getMonth() + startOffset);
+                mesEfectivo = `${baseDateEdit.getFullYear()}-${String(baseDateEdit.getMonth() + 1).padStart(2, '0')}`;
             }
-            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId });
+            // Salvando a data editada:
+            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: baseIso });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
             const montoCuotaNormal = Math.floor(montoCents / cuotas);
             const montoUltimaCuota = montoCents - (montoCuotaNormal * (cuotas - 1));
-            const baseIso = new Date().toISOString();
             
             const nuevasCuotas = [];
             for (let i = 0; i < cuotas; i++) {
-                const curDate = new Date();
+                const curDate = new Date(baseIso);
                 const totalMonthOffset = startOffset + i;
                 let mesEfectivo = undefined;
-                
+                                 
                 if (totalMonthOffset > 0) {
                     curDate.setMonth(curDate.getMonth() + totalMonthOffset);
                     mesEfectivo = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
                 }
-                
+                                 
                 const descCuota = cuotas > 1 ? `${desc} (${i + 1}/${cuotas})` : desc;
                 const montoMapeado = (i === cuotas - 1) ? montoUltimaCuota : montoCuotaNormal;
-                
+                                 
                 nuevasCuotas.push({
                     id: Date.now() + i,
                     monto: montoMapeado,
@@ -767,6 +772,16 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
             
             document.getElementById('input-desc').value = gasto.desc;
             
+            // CARREGANDO A DATA NO FORMULÁRIO DE EDIÇÃO
+            const inputFecha = document.getElementById('input-fecha-gasto');
+            if (inputFecha && gasto.fecha) {
+                const dataGasto = new Date(gasto.fecha);
+                const ano = dataGasto.getFullYear();
+                const mes = String(dataGasto.getMonth() + 1).padStart(2, '0');
+                const dia = String(dataGasto.getDate()).padStart(2, '0');
+                inputFecha.value = `${ano}-${mes}-${dia}`;
+            }
+
             const inputHidden = document.getElementById('input-categoria');
             inputHidden.value = gasto.categoria;
             document.querySelectorAll('.cat-chip').forEach(c => {
