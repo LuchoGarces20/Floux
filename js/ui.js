@@ -141,18 +141,40 @@ export function renderBoletosList(state) {
         ul.innerHTML = '';
         
         const categorias = obtenerCategorias(state.categoriasCustom);
+        const hoy = new Date();
         
+        const boletosPagosMes = new Set(
+            state.historialGlobal.filter(g => {
+                let mes = new Date(g.fecha).getMonth();
+                let ano = new Date(g.fecha).getFullYear();
+                if (g.mesEfectivo) {
+                    const [eAno, eMes] = g.mesEfectivo.split('-').map(Number);
+                    mes = eMes - 1;
+                    ano = eAno;
+                }
+                return mes === hoy.getMonth() && ano === hoy.getFullYear() && g.boletoId;
+            }).map(g => g.boletoId)
+        );
+
         state.boletos.forEach(b => {
-            const catInfo = categorias.find(c => c.id === b.categoria) || { emoji: '📍', nombre: b.categoria };
+            const catInfo = categorias.find(c => c.id === b.categoria) || { emoji: '📌', nombre: b.categoria };
             const li = document.createElement('li');
             li.className = 'list-item-flex';
+            
+            const isPago = boletosPagosMes.has(b.id);
+            const badgePago = isPago ? `<span class="badge-tipo badge-cash" style="margin-left: 8px;">✓ Pago</span>` : '';
+            const btnPagar = isPago ? '' : `<button type="button" class="btn-eliminar-simple btn-pagar-boleto" data-id="${b.id}" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color); margin-right: 8px;" title="Pagar">✓</button>`;
             
             li.innerHTML = `
                 <div class="info">
                     <strong style="font-size: 1.1rem;">${escapeHTML(b.desc)}</strong>
-                    <div><span class="badge-tipo badge-credit" style="background: var(--bg-color); color: var(--text-color);">${catInfo.emoji} Dia ${b.diaVencimiento} - ${formatCurrency(b.monto, state.monedaActual)}</span></div>
+                    <div>
+                        <span class="badge-tipo badge-credit" style="background: var(--bg-color); color: var(--text-color);">${catInfo.emoji} Dia ${b.diaVencimiento} - ${formatCurrency(b.monto, state.monedaActual)}</span>
+                        ${badgePago}
+                    </div>
                 </div>
                 <div class="actions">
+                    ${btnPagar}
                     <button type="button" class="btn-eliminar-simple btn-eliminar-boleto" data-id="${b.id}">🗑️</button>
                 </div>
             `;
@@ -241,7 +263,7 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
     
     if (barraFill) {
         barraFill.style.width = `${porcentajeGastado}%`;
-        if (state.presupuestoMensual - totalGastadoMesCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
+        if (state.presupuestoMensual - totalGastadoMesCents < (state.presupuestoMensual * 0.2)) {
             barraFill.classList.add('warning');
         } else {
             barraFill.classList.remove('warning');
@@ -250,7 +272,9 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
     
     const zeroSpendBadge = document.getElementById('zero-spend-badge');
     if (zeroSpendBadge) {
-        const diasConGasto = new Set(gastosMesActual.map(g => new Date(g.fecha).getDate()));
+        // Impede que pagar o aluguel zere a sua "Ofensiva de dias sem gastar"
+        const gastosVariables = gastosMesActual.filter(g => !g.boletoId);
+        const diasConGasto = new Set(gastosVariables.map(g => new Date(g.fecha).getDate()));
         let diasCero = 0;
         for (let d = 1; d <= diaCalculo; d++) if (!diasConGasto.has(d)) diasCero++;
         
@@ -268,9 +292,12 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     const contGrafico = document.getElementById('grafico-categorias');
     contGrafico.innerHTML = '';
     
-    if (gastosMesActual.length > 0) {
+    // Ignora boletos para não distorcer o gráfico de pizza do dinheiro livre
+    const gastosVariables = gastosMesActual.filter(g => !g.boletoId);
+    
+    if (gastosVariables.length > 0 && totalGastadoMesCents > 0) {
         const sumasPorCatCents = {};
-        gastosMesActual.forEach(g => { sumasPorCatCents[g.categoria] = (sumasPorCatCents[g.categoria] || 0) + g.monto; });
+        gastosVariables.forEach(g => { sumasPorCatCents[g.categoria] = (sumasPorCatCents[g.categoria] || 0) + g.monto; });
         
         const categoriasActuales = obtenerCategorias(state.categoriasCustom);
         const fragChart = document.createDocumentFragment();
@@ -278,7 +305,7 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
         for (const catId in sumasPorCatCents) {
             if(catId === 'otros_previo') continue;
             const porcentaje = (sumasPorCatCents[catId] / totalGastadoMesCents) * 100;
-            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📍', nombre: catId, color: 'var(--primary-color)' };
+            const infoCat = categoriasActuales.find(c => c.id === catId) || { emoji: '📌', nombre: catId, color: 'var(--primary-color)' };
             
             const el = document.createElement('div');
             el.className = 'cat-bar-container';
@@ -308,7 +335,7 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
         }
         contGrafico.appendChild(fragChart);
     } else {
-        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">☕</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
+        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛋️</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
     }
 }
 
@@ -522,4 +549,10 @@ export function resetFormularioGasto(setGastoCallback) {
     }
     
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
+
+    // Dispara evento de change na conta para a inteligência (Smart Default) avaliar o checkbox
+    setTimeout(() => {
+        const selectConta = document.getElementById('input-cuenta-origen');
+        if (selectConta) selectConta.dispatchEvent(new Event('change'));
+    }, 0);
 }

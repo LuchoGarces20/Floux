@@ -4,7 +4,7 @@ export const diccionario = {
     es: {
         appTitle: "Floux - ", currencyLabel: "Moneda", tabDirect: "Ya sé mi presupuesto", tabCalc: "Ayúdame a calcular",
         budgetLabel: "Presupuesto total para gastar mensualmente", budgetPlaceholder: "Ej: 2000", incomeLabel: "Renta Mensual Total",
-        adjustPercentages: "Ajustar porcentajes recomendados",
+        adjustPercentages: "Ajustar porcentajes recomendados", applyNextMonth: "¿Aplicar al próximo mes?",
         pctLongTerm: "Inversión Largo Plazo (%) - Rec: 20%", pctShortTerm: "Inversión Corto Plazo (%) - Rec: 10%",
         pctEdu: "Educación (%) - Rec: 5%", pctSurvival: "Supervivencia (%) - Rec: 55%", pctFree: "Gastos Libres (%) - Rec: 10%",
         calcResult: "Valor seguro para gastar:", netSurvival: "Supervivencia Líquida:", freeSpending: "Teto Gastos Libres:",
@@ -35,6 +35,11 @@ export const diccionario = {
         confirmOverwrite: "Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.",
         confirmDeleteAllInst: "Este gasto es una cuota.\n\n¿Deseas eliminar TODAS las cuotas asociadas?\n\n[Aceptar] = Eliminar TODAS\n[Cancelar] = Eliminar SOLO esta",
         toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado",
+        btnReminder: "Recordatorio Diario (20h)", 
+notifActivated: "Recordatorio activado a las 20:00", 
+notifDenied: "Permiso de notificación denegado", 
+notifUnsupported: "Notificaciones no soportadas en este navegador", 
+notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!",
         
         // Net Worth
 accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.", 
@@ -45,7 +50,7 @@ nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agr
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
         budgetLabel: "Total monthly budget to spend", budgetPlaceholder: "E.g. 2000", incomeLabel: "Total Monthly Income",
-        adjustPercentages: "Adjust recommended percentages",
+        adjustPercentages: "Adjust recommended percentages", applyNextMonth: "Apply to next month?",
         pctLongTerm: "Long Term Investment (%) - Rec: 20%", pctShortTerm: "Short Term Investment (%) - Rec: 10%",
         pctEdu: "Education (%) - Rec: 5%", pctSurvival: "Survival (%) - Rec: 55%", pctFree: "Free to Spend (%) - Rec: 10%",
         calcResult: "Safe value to spend:", netSurvival: "Net Survival:", freeSpending: "Free Spending Cap:",
@@ -73,7 +78,12 @@ nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agr
         errFormat: "Error: Incorrect file format.", errInvalid: "Error: Invalid or corrupt file.",
         confirmOverwrite: "OK: Overwrite all data.\nCancel: Merge with current data.",
         confirmDeleteAllInst: "This expense is an installment.\n\nDo you want to delete ALL associated installments?\n\n[OK] = Delete ALL\n[Cancel] = Delete ONLY this one",
-        toastAllDeleted: "All installments deleted", toastDeleted: "Deleted",
+        toastAllDeleted: "All installments deleted", toastDeleted: "Deleted", 
+        btnReminder: "Daily Reminder (8 PM)", 
+notifActivated: "Reminder set for 8:00 PM", 
+notifDenied: "Notification permission denied", 
+notifUnsupported: "Notifications not supported in this browser", 
+notifBody: "Time to log your daily expenses in Floux!",
 
 // Net Worth
 accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.", 
@@ -84,7 +94,7 @@ nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add
     pt: {
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
         budgetLabel: "Orçamento total para gastar mensalmente", budgetPlaceholder: "Ex: 2000", incomeLabel: "Renda Mensal Total",
-        adjustPercentages: "Ajustar porcentagens recomendadas",
+        adjustPercentages: "Ajustar porcentagens recomendadas", applyNextMonth: "Aplicar no próximo mês?",
         pctLongTerm: "Investimento Longo Prazo (%) - Rec: 20%", pctShortTerm: "Investimento Curto Prazo (%) - Rec: 10%",
         pctEdu: "Educação (%) - Rec: 5%", pctSurvival: "Sobrevivência (%) - Rec: 55%", pctFree: "Gastos Libres (%) - Rec: 10%",
         calcResult: "Valor seguro para gastar:", netSurvival: "Sobrevivência Líquida:", freeSpending: "Teto Gastos Livres:",
@@ -113,7 +123,11 @@ nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add
         confirmOverwrite: "OK: Sobrescrever todos os dados.\nCancelar: Combinar com os dados atuais.",
         confirmDeleteAllInst: "Este gasto é uma parcela.\n\nDeseja apagar TODAS as parcelas associadas?\n\n[OK] = Apagar TODAS\n[Cancelar] = Apagar APENAS esta",
         toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado",
-
+btnReminder: "Lembrete Diário (20h)", 
+notifActivated: "Lembrete ativado para as 20:00", 
+notifDenied: "Permissão de notificação negada", 
+notifUnsupported: "Notificações não suportadas neste navegador", 
+notifBody: "Hora de registrar seus gastos de hoje no Floux!",
         // Net Worth
 accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.", 
 nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 

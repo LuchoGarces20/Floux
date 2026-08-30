@@ -1,4 +1,4 @@
-const CACHE_NAME = 'floux-cache-v1.01'; 
+const CACHE_NAME = 'floux-cache-v1.00'; 
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -49,6 +49,29 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request, { ignoreSearch: true }).then(response => {
             return response || fetch(event.request);
+        })
+    );
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close(); // Fecha a notificação do sistema
+    
+    // A URL que queremos abrir (com o parâmetro action para acionar o modal)
+    const urlToOpen = new URL('./?action=add-expense', self.location.origin).href;
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            // Se o app já estiver aberto em alguma aba, foca nela e redireciona
+            for (let client of windowClients) {
+                if (client.url.includes(self.location.origin) && 'focus' in client) {
+                    client.navigate(urlToOpen);
+                    return client.focus();
+                }
+            }
+            // Se o app estiver fechado, abre uma nova janela/aba
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen);
+            }
         })
     );
 });

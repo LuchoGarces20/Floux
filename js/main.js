@@ -2,7 +2,7 @@ import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, add
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
-import { initFlouxVault } from './flouxVault.js'; // <- IMPORT DO FLOUXVAULT AQUI
+import { initFlouxVault } from './flouxVault.js';
 import { initSwipeActions } from './swipeHandler.js';
 
 const INTERACTION_CONFIG = {
@@ -26,20 +26,39 @@ let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
 
 let saveTimeout;
+let isSaving = false;
+let needsAnotherSave = false;
+
+// Função isolada que gerencia a fila de salvamento
+const executeSave = async () => {
+    if (isSaving) {
+        needsAnotherSave = true;
+        return;
+    }
+
+    isSaving = true;
+    try {
+        await saveStore();
+        if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
+            actualizarInterfaz(state, viewMonth, viewYear, hoy);
+        }
+    } catch (error) {
+        if (error && error.name === 'QuotaExceededError') {
+            showToast("⚠️ Erro: Armazenamento cheio. Libere espaço para salvar.");
+        }
+    } finally {
+        isSaving = false;
+        
+        if (needsAnotherSave) {
+            needsAnotherSave = false;
+            executeSave();
+        }
+    }
+};
+
 subscribe((property, value) => {
     clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(async () => {
-        try {
-            await saveStore();
-            if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
-                actualizarInterfaz(state, viewMonth, viewYear, hoy);
-            }
-        } catch (error) {
-            if (error && error.name === 'QuotaExceededError') {
-                showToast("⚠️ Erro: Armazenamento cheio. Libere espaço para salvar.");
-            }
-        }
-    }, 50);
+    saveTimeout = setTimeout(executeSave, 50);
 });
 
 function transicionPantalla(callback) {
@@ -85,13 +104,56 @@ if (btnSettingsToggle && settingsDropdown) {
         e.stopPropagation();
         settingsDropdown.classList.toggle('oculto');
     });
-    
-    document.addEventListener('click', (e) => {
-        if (!settingsDropdown.contains(e.target) && !btnSettingsToggle.contains(e.target)) {
-            settingsDropdown.classList.add('oculto');
+} // <-- AQUI FOI ONDE A CHAVE FECHOU, ISOLANDO O EVENTO ABAIXO
+
+// Evento global movido para o escopo principal
+document.addEventListener('click', (e) => {
+    // 1. Ação de Excluir Boleto da Configuração
+    const btnEliminarBoleto = e.target.closest('.btn-eliminar-boleto');
+    if (btnEliminarBoleto) {
+        state.boletos = state.boletos.filter(b => b.id !== btnEliminarBoleto.dataset.id);
+        renderBoletosList(state);
+        recalcularPresupuestoOnboarding();
+        return;
+    }
+
+    // 2. Ação de Pagar Boleto no Mês Atual
+    const btnPagar = e.target.closest('.btn-pagar-boleto');
+    if (btnPagar) {
+        const boletoId = btnPagar.dataset.id;
+        const boleto = state.boletos.find(b => b.id === boletoId);
+        
+        if (boleto) {
+            const contaSelect = document.getElementById('input-cuenta-origen');
+            const cuentaId = contaSelect ? contaSelect.value : (state.cuentas.length > 0 ? state.cuentas[0].id : null);
+
+            if (!cuentaId) {
+                showToast("Erro: Nenhuma conta disponível para pagar.");
+                return;
+            }
+
+            if (confirm(`Pagar "${boleto.desc}" no valor de ${formatCurrency(boleto.monto, state.monedaActual)}?`)) {
+                addExpense({
+                    id: Date.now(),
+                    monto: boleto.monto,
+                    desc: boleto.desc,
+                    fecha: new Date().toISOString(),
+                    categoria: boleto.categoria,
+                    cuentaId: cuentaId,
+                    boletoId: boleto.id
+                });
+
+                if (navigator.vibrate) navigator.vibrate(15);
+                showToast("✓ Boleto pago e contabilizado!");
+
+                renderBoletosList(state);
+                if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
+                    actualizarInterfaz(state, viewMonth, viewYear, hoy);
+                }
+            }
         }
-    });
-}
+    }
+});
 
 function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
@@ -405,6 +467,28 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
 });
 
+// --- NOVA LÓGICA SMART DEFAULT DO UX ---
+function atualizarCheckboxMes() {
+    const cuentaId = document.getElementById('input-cuenta-origen').value;
+    const inputFecha = document.getElementById('input-fecha-gasto').value;
+    const checkbox = document.getElementById('checkbox-mes-siguiente');
+    
+    if (!cuentaId || !checkbox) return;
+
+    const cuenta = state.cuentas.find(c => c.id === cuentaId);
+    const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
+
+    if (cuenta && cuenta.tipo === 'credit' && cuenta.cierreTC && dataBase.getDate() > cuenta.cierreTC) {
+        checkbox.checked = true;
+    } else {
+        checkbox.checked = false;
+    }
+}
+
+document.getElementById('input-cuenta-origen').addEventListener('change', atualizarCheckboxMes);
+document.getElementById('input-fecha-gasto').addEventListener('change', atualizarCheckboxMes);
+// ---------------------------------------
+
 document.getElementById('form-gasto').addEventListener('submit', (e) => {
     e.preventDefault();
     const inputMonto = document.getElementById('input-monto');
@@ -417,27 +501,20 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         showToast("⚠️ Erro: Selecione uma conta de origem.");
         return;
     }
-    const cuentaSeleccionada = state.cuentas.find(c => c.id === cuentaId);
     
     const inputCuotas = document.getElementById('input-cuotas');
     const cuotas = parseInt(inputCuotas?.value) || 1;
+
+    const inputFecha = document.getElementById('input-fecha-gasto').value;
+    const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
-    let autoStartOffset = 0;
-    if (cuentaSeleccionada && cuentaSeleccionada.tipo === 'credit' && cuentaSeleccionada.cierreTC) {
-        if (hoy.getDate() > cuentaSeleccionada.cierreTC) {
-            autoStartOffset = 1;
-        }
-    }
-    const startOffset = autoStartOffset;
-    
-  if (!isNaN(montoCents) && montoCents > 0 && desc) {
+    const checkboxMarcado = document.getElementById('checkbox-mes-siguiente').checked;
+    const startOffset = checkboxMarcado ? 1 : 0; 
+
+    if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
-        
-        // 1. LER A DATA DO CAMPO (Colocamos 12:00:00 para evitar bug de fuso horário)
-        const inputFecha = document.getElementById('input-fecha-gasto').value;
-        const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
         const baseIso = dataBase.toISOString();
-                 
+        
         if (wasEditing) {
             let mesEfectivo = undefined;
             if (startOffset > 0) {
@@ -445,7 +522,6 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                 baseDateEdit.setMonth(baseDateEdit.getMonth() + startOffset);
                 mesEfectivo = `${baseDateEdit.getFullYear()}-${String(baseDateEdit.getMonth() + 1).padStart(2, '0')}`;
             }
-            // Salvando a data editada:
             updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: baseIso });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
@@ -457,15 +533,15 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                 const curDate = new Date(baseIso);
                 const totalMonthOffset = startOffset + i;
                 let mesEfectivo = undefined;
-                                 
+                
                 if (totalMonthOffset > 0) {
                     curDate.setMonth(curDate.getMonth() + totalMonthOffset);
                     mesEfectivo = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
                 }
-                                 
+                
                 const descCuota = cuotas > 1 ? `${desc} (${i + 1}/${cuotas})` : desc;
                 const montoMapeado = (i === cuotas - 1) ? montoUltimaCuota : montoCuotaNormal;
-                                 
+                
                 nuevasCuotas.push({
                     id: Date.now() + i,
                     monto: montoMapeado,
@@ -473,7 +549,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                     fecha: baseIso,
                     categoria: cat,
                     mesEfectivo,
-                    cuentaId 
+                    cuentaId
                 });
             }
             addMultipleExpenses(nuevasCuotas);
@@ -482,76 +558,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         
         if (document.activeElement) document.activeElement.blur();
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
-        showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
-    }
-});
-
-document.getElementById('btn-toggle-nueva-cat').addEventListener('click', () => {
-    document.getElementById('area-nueva-categoria').classList.toggle('oculto');
-});
-
-document.getElementById('btn-guardar-nueva-cat').addEventListener('click', () => {
-    const nombre = document.getElementById('input-nueva-cat-nombre').value.trim();
-    const emoji = document.getElementById('input-nueva-cat-emoji').value.trim();
-    if (nombre && emoji) {
-        const id = 'custom_' + Date.now();
-        state.categoriasCustom = [...state.categoriasCustom, { id, nombre, emoji }];
-        renderizarSelectCategorias(state.categoriasCustom);
-        document.getElementById('input-categoria').value = id;
-        document.getElementById('input-nueva-cat-nombre').value = '';
-        document.getElementById('input-nueva-cat-emoji').value = '';
-        document.getElementById('area-nueva-categoria').classList.add('oculto');
-    }
-});
-
-document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
-    if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    
-    // CORREÇÃO: Adiciona a tela no histórico para o botão 'Voltar' do celular funcionar
-    history.pushState({ view: 'cuentas' }, ''); 
-    
-    transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-        document.getElementById('pantalla-cuentas').classList.remove('oculto');
-    });
-    renderCuentasList(state);
-});
-
-const btnCerrarCuentas = document.getElementById('btn-cerrar-cuentas');
-if (btnCerrarCuentas) {
-    btnCerrarCuentas.addEventListener('click', mostrarPantallaPrincipal);
-}
-
-
-document.getElementById('input-cuenta-tipo').addEventListener('change', (e) => {
-    const groupCierre = document.getElementById('group-cuenta-cierre');
-    if (e.target.value === 'credit') {
-        groupCierre.classList.remove('oculto');
-    } else {
-        groupCierre.classList.add('oculto');
-        document.getElementById('input-cuenta-cierre').value = '';
-    }
-});
-
-document.getElementById('form-cuenta').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const nombre = document.getElementById('input-cuenta-nombre').value.trim();
-    const tipo = document.getElementById('input-cuenta-tipo').value;
-    const cierreInput = document.getElementById('input-cuenta-cierre').value;
-    
-    if (nombre) {
-        const id = 'acc_' + Date.now();
-        state.cuentas = [...state.cuentas, { 
-            id, 
-            nombre, 
-            tipo, 
-            cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
-        }];
-        
-        document.getElementById('input-cuenta-nombre').value = '';
-        document.getElementById('input-cuenta-cierre').value = '';
-        showToast("✅ " + t('btnSave'));
-        renderCuentasList(state);
+        showToast(wasEditing ? "✔️ " + t('btnEdit') : "✔️ " + t('btnAdd'));
     }
 });
 
@@ -566,7 +573,6 @@ document.addEventListener('click', (e) => {
 document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     
-    // CORREÇÃO: Adiciona a tela no histórico
     history.pushState({ view: 'boletos' }, ''); 
     
     transicionPantalla(() => {
@@ -772,7 +778,6 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
             
             document.getElementById('input-desc').value = gasto.desc;
             
-            // CARREGANDO A DATA NO FORMULÁRIO DE EDIÇÃO
             const inputFecha = document.getElementById('input-fecha-gasto');
             if (inputFecha && gasto.fecha) {
                 const dataGasto = new Date(gasto.fecha);
@@ -804,10 +809,76 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
     }
 });
 
+// --- LÓGICA DE NOTIFICAÇÕES (LEMBRETE 20H) ---
+const btnLembrete = document.getElementById('btn-lembrete');
+if (btnLembrete) {
+    btnLembrete.addEventListener('click', async () => {
+        if (settingsDropdown) settingsDropdown.classList.add('oculto');
+
+        // Verifica se o navegador suporta notificações
+        if (!('Notification' in window)) {
+            showToast(t('notifUnsupported'));
+            return;
+        }
+
+        // Pede permissão caso ainda não tenha
+        let permission = Notification.permission;
+        if (permission !== 'granted') {
+            permission = await Notification.requestPermission();
+        }
+
+        if (permission === 'granted') {
+            showToast(t('notifActivated'));
+            localStorage.setItem('floux_lembrete_20h', 'true');
+            agendarNotificacao(20, 0); // Agenda para as 20:00
+        } else {
+            showToast(t('notifDenied'));
+        }
+    });
+}
+
+function agendarNotificacao(hora, minuto) {
+    const agora = new Date();
+    const alvo = new Date();
+    alvo.setHours(hora, minuto, 0, 0);
+
+    // Se já passou das 20h de hoje, agenda para as 20h de amanhã
+    if (agora.getTime() > alvo.getTime()) {
+        alvo.setDate(alvo.getDate() + 1);
+    }
+
+    const tempoAteLembrete = alvo.getTime() - agora.getTime();
+
+    setTimeout(() => {
+        mostrarNotificacao();
+        // Após mostrar a de hoje, agenda para repetir a cada 24 horas
+        setInterval(mostrarNotificacao, 24 * 60 * 60 * 1000);
+    }, tempoAteLembrete);
+}
+
+function mostrarNotificacao() {
+    if (navigator.serviceWorker) {
+        navigator.serviceWorker.ready.then(registration => {
+            registration.showNotification('Floux', {
+                body: t('notifBody'),
+                icon: './img/logo180.png',
+                badge: './img/logo-floux.svg',
+                vibrate: [200, 100, 200, 100, 200],
+                data: { url: './?action=add-expense' } // Passa a URL para o Service Worker
+            });
+        });
+    }
+}
+
 init();
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+}
+
+// Adicione dentro da função async function init() { ...
+if (localStorage.getItem('floux_lembrete_20h') === 'true' && Notification.permission === 'granted') {
+    agendarNotificacao(20, 0); // Re-agenda silenciosamente se já estava ativo
 }
 
 window.addEventListener('popstate', () => {

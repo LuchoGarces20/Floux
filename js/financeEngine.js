@@ -9,25 +9,24 @@ export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, h
     const viewDate = new Date(viewYear, viewMonth, 1);
     const currentDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 
-    const totalGastadoMesCents = gastosMesActual.reduce((acc, g) => acc + g.monto, 0);
+    // 1. ISOLAMENTO ABSOLUTO: O motor ignora qualquer gasto que seja um boleto pago
+    const gastosVariablesMes = gastosMesActual.filter(g => !g.boletoId);
 
-    let boletosPendientesCents = 0;
-    if (viewDate > currentDate) {
-        boletosPendientesCents = state.boletos.reduce((acc, b) => acc + b.monto, 0);
-    } else if (isCurrentMonth) {
-        boletosPendientesCents = state.boletos
-            .filter(b => b.diaVencimiento >= hoy.getDate())
-            .reduce((acc, b) => acc + b.monto, 0);
-    }
+    // Soma APENAS os gastos livres (supermercado, lazer, etc)
+    const totalGastadoMesCents = gastosVariablesMes.reduce((acc, g) => acc + g.monto, 0);
 
-    const liquidezLibreCents = state.presupuestoMensual - totalGastadoMesCents - boletosPendientesCents;
+    // 2. Os boletos fixos já foram tirados da sua renda no onboarding.
+    const boletosPendientesCents = 0;
+
+    const liquidezLibreCents = state.presupuestoMensual - totalGastadoMesCents;
 
     let gastosHojeCents = 0;
     let diasRestantes = new Date(viewYear, viewMonth + 1, 0).getDate();
 
     if (isCurrentMonth) {
         diasRestantes = (diasRestantes - hoy.getDate()) + 1;
-        const gastosHoje = gastosMesActual.filter(g => {
+        // Pega os gastos de hoje filtrando apenas os gastos livres
+        const gastosHoje = gastosVariablesMes.filter(g => {
             const gDate = new Date(g.fecha);
             return gDate.getDate() === hoy.getDate() && gDate.getMonth() === hoy.getMonth() && gDate.getFullYear() === hoy.getFullYear();
         });
