@@ -155,15 +155,15 @@ document.addEventListener('click', (e) => {
     }
 });
 
-function actualizarModoPrivacidade() {
-    if (!btnPrivacidade) return;
-    if (state.privacyMode) {
-        document.body.classList.add('privacy-mode');
-        btnPrivacidade.innerText = '🙈';
-    } else {
-        document.body.classList.remove('privacy-mode');
-        btnPrivacidade.innerText = '👁️';
-    }
+function actualizarModoPrivacidade() {     
+    if (!btnPrivacidade) return;     
+    if (state.privacyMode) {         
+        document.body.classList.add('privacy-mode');         
+        btnPrivacidade.innerText = '👁️‍🗨️'; 
+    } else {         
+        document.body.classList.remove('privacy-mode');         
+        btnPrivacidade.innerText = '👁️'; 
+    } 
 }
 
 if (btnPrivacidade) {
@@ -569,6 +569,24 @@ document.addEventListener('click', (e) => {
         renderCuentasList(state);
     }
 });
+
+document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
+    if (settingsDropdown) settingsDropdown.classList.add('oculto');
+    
+    history.pushState({ view: 'cuentas' }, '');
+    
+    transicionPantalla(() => {
+        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        document.getElementById('pantalla-cuentas').classList.remove('oculto');
+    });
+    
+    renderCuentasList(state);
+});
+
+const btnCerrarCuentas = document.getElementById('btn-cerrar-cuentas');
+if (btnCerrarCuentas) {
+    btnCerrarCuentas.addEventListener('click', mostrarPantallaPrincipal);
+}
 
 document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
