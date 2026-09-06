@@ -408,3 +408,15 @@ button.btn-principal { min-height: 52px; font-size: 1.1rem; }
 .variation-negative {
     color: var(--danger-color);
 }
+
+.badge-filtro {
+    display: inline-block;
+    padding: 6px 14px;
+    background: var(--primary-gradient);
+    color: var(--primary-color);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    box-shadow: var(--dimensional-shadow);
+}

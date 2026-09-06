@@ -40,6 +40,7 @@ notifActivated: "Recordatorio activado a las 20:00",
 notifDenied: "Permiso de notificación denegado", 
 notifUnsupported: "Notificaciones no soportadas en este navegador", 
 notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!",
+filterAll: "Todas", filterTotal: "Total filtrado:",
         
         // Net Worth
 accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.", 
@@ -84,6 +85,7 @@ notifActivated: "Reminder set for 8:00 PM",
 notifDenied: "Notification permission denied", 
 notifUnsupported: "Notifications not supported in this browser", 
 notifBody: "Time to log your daily expenses in Floux!",
+filterAll: "All", filterTotal: "Filtered Total:",
 
 // Net Worth
 accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.", 
@@ -128,6 +130,7 @@ notifActivated: "Lembrete ativado para as 20:00",
 notifDenied: "Permissão de notificação negada", 
 notifUnsupported: "Notificações não suportadas neste navegador", 
 notifBody: "Hora de registrar seus gastos de hoje no Floux!",
+filterAll: "Todas", filterTotal: "Total do Filtro:",
         // Net Worth
 accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.", 
 nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 

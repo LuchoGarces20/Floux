@@ -1,6 +1,6 @@
 import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe, addRegistroPatrimonio } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
-import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast } from './ui.js';
+import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
 import { initFlouxVault } from './flouxVault.js';
 import { initSwipeActions } from './swipeHandler.js';
@@ -29,7 +29,6 @@ let saveTimeout;
 let isSaving = false;
 let needsAnotherSave = false;
 
-// Função isolada que gerencia a fila de salvamento
 const executeSave = async () => {
     if (isSaving) {
         needsAnotherSave = true;
@@ -104,11 +103,21 @@ if (btnSettingsToggle && settingsDropdown) {
         e.stopPropagation();
         settingsDropdown.classList.toggle('oculto');
     });
-} // <-- AQUI FOI ONDE A CHAVE FECHOU, ISOLANDO O EVENTO ABAIXO
+}
 
-// Evento global movido para o escopo principal
+// Fecha o menu de configurações se o clique ocorrer fora dele e do botão de engrenagem
 document.addEventListener('click', (e) => {
-    // 1. Ação de Excluir Boleto da Configuração
+    if (settingsDropdown && !settingsDropdown.classList.contains('oculto')) {
+        const isClickInsideMenu = settingsDropdown.contains(e.target);
+        const isClickOnToggle = btnSettingsToggle && btnSettingsToggle.contains(e.target);
+        
+        if (!isClickInsideMenu && !isClickOnToggle) {
+            settingsDropdown.classList.add('oculto');
+        }
+    }
+}, true); // O parâmetro "true" habilita a fase de captura de eventos
+
+document.addEventListener('click', (e) => {
     const btnEliminarBoleto = e.target.closest('.btn-eliminar-boleto');
     if (btnEliminarBoleto) {
         state.boletos = state.boletos.filter(b => b.id !== btnEliminarBoleto.dataset.id);
@@ -117,7 +126,6 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // 2. Ação de Pagar Boleto no Mês Atual
     const btnPagar = e.target.closest('.btn-pagar-boleto');
     if (btnPagar) {
         const boletoId = btnPagar.dataset.id;
@@ -225,6 +233,7 @@ function mostrarPantallaPrincipal() {
     
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
+    setFiltroHistorial('todos', null);
     resetFormularioGasto(setGastoEnEdicion);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
     
@@ -240,12 +249,14 @@ function mostrarPantallaPrincipal() {
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    setFiltroHistorial('todos', null);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    setFiltroHistorial('todos', null);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
@@ -467,7 +478,6 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
 });
 
-// --- NOVA LÓGICA SMART DEFAULT DO UX ---
 function atualizarCheckboxMes() {
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     const inputFecha = document.getElementById('input-fecha-gasto').value;
@@ -487,7 +497,6 @@ function atualizarCheckboxMes() {
 
 document.getElementById('input-cuenta-origen').addEventListener('change', atualizarCheckboxMes);
 document.getElementById('input-fecha-gasto').addEventListener('change', atualizarCheckboxMes);
-// ---------------------------------------
 
 document.getElementById('form-gasto').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -517,12 +526,13 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         
         if (wasEditing) {
             let mesEfectivo = undefined;
+            let fechaIso = baseIso;
             if (startOffset > 0) {
-                const baseDateEdit = new Date(baseIso);
-                baseDateEdit.setMonth(baseDateEdit.getMonth() + startOffset);
-                mesEfectivo = `${baseDateEdit.getFullYear()}-${String(baseDateEdit.getMonth() + 1).padStart(2, '0')}`;
+                const futureDate = new Date(dataBase.getFullYear(), dataBase.getMonth() + startOffset, 1, 12, 0, 0);
+                mesEfectivo = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+                fechaIso = futureDate.toISOString();
             }
-            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: baseIso });
+            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: fechaIso });
             resetFormularioGasto(setGastoEnEdicion);
         } else {
             const montoCuotaNormal = Math.floor(montoCents / cuotas);
@@ -530,13 +540,14 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
             
             const nuevasCuotas = [];
             for (let i = 0; i < cuotas; i++) {
-                const curDate = new Date(baseIso);
                 const totalMonthOffset = startOffset + i;
                 let mesEfectivo = undefined;
+                let fechaIso = baseIso;
                 
                 if (totalMonthOffset > 0) {
-                    curDate.setMonth(curDate.getMonth() + totalMonthOffset);
-                    mesEfectivo = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
+                    const futureDate = new Date(dataBase.getFullYear(), dataBase.getMonth() + totalMonthOffset, 1, 12, 0, 0);
+                    mesEfectivo = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+                    fechaIso = futureDate.toISOString();
                 }
                 
                 const descCuota = cuotas > 1 ? `${desc} (${i + 1}/${cuotas})` : desc;
@@ -546,7 +557,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                     id: Date.now() + i,
                     monto: montoMapeado,
                     desc: descCuota,
-                    fecha: baseIso,
+                    fecha: fechaIso,
                     categoria: cat,
                     mesEfectivo,
                     cuentaId
@@ -827,19 +838,16 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
     }
 });
 
-// --- LÓGICA DE NOTIFICAÇÕES (LEMBRETE 20H) ---
 const btnLembrete = document.getElementById('btn-lembrete');
 if (btnLembrete) {
     btnLembrete.addEventListener('click', async () => {
         if (settingsDropdown) settingsDropdown.classList.add('oculto');
 
-        // Verifica se o navegador suporta notificações
         if (!('Notification' in window)) {
             showToast(t('notifUnsupported'));
             return;
         }
 
-        // Pede permissão caso ainda não tenha
         let permission = Notification.permission;
         if (permission !== 'granted') {
             permission = await Notification.requestPermission();
@@ -848,7 +856,7 @@ if (btnLembrete) {
         if (permission === 'granted') {
             showToast(t('notifActivated'));
             localStorage.setItem('floux_lembrete_20h', 'true');
-            agendarNotificacao(20, 0); // Agenda para as 20:00
+            agendarNotificacao(20, 0);
         } else {
             showToast(t('notifDenied'));
         }
@@ -860,7 +868,6 @@ function agendarNotificacao(hora, minuto) {
     const alvo = new Date();
     alvo.setHours(hora, minuto, 0, 0);
 
-    // Se já passou das 20h de hoje, agenda para as 20h de amanhã
     if (agora.getTime() > alvo.getTime()) {
         alvo.setDate(alvo.getDate() + 1);
     }
@@ -869,7 +876,6 @@ function agendarNotificacao(hora, minuto) {
 
     setTimeout(() => {
         mostrarNotificacao();
-        // Após mostrar a de hoje, agenda para repetir a cada 24 horas
         setInterval(mostrarNotificacao, 24 * 60 * 60 * 1000);
     }, tempoAteLembrete);
 }
@@ -882,7 +888,7 @@ function mostrarNotificacao() {
                 icon: './img/logo180.png',
                 badge: './img/logo-floux.svg',
                 vibrate: [200, 100, 200, 100, 200],
-                data: { url: './?action=add-expense' } // Passa a URL para o Service Worker
+                data: { url: './?action=add-expense' }
             });
         });
     }
@@ -894,9 +900,8 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
 }
 
-// Adicione dentro da função async function init() { ...
 if (localStorage.getItem('floux_lembrete_20h') === 'true' && Notification.permission === 'granted') {
-    agendarNotificacao(20, 0); // Re-agenda silenciosamente se já estava ativo
+    agendarNotificacao(20, 0);
 }
 
 window.addEventListener('popstate', () => {

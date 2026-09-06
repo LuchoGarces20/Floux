@@ -8,6 +8,13 @@ export const UI_CONFIG = {
     TOAST_DURATION_MS: 3000
 };
 
+// Estado interno do Filtro do Histórico
+let filtroHistorialActivo = { tipo: 'todos', id: null };
+
+export function setFiltroHistorial(tipo, id = null) {
+    filtroHistorialActivo = { tipo, id };
+}
+
 export function escapeHTML(str) {
     if (!str) return '';
     return String(str).replace(/[&<>'"]/g, tag => ({
@@ -85,7 +92,6 @@ export function renderSelectCuentas(state) {
     if (!select) return;
     const currentValue = select.value;
     
-    // FILTRO RIGOROSO: Só puxa cash e credit
     select.innerHTML = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit').map(c => 
         `<option value="${c.id}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
     ).join('');
@@ -103,7 +109,6 @@ export function renderCuentasList(state) {
         if(!ul) return;
         ul.innerHTML = '';
 
-        // FILTRO RIGOROSO: Impede os ativos do vault de aparecerem na lista de gerenciar contas
         const contasNormais = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
 
         contasNormais.forEach(c => {
@@ -272,7 +277,6 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
     
     const zeroSpendBadge = document.getElementById('zero-spend-badge');
     if (zeroSpendBadge) {
-        // Impede que pagar o aluguel zere a sua "Ofensiva de dias sem gastar"
         const gastosVariables = gastosMesActual.filter(g => !g.boletoId);
         const diasConGasto = new Set(gastosVariables.map(g => new Date(g.fecha).getDate()));
         let diasCero = 0;
@@ -292,7 +296,6 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     const contGrafico = document.getElementById('grafico-categorias');
     contGrafico.innerHTML = '';
     
-    // Ignora boletos para não distorcer o gráfico de pizza do dinheiro livre
     const gastosVariables = gastosMesActual.filter(g => !g.boletoId);
     
     if (gastosVariables.length > 0 && totalGastadoMesCents > 0) {
@@ -337,6 +340,45 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     } else {
         contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛋️</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
     }
+}
+
+export function renderFiltrosHistorial(state, gastosMesActual, onFilterSelect) {
+    const container = document.getElementById('filtros-historial');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const items = [
+        { tipo: 'todos', id: null, label: `🌐 ${t('filterAll') || 'Todas'}` }
+    ];
+
+    const contas = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
+    contas.forEach(c => {
+        const icon = c.tipo === 'credit' ? '💳' : '💵';
+        items.push({ tipo: 'cuenta', id: c.id, label: `${icon} ${c.nombre}` });
+    });
+
+    const categorias = obtenerCategorias(state.categoriasCustom);
+    const catIdsNoMes = new Set(gastosMesActual.map(g => g.categoria));
+    categorias.filter(c => catIdsNoMes.has(c.id)).forEach(cat => {
+        items.push({ tipo: 'categoria', id: cat.id, label: `${cat.emoji} ${cat.nombre}` });
+    });
+
+    items.forEach(item => {
+        const chip = document.createElement('div');
+        chip.className = 'cat-chip';
+        const isActive = filtroHistorialActivo.tipo === item.tipo && filtroHistorialActivo.id === item.id;
+        if (isActive) chip.classList.add('active');
+
+        chip.innerHTML = `<span class="chip-name">${escapeHTML(item.label)}</span>`;
+
+        chip.addEventListener('click', () => {
+            filtroHistorialActivo = { tipo: item.tipo, id: item.id };
+            if (onFilterSelect) onFilterSelect();
+        });
+
+        container.appendChild(chip);
+    });
 }
 
 function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
@@ -445,6 +487,42 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         return mes === viewMonth && ano === viewYear;
     });
     
+    // Valida se a conta filtrada ainda existe
+    if (filtroHistorialActivo.tipo === 'cuenta' && !state.cuentas.some(c => c.id === filtroHistorialActivo.id)) {
+        filtroHistorialActivo = { tipo: 'todos', id: null };
+    }
+
+    // Aplica o filtro selecionado aos gastos do mês
+    let gastosFiltrados = gastosMesActual;
+    if (filtroHistorialActivo.tipo === 'cuenta') {
+        gastosFiltrados = gastosMesActual.filter(g => g.cuentaId === filtroHistorialActivo.id);
+    } else if (filtroHistorialActivo.tipo === 'categoria') {
+        gastosFiltrados = gastosMesActual.filter(g => g.categoria === filtroHistorialActivo.id);
+    }
+
+    // Atualiza o indicador com o total somado do filtro
+    const infoSomaEl = document.getElementById('info-soma-filtro');
+    const textoSomaEl = document.getElementById('texto-soma-filtro');
+    if (infoSomaEl && textoSomaEl) {
+        if (filtroHistorialActivo.tipo !== 'todos') {
+            const totalFiltroCents = gastosFiltrados.reduce((acc, g) => acc + g.monto, 0);
+            let nomeFiltro = '';
+            if (filtroHistorialActivo.tipo === 'cuenta') {
+                const acc = state.cuentas.find(c => c.id === filtroHistorialActivo.id);
+                nomeFiltro = acc ? acc.nombre : '';
+            } else if (filtroHistorialActivo.tipo === 'categoria') {
+                const cats = obtenerCategorias(state.categoriasCustom);
+                const cat = cats.find(c => c.id === filtroHistorialActivo.id);
+                nomeFiltro = cat ? `${cat.emoji} ${cat.nombre}` : '';
+            }
+            const labelTotal = t('filterTotal') || 'Total do Filtro:';
+            textoSomaEl.innerText = `${labelTotal} ${formatCurrency(totalFiltroCents, state.monedaActual)} (${nomeFiltro})`;
+            infoSomaEl.classList.remove('oculto');
+        } else {
+            infoSomaEl.classList.add('oculto');
+        }
+    }
+
     const viewDate = new Date(viewYear, viewMonth, 1);
     const currentMonthDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     const isPastMonth = viewDate < currentMonthDate;
@@ -511,7 +589,14 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     updateBalances(state, balances);
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
-    renderExpenseList(state, gastosMesActual, localeStr, !isPastMonth);
+    
+    // Renderiza a barra de filtros rápidos
+    renderFiltrosHistorial(state, gastosMesActual, () => {
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    });
+
+    // Renderiza apenas as despesas filtradas
+    renderExpenseList(state, gastosFiltrados, localeStr, !isPastMonth);
 }
 
 export function resetFormularioGasto(setGastoCallback) {
@@ -550,7 +635,6 @@ export function resetFormularioGasto(setGastoCallback) {
     
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
 
-    // Dispara evento de change na conta para a inteligência (Smart Default) avaliar o checkbox
     setTimeout(() => {
         const selectConta = document.getElementById('input-cuenta-origen');
         if (selectConta) selectConta.dispatchEvent(new Event('change'));
