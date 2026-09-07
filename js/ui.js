@@ -384,87 +384,90 @@ export function renderFiltrosHistorial(state, gastosMesActual, onFilterSelect) {
 function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     const listaUI = document.getElementById('lista-historial');
     listaUI.innerHTML = '';
-    
+         
     if(gastosMesActual.length === 0) {
-        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">☕</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
+        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon"> </div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
         return;
     }
+    
+    // Ordena cronologicamente por data e por ID (criação) como desempate
+    const gastosOrdenados = [...gastosMesActual].sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
     const categoriasActuales = obtenerCategorias(state.categoriasCustom);
     const fragList = document.createDocumentFragment();
-    
-    for (let i = gastosMesActual.length - 1; i >= 0; i--) {
-        const g = gastosMesActual[i];
+         
+    for (let i = gastosOrdenados.length - 1; i >= 0; i--) {
+        const g = gastosOrdenados[i];
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '📍', nombre: g.categoria };
-        
+        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: ' ', nombre: g.categoria };
+                 
         const li = document.createElement('li');
         li.className = 'swipe-item';
-        
+                 
         if (Date.now() - g.id < 2000) {
             li.classList.add('new-item');
         }
-        
+                 
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
-        
+                 
         if (allowEdit) {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
             editBtn.dataset.id = g.id;
             editBtn.setAttribute('aria-label', t('btnEdit'));
-            editBtn.textContent = '✏️';
-            
+            editBtn.textContent = ' ';
+                         
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.dataset.id = g.id;
             deleteBtn.setAttribute('aria-label', t('btnDeleteAria'));
-            deleteBtn.textContent = '🗑️';
-            
+            deleteBtn.textContent = ' ';
+                         
             swipeActions.appendChild(editBtn);
             swipeActions.appendChild(deleteBtn);
         }
         const swipeContent = document.createElement('div');
         swipeContent.className = 'swipe-content';
-        
+                 
         const catIcon = document.createElement('div');
         catIcon.className = 'cat-icon';
         catIcon.textContent = infoCat.emoji;
-        
+                 
         const expenseInfo = document.createElement('div');
         expenseInfo.className = 'expense-info';
-        
+                 
         const expDesc = document.createElement('span');
         expDesc.className = 'expense-desc';
         expDesc.title = g.desc;
         expDesc.textContent = g.desc;
-        
+                 
         const expCat = document.createElement('span');
         expCat.className = 'expense-cat';
-        
+                 
         let walletBadge = '';
         if (g.cuentaId) {
             const accountInfo = state.cuentas.find(c => c.id === g.cuentaId);
             if (accountInfo) walletBadge = ` - ${accountInfo.nombre}`;
         }
         expCat.textContent = infoCat.nombre + walletBadge;
-        
+                 
         const expDate = document.createElement('span');
         expDate.className = 'expense-date';
         expDate.textContent = fechaStr;
-        
+                 
         expenseInfo.appendChild(expDesc);
         expenseInfo.appendChild(expCat);
         expenseInfo.appendChild(expDate);
-        
+                 
         const expAmount = document.createElement('span');
         expAmount.className = 'expense-amount';
         expAmount.style.marginRight = '8px';
         expAmount.textContent = formatCurrency(g.monto, state.monedaActual);
-        
+                 
         swipeContent.appendChild(catIcon);
         swipeContent.appendChild(expenseInfo);
         swipeContent.appendChild(expAmount);
-        
+                 
         li.appendChild(swipeActions);
         li.appendChild(swipeContent);
         fragList.appendChild(li);
@@ -485,7 +488,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
             ano = eAno;
         }
         return mes === viewMonth && ano === viewYear;
-    });
+    }).sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
     
     // Valida se a conta filtrada ainda existe
     if (filtroHistorialActivo.tipo === 'cuenta' && !state.cuentas.some(c => c.id === filtroHistorialActivo.id)) {
