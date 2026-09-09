@@ -471,6 +471,22 @@
         </div>
 
         <ul class="log" id="lista-historial"></ul>
+
+<!-- BOTÃO PARA MOSTRAR HISTÓRICO COMPLETO DO MÊS -->
+        <div id="container-mostrar-mais" class="text-center mt-15 mb-20 oculto">
+            <button type="button" id="btn-mostrar-mais-historial" class="btn-base btn-secundario btn-pequeno w-auto m-0" style="padding: 10px 22px; font-weight: 600;">
+                <span id="label-mostrar-mais" data-i18n="btnShowMore">Ver histórico completo do mês</span>
+            </button>
+        </div>
+
+<!-- CALENDÁRIO PARA FILTRAR POR DATA ESPECÍFICA -->
+        <div id="container-calendario-historial" class="summary-card mb-20">
+            <div class="flex-between-center mb-10">
+                <span class="text-muted-small" style="padding:0; font-weight:700; color: var(--primary-color);" data-i18n="filterByDay">Filtrar por data no calendário</span>
+                <button type="button" id="btn-limpar-dia-calendario" class="btn-base btn-secundario btn-pequeno w-auto m-0 oculto" style="padding: 4px 10px; font-size: 0.75rem;" data-i18n="btnClearDayFilter">Limpar data</button>
+            </div>
+            <div id="strip-calendario-dias" class="calendar-strip"></div>
+        </div>
         
         <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">🔮 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
         <button id="btn-abrir-flouxvault" class="btn-base btn-secundario btn-lsim mt-10">

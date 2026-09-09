@@ -8,11 +8,26 @@ export const UI_CONFIG = {
     TOAST_DURATION_MS: 3000
 };
 
-// Estado interno do Filtro do Histórico
+// Estado interno dos Filtros do Histórico
 let filtroHistorialActivo = { tipo: 'todos', id: null };
+let mostrarTodosGastos = false;
+let diasSeleccionadosCalendario = new Set(); // Guarda múltiplos dias selecionados
 
 export function setFiltroHistorial(tipo, id = null) {
     filtroHistorialActivo = { tipo, id };
+}
+
+export function resetFiltrosHistorialState() {
+    mostrarTodosGastos = false;
+    diasSeleccionadosCalendario.clear();
+}
+
+export function toggleMostrarTodosGastos() {
+    mostrarTodosGastos = !mostrarTodosGastos;
+}
+
+export function limparDiaCalendario() {
+    diasSeleccionadosCalendario.clear();
 }
 
 export function escapeHTML(str) {
@@ -381,24 +396,110 @@ export function renderFiltrosHistorial(state, gastosMesActual, onFilterSelect) {
     });
 }
 
+export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear, localeStr, onSelectDay) {
+    const stripUI = document.getElementById('strip-calendario-dias');
+    const btnLimpar = document.getElementById('btn-limpar-dia-calendario');
+    if (!stripUI) return;
+    stripUI.innerHTML = '';
+
+    // Permite rolar horizontalmente com a roda do mouse no desktop/notebook
+    if (!stripUI.dataset.wheelBound) {
+        stripUI.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                stripUI.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+        stripUI.dataset.wheelBound = 'true';
+    }
+
+    const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const hoy = new Date();
+    const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
+    const diaHoje = hoy.getDate();
+    
+    // Mapeia quais dias do mês possuem gastos lançados
+    const diasComGasto = new Set();
+    gastosMesActual.forEach(g => {
+        const d = new Date(g.fecha).getDate();
+        diasComGasto.add(d);
+    });
+
+    if (btnLimpar) {
+        if (diasSeleccionadosCalendario.size > 0) {
+            btnLimpar.classList.remove('oculto');
+            btnLimpar.innerText = diasSeleccionadosCalendario.size > 1 ? 'Limpar dias' : 'Limpar data';
+        } else {
+            btnLimpar.classList.add('oculto');
+        }
+    }
+
+    const frag = document.createDocumentFragment();
+    for (let d = 1; d <= totalDiasMes; d++) {
+        const dateObj = new Date(viewYear, viewMonth, d);
+        const dayName = dateObj.toLocaleDateString(localeStr, { weekday: 'short' }).replace('.', '').substring(0, 3);
+        
+        const item = document.createElement('div');
+        item.className = 'calendar-day-item';
+        if (diasComGasto.has(d)) item.classList.add('has-spend');
+        if (diasSeleccionadosCalendario.has(d)) item.classList.add('active');
+        if (isCurrentMonth && d === diaHoje) item.classList.add('is-today');
+
+        item.innerHTML = `
+            <span class="day-week">${escapeHTML(dayName)}</span>
+            <span class="day-num">${d}</span>
+            ${diasComGasto.has(d) ? '<span class="day-dot"></span>' : ''}
+        `;
+
+        item.addEventListener('click', () => {
+            if (diasSeleccionadosCalendario.has(d)) {
+                diasSeleccionadosCalendario.delete(d);
+            } else {
+                diasSeleccionadosCalendario.add(d);
+            }
+            onSelectDay();
+        });
+
+        frag.appendChild(item);
+    }
+    stripUI.appendChild(frag);
+
+    // Centralização automática no carregamento
+    setTimeout(() => {
+        const activeEl = stripUI.querySelector('.calendar-day-item.active');
+        const todayEl = stripUI.querySelector('.calendar-day-item.is-today');
+        
+        const targetEl = activeEl || (isCurrentMonth ? todayEl : stripUI.querySelector('.calendar-day-item'));
+        
+        if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }, 50);
+}
+
 function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     const listaUI = document.getElementById('lista-historial');
     listaUI.innerHTML = '';
          
     if(gastosMesActual.length === 0) {
-        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon"> </div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
+        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">🛋️</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
         return;
     }
     
-    // Ordena cronologicamente por data e por ID (criação) como desempate
-    const gastosOrdenados = [...gastosMesActual].sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
+    // Ordena do mais recente para o mais antigo (e desempata pelo ID/criação)
+    const gastosOrdenados = [...gastosMesActual].sort((a, b) => {
+        const timeA = new Date(a.fecha).getTime();
+        const timeB = new Date(b.fecha).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id - a.id;
+    });
+
     const categoriasActuales = obtenerCategorias(state.categoriasCustom);
     const fragList = document.createDocumentFragment();
          
-    for (let i = gastosOrdenados.length - 1; i >= 0; i--) {
-        const g = gastosOrdenados[i];
+    gastosOrdenados.forEach(g => {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: ' ', nombre: g.categoria };
+        const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '📌', nombre: g.categoria };
                  
         const li = document.createElement('li');
         li.className = 'swipe-item';
@@ -415,13 +516,13 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
             editBtn.className = 'edit-btn';
             editBtn.dataset.id = g.id;
             editBtn.setAttribute('aria-label', t('btnEdit'));
-            editBtn.textContent = ' ';
+            editBtn.textContent = '✏️';
                          
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.dataset.id = g.id;
             deleteBtn.setAttribute('aria-label', t('btnDeleteAria'));
-            deleteBtn.textContent = ' ';
+            deleteBtn.textContent = '🗑️';
                          
             swipeActions.appendChild(editBtn);
             swipeActions.appendChild(deleteBtn);
@@ -471,7 +572,8 @@ function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
         li.appendChild(swipeActions);
         li.appendChild(swipeContent);
         fragList.appendChild(li);
-    }
+    });
+    
     listaUI.appendChild(fragList);
 }
 
@@ -490,12 +592,11 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         return mes === viewMonth && ano === viewYear;
     }).sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
     
-    // Valida se a conta filtrada ainda existe
     if (filtroHistorialActivo.tipo === 'cuenta' && !state.cuentas.some(c => c.id === filtroHistorialActivo.id)) {
         filtroHistorialActivo = { tipo: 'todos', id: null };
     }
 
-    // Aplica o filtro selecionado aos gastos do mês
+    // Aplica o filtro selecionado (categoria/conta)
     let gastosFiltrados = gastosMesActual;
     if (filtroHistorialActivo.tipo === 'cuenta') {
         gastosFiltrados = gastosMesActual.filter(g => g.cuentaId === filtroHistorialActivo.id);
@@ -503,11 +604,41 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         gastosFiltrados = gastosMesActual.filter(g => g.categoria === filtroHistorialActivo.id);
     }
 
-    // Atualiza o indicador com o total somado do filtro
+    // Filtro do Mini Calendário por Múltiplos Dias Selecionados
+    if (diasSeleccionadosCalendario.size > 0) {
+        gastosFiltrados = gastosFiltrados.filter(g => diasSeleccionadosCalendario.has(new Date(g.fecha).getDate()));
+    }
+
+    // Lógica dos Últimos 7 dias e Botão "Mostrar histórico completo"
+    const containerMostrarMais = document.getElementById('container-mostrar-mais');
+    const labelMostrarMais = document.getElementById('label-mostrar-mais');
+    let gastosExibicao = gastosFiltrados;
+
+    if (diasSeleccionadosCalendario.size === 0) {
+        const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
+        const dataLimiteSeteDias = new Date(hoy.getTime() - seteDiasMs);
+
+        const temGastosAntigos = gastosFiltrados.some(g => new Date(g.fecha) < dataLimiteSeteDias);
+
+        if (!mostrarTodosGastos && temGastosAntigos) {
+            gastosExibicao = gastosFiltrados.filter(g => new Date(g.fecha) >= dataLimiteSeteDias);
+            if (containerMostrarMais) containerMostrarMais.classList.remove('oculto');
+            if (labelMostrarMais) labelMostrarMais.innerText = t('btnShowMore') || 'Ver histórico completo do mês';
+        } else if (mostrarTodosGastos && temGastosAntigos) {
+            if (containerMostrarMais) containerMostrarMais.classList.remove('oculto');
+            if (labelMostrarMais) labelMostrarMais.innerText = t('btnShowLess') || 'Mostrar apenas últimos 7 dias';
+        } else {
+            if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
+        }
+    } else {
+        if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
+    }
+
+    // Atualiza o indicador com o total somado dos filtros
     const infoSomaEl = document.getElementById('info-soma-filtro');
     const textoSomaEl = document.getElementById('texto-soma-filtro');
     if (infoSomaEl && textoSomaEl) {
-        if (filtroHistorialActivo.tipo !== 'todos') {
+        if (filtroHistorialActivo.tipo !== 'todos' || diasSeleccionadosCalendario.size > 0) {
             const totalFiltroCents = gastosFiltrados.reduce((acc, g) => acc + g.monto, 0);
             let nomeFiltro = '';
             if (filtroHistorialActivo.tipo === 'cuenta') {
@@ -518,6 +649,13 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 const cat = cats.find(c => c.id === filtroHistorialActivo.id);
                 nomeFiltro = cat ? `${cat.emoji} ${cat.nombre}` : '';
             }
+
+            if (diasSeleccionadosCalendario.size > 0) {
+                const diasOrdenados = Array.from(diasSeleccionadosCalendario).sort((a, b) => a - b);
+                const textoDias = diasOrdenados.length === 1 ? `Dia ${diasOrdenados[0]}` : `Dias ${diasOrdenados.join(', ')}`;
+                nomeFiltro += (nomeFiltro ? ' • ' : '') + textoDias;
+            }
+
             const labelTotal = t('filterTotal') || 'Total do Filtro:';
             textoSomaEl.innerText = `${labelTotal} ${formatCurrency(totalFiltroCents, state.monedaActual)} (${nomeFiltro})`;
             infoSomaEl.classList.remove('oculto');
@@ -598,8 +736,13 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
 
-    // Renderiza apenas as despesas filtradas
-    renderExpenseList(state, gastosFiltrados, localeStr, !isPastMonth);
+    // Renderiza o mini calendário diário
+    renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear, localeStr, () => {
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    });
+
+    // Renderiza a lista de despesas filtradas
+    renderExpenseList(state, gastosExibicao, localeStr, !isPastMonth);
 }
 
 export function resetFormularioGasto(setGastoCallback) {

@@ -41,7 +41,7 @@ notifDenied: "Permiso de notificación denegado",
 notifUnsupported: "Notificaciones no soportadas en este navegador", 
 notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!",
 filterAll: "Todas", filterTotal: "Total filtrado:",
-        
+btnShowMore: "Mostrar más", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Día", btnClearDayFilter: "Ver todos",        
         // Net Worth
 accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.", 
 nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión", 
@@ -86,7 +86,7 @@ notifDenied: "Notification permission denied",
 notifUnsupported: "Notifications not supported in this browser", 
 notifBody: "Time to log your daily expenses in Floux!",
 filterAll: "All", filterTotal: "Filtered Total:",
-
+btnShowMore: "Show more", btnShowLess: "Show less", filterByDay: "Filter by Day", btnClearDayFilter: "Show all",
 // Net Worth
 accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.", 
 nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment", 
@@ -131,6 +131,7 @@ notifDenied: "Permissão de notificação negada",
 notifUnsupported: "Notificações não suportadas neste navegador", 
 notifBody: "Hora de registrar seus gastos de hoje no Floux!",
 filterAll: "Todas", filterTotal: "Total do Filtro:",
+btnShowMore: "Mostrar mais", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Dia", btnClearDayFilter: "Ver todos",
         // Net Worth
 accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.", 
 nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 

@@ -1,6 +1,6 @@
 import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe, addRegistroPatrimonio } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
-import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial } from './ui.js';
+import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
 import { initFlouxVault } from './flouxVault.js';
 import { initSwipeActions } from './swipeHandler.js';
@@ -234,6 +234,7 @@ function mostrarPantallaPrincipal() {
     viewMonth = hoy.getMonth();
     viewYear = hoy.getFullYear();
     setFiltroHistorial('todos', null);
+    resetFiltrosHistorialState();
     resetFormularioGasto(setGastoEnEdicion);
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
     
@@ -246,10 +247,28 @@ function mostrarPantallaPrincipal() {
     }, INTERACTION_CONFIG.KEYBOARD_FOCUS_DELAY_MS || 300);
 }
 
+// Botões de Ação do Histórico (Mostrar Mais e Limpar Calendário)
+const btnMostrarMais = document.getElementById('btn-mostrar-mais-historial');
+if (btnMostrarMais) {
+    btnMostrarMais.addEventListener('click', () => {
+        toggleMostrarTodosGastos();
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    });
+}
+
+const btnLimparDia = document.getElementById('btn-limpar-dia-calendario');
+if (btnLimparDia) {
+    btnLimparDia.addEventListener('click', () => {
+        limparDiaCalendario();
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    });
+}
+
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     setFiltroHistorial('todos', null);
+    resetFiltrosHistorialState();
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
@@ -257,6 +276,7 @@ document.getElementById('btn-next-month').addEventListener('click', () => {
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     setFiltroHistorial('todos', null);
+    resetFiltrosHistorialState();
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
