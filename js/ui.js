@@ -1,6 +1,6 @@
 import { t, currentLang, formatCurrency } from './i18n.js';
 import { obtenerCategorias } from './categories.js';
-import { calculateBalances, calculateNetWorth } from './financeEngine.js';
+import { calculateBalances } from './financeEngine.js';
 
 export const UI_CONFIG = {
     WARNING_THRESHOLD: 0.2,
@@ -8,30 +8,17 @@ export const UI_CONFIG = {
     TOAST_DURATION_MS: 3000
 };
 
-// Estado interno dos Filtros do Histórico
 let filtroHistorialActivo = { tipo: 'todos', id: null };
 let mostrarTodosGastos = false;
-let diasSeleccionadosCalendario = new Set(); // Guarda múltiplos dias selecionados
+let diasSeleccionadosCalendario = new Set();
 
-export function setFiltroHistorial(tipo, id = null) {
-    filtroHistorialActivo = { tipo, id };
-}
-
-export function resetFiltrosHistorialState() {
-    mostrarTodosGastos = false;
-    diasSeleccionadosCalendario.clear();
-}
-
-export function toggleMostrarTodosGastos() {
-    mostrarTodosGastos = !mostrarTodosGastos;
-}
-
-export function limparDiaCalendario() {
-    diasSeleccionadosCalendario.clear();
-}
+export function setFiltroHistorial(tipo, id = null) { filtroHistorialActivo = { tipo, id }; }
+export function resetFiltrosHistorialState() { mostrarTodosGastos = false; diasSeleccionadosCalendario.clear(); }
+export function toggleMostrarTodosGastos() { mostrarTodosGastos = !mostrarTodosGastos; }
+export function limparDiaCalendario() { diasSeleccionadosCalendario.clear(); }
 
 export function escapeHTML(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>'"]/g, tag => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[tag] || tag));
@@ -62,7 +49,7 @@ export function renderizarSelectCategorias(customCats) {
             const chip = document.createElement('div');
             chip.className = 'cat-chip';
             chip.dataset.id = cat.id;
-            chip.innerHTML = `<span class="chip-emoji">${cat.emoji}</span><span class="chip-name">${cat.nombre}</span>`;
+            chip.innerHTML = `<span class="chip-emoji">${escapeHTML(cat.emoji)}</span><span class="chip-name">${escapeHTML(cat.nombre)}</span>`;
             
             chip.addEventListener('click', () => {
                 document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
@@ -76,18 +63,15 @@ export function renderizarSelectCategorias(customCats) {
         
         if (!currentValue && categorias.length > 0) {
             inputHidden.value = categorias[0].id;
-            container.firstChild.classList.add('active');
+            if(container.firstChild) container.firstChild.classList.add('active');
         } else if (currentValue && categorias.find(c => c.id === currentValue)) {
             inputHidden.value = currentValue;
-            const activeChip = container.querySelector(`[data-id="${currentValue}"]`);
+            const activeChip = container.querySelector(`[data-id="${escapeHTML(currentValue)}"]`);
             if (activeChip) activeChip.classList.add('active');
-        } else if (categorias.length > 0) {
-            inputHidden.value = categorias[0].id;
-            container.firstChild.classList.add('active');
         }
     }
     
-    const optionsHTML = categorias.map(c => `<option value="${c.id}">${c.emoji} ${c.nombre}</option>`).join('');
+    const optionsHTML = categorias.map(c => `<option value="${escapeHTML(c.id)}">${escapeHTML(c.emoji)} ${escapeHTML(c.nombre)}</option>`).join('');
     
     if (selectBoleto) {
         const currentBoletoVal = selectBoleto.value;
@@ -108,7 +92,7 @@ export function renderSelectCuentas(state) {
     const currentValue = select.value;
     
     select.innerHTML = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit').map(c => 
-        `<option value="${c.id}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
+        `<option value="${escapeHTML(c.id)}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
     ).join('');
     
     if (currentValue && state.cuentas.find(c => c.id === currentValue)) {
@@ -123,9 +107,7 @@ export function renderCuentasList(state) {
         const ul = document.getElementById(containerId);
         if(!ul) return;
         ul.innerHTML = '';
-
         const contasNormais = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
-
         contasNormais.forEach(c => {
             const li = document.createElement('li');
             li.className = 'list-item-flex';
@@ -133,7 +115,7 @@ export function renderCuentasList(state) {
             let badgeClass = 'badge-cash';
             
             if (c.tipo === 'credit') {
-                typeLabel = `${t('accTypeCredit')} (Cierre: ${c.cierreTC})`;
+                typeLabel = `${t('accTypeCredit')} (Cierre: ${escapeHTML(String(c.cierreTC || ''))})`;
                 badgeClass = 'badge-credit';
             } else if (c.tipo === 'investment') {
                 typeLabel = t('accTypeInvestment');
@@ -143,10 +125,10 @@ export function renderCuentasList(state) {
             li.innerHTML = `
                 <div class="info">
                     <strong style="font-size: 1.1rem;">${escapeHTML(c.nombre)}</strong>
-                    <div><span class="badge-tipo ${badgeClass}">${typeLabel}</span></div>
+                    <div><span class="badge-tipo ${badgeClass}">${escapeHTML(typeLabel)}</span></div>
                 </div>
                 <div class="actions">
-                    <button type="button" class="btn-eliminar-simple btn-eliminar-cuenta" data-id="${c.id}">🗑️</button>
+                    <button type="button" class="btn-eliminar-simple btn-eliminar-cuenta" data-id="${escapeHTML(c.id)}">🗑️</button>
                 </div>
             `;
             ul.appendChild(li);
@@ -182,20 +164,20 @@ export function renderBoletosList(state) {
             li.className = 'list-item-flex';
             
             const isPago = boletosPagosMes.has(b.id);
-            const badgePago = isPago ? `<span class="badge-tipo badge-cash" style="margin-left: 8px;">✓ Pago</span>` : '';
-            const btnPagar = isPago ? '' : `<button type="button" class="btn-eliminar-simple btn-pagar-boleto" data-id="${b.id}" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color); margin-right: 8px;" title="Pagar">✓</button>`;
+            const badgePago = isPago ? `<span class="badge-tipo badge-cash" style="margin-left: 8px;">✅ Pago</span>` : '';
+            const btnPagar = isPago ? '' : `<button type="button" class="btn-eliminar-simple btn-pagar-boleto" data-id="${escapeHTML(b.id)}" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color); margin-right: 8px;" title="Pagar">💳</button>`;
             
             li.innerHTML = `
                 <div class="info">
-                    <strong style="font-size: 1.1rem;">${escapeHTML(b.desc)}</strong>
+                    <strong style="font-size: 1.15rem;">${escapeHTML(b.desc)}</strong>
                     <div>
-                        <span class="badge-tipo badge-credit" style="background: var(--bg-color); color: var(--text-color);">${catInfo.emoji} Dia ${b.diaVencimiento} - ${formatCurrency(b.monto, state.monedaActual)}</span>
+                        <span class="badge-tipo badge-credit" style="background: var(--bg-color); color: var(--text-color);">${escapeHTML(catInfo.emoji)} Dia ${escapeHTML(String(b.diaVencimiento))} - ${formatCurrency(b.monto, state.monedaActual)}</span>
                         ${badgePago}
                     </div>
                 </div>
                 <div class="actions">
                     ${btnPagar}
-                    <button type="button" class="btn-eliminar-simple btn-eliminar-boleto" data-id="${b.id}">🗑️</button>
+                    <button type="button" class="btn-eliminar-simple btn-eliminar-boleto" data-id="${escapeHTML(b.id)}">🗑️</button>
                 </div>
             `;
             ul.appendChild(li);
@@ -217,7 +199,7 @@ export function showToast(message) {
 
 export function animateValue(obj, endCents, duration, currency) {
     if (!obj) return;
-    const startCents = parseInt(obj.dataset.rawVal || 0, 10);
+    const startCents = parseInt(obj.dataset.rawVal || '0', 10);
     
     if (startCents === endCents) {
         obj.innerText = formatCurrency(endCents, currency);
@@ -309,6 +291,7 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
 
 function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
     const contGrafico = document.getElementById('grafico-categorias');
+    if (!contGrafico) return;
     contGrafico.innerHTML = '';
     
     const gastosVariables = gastosMesActual.filter(g => !g.boletoId);
@@ -353,45 +336,40 @@ function renderCategoryChart(state, gastosMesActual, totalGastadoMesCents) {
         }
         contGrafico.appendChild(fragChart);
     } else {
-        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛋️</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
+        contGrafico.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🌱</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div>`;
     }
 }
 
 export function renderFiltrosHistorial(state, gastosMesActual, onFilterSelect) {
     const container = document.getElementById('filtros-historial');
     if (!container) return;
-
     container.innerHTML = '';
-
     const items = [
-        { tipo: 'todos', id: null, label: `🌐 ${t('filterAll') || 'Todas'}` }
+        { tipo: 'todos', id: null, label: `✨ ${t('filterAll') || 'Todas'}` }
     ];
-
     const contas = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
     contas.forEach(c => {
         const icon = c.tipo === 'credit' ? '💳' : '💵';
         items.push({ tipo: 'cuenta', id: c.id, label: `${icon} ${c.nombre}` });
     });
-
     const categorias = obtenerCategorias(state.categoriasCustom);
     const catIdsNoMes = new Set(gastosMesActual.map(g => g.categoria));
     categorias.filter(c => catIdsNoMes.has(c.id)).forEach(cat => {
         items.push({ tipo: 'categoria', id: cat.id, label: `${cat.emoji} ${cat.nombre}` });
     });
-
     items.forEach(item => {
         const chip = document.createElement('div');
         chip.className = 'cat-chip';
         const isActive = filtroHistorialActivo.tipo === item.tipo && filtroHistorialActivo.id === item.id;
+        
         if (isActive) chip.classList.add('active');
-
         chip.innerHTML = `<span class="chip-name">${escapeHTML(item.label)}</span>`;
-
+        
         chip.addEventListener('click', () => {
             filtroHistorialActivo = { tipo: item.tipo, id: item.id };
             if (onFilterSelect) onFilterSelect();
         });
-
+        
         container.appendChild(chip);
     });
 }
@@ -400,9 +378,8 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
     const stripUI = document.getElementById('strip-calendario-dias');
     const btnLimpar = document.getElementById('btn-limpar-dia-calendario');
     if (!stripUI) return;
+    
     stripUI.innerHTML = '';
-
-    // Permite rolar horizontalmente com a roda do mouse no desktop/notebook
     if (!stripUI.dataset.wheelBound) {
         stripUI.addEventListener('wheel', (e) => {
             if (e.deltaY !== 0) {
@@ -412,19 +389,16 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
         }, { passive: false });
         stripUI.dataset.wheelBound = 'true';
     }
-
     const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const hoy = new Date();
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
     const diaHoje = hoy.getDate();
     
-    // Mapeia quais dias do mês possuem gastos lançados
     const diasComGasto = new Set();
     gastosMesActual.forEach(g => {
         const d = new Date(g.fecha).getDate();
         diasComGasto.add(d);
     });
-
     if (btnLimpar) {
         if (diasSeleccionadosCalendario.size > 0) {
             btnLimpar.classList.remove('oculto');
@@ -433,24 +407,25 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
             btnLimpar.classList.add('oculto');
         }
     }
-
     const frag = document.createDocumentFragment();
+    
     for (let d = 1; d <= totalDiasMes; d++) {
         const dateObj = new Date(viewYear, viewMonth, d);
         const dayName = dateObj.toLocaleDateString(localeStr, { weekday: 'short' }).replace('.', '').substring(0, 3);
         
         const item = document.createElement('div');
         item.className = 'calendar-day-item';
+        
         if (diasComGasto.has(d)) item.classList.add('has-spend');
         if (diasSeleccionadosCalendario.has(d)) item.classList.add('active');
         if (isCurrentMonth && d === diaHoje) item.classList.add('is-today');
-
+        
         item.innerHTML = `
             <span class="day-week">${escapeHTML(dayName)}</span>
             <span class="day-num">${d}</span>
             ${diasComGasto.has(d) ? '<span class="day-dot"></span>' : ''}
         `;
-
+        
         item.addEventListener('click', () => {
             if (diasSeleccionadosCalendario.has(d)) {
                 diasSeleccionadosCalendario.delete(d);
@@ -459,16 +434,14 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
             }
             onSelectDay();
         });
-
+        
         frag.appendChild(item);
     }
+    
     stripUI.appendChild(frag);
-
-    // Centralização automática no carregamento
     setTimeout(() => {
         const activeEl = stripUI.querySelector('.calendar-day-item.active');
         const todayEl = stripUI.querySelector('.calendar-day-item.is-today');
-        
         const targetEl = activeEl || (isCurrentMonth ? todayEl : stripUI.querySelector('.calendar-day-item'));
         
         if (targetEl) {
@@ -477,98 +450,98 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
     }, 50);
 }
 
-function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
+export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
     const listaUI = document.getElementById('lista-historial');
+    if (!listaUI) return;
     listaUI.innerHTML = '';
-         
+    
     if(gastosMesActual.length === 0) {
-        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">🛋️</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
+        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">🌱</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
         return;
     }
     
-    // Ordena do mais recente para o mais antigo (e desempata pelo ID/criação)
     const gastosOrdenados = [...gastosMesActual].sort((a, b) => {
         const timeA = new Date(a.fecha).getTime();
         const timeB = new Date(b.fecha).getTime();
         if (timeA !== timeB) return timeB - timeA;
         return b.id - a.id;
     });
-
     const categoriasActuales = obtenerCategorias(state.categoriasCustom);
     const fragList = document.createDocumentFragment();
-         
+    
     gastosOrdenados.forEach(g => {
         const fechaStr = new Date(g.fecha).toLocaleString(localeStr, { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
         const infoCat = categoriasActuales.find(c => c.id === g.categoria) || { emoji: '📌', nombre: g.categoria };
-                 
+        
         const li = document.createElement('li');
         li.className = 'swipe-item';
-                 
+        
         if (Date.now() - g.id < 2000) {
             li.classList.add('new-item');
         }
-                 
+        
         const swipeActions = document.createElement('div');
         swipeActions.className = 'swipe-actions';
-                 
+        
         if (allowEdit) {
             const editBtn = document.createElement('button');
             editBtn.className = 'edit-btn';
-            editBtn.dataset.id = g.id;
+            editBtn.dataset.id = String(g.id);
             editBtn.setAttribute('aria-label', t('btnEdit'));
             editBtn.textContent = '✏️';
-                         
+            
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
-            deleteBtn.dataset.id = g.id;
+            deleteBtn.dataset.id = String(g.id);
             deleteBtn.setAttribute('aria-label', t('btnDeleteAria'));
             deleteBtn.textContent = '🗑️';
-                         
+            
             swipeActions.appendChild(editBtn);
             swipeActions.appendChild(deleteBtn);
         }
+        
         const swipeContent = document.createElement('div');
         swipeContent.className = 'swipe-content';
-                 
+        
         const catIcon = document.createElement('div');
         catIcon.className = 'cat-icon';
         catIcon.textContent = infoCat.emoji;
-                 
+        
         const expenseInfo = document.createElement('div');
         expenseInfo.className = 'expense-info';
-                 
+        
         const expDesc = document.createElement('span');
         expDesc.className = 'expense-desc';
         expDesc.title = g.desc;
         expDesc.textContent = g.desc;
-                 
+        
         const expCat = document.createElement('span');
         expCat.className = 'expense-cat';
-                 
+        
         let walletBadge = '';
         if (g.cuentaId) {
             const accountInfo = state.cuentas.find(c => c.id === g.cuentaId);
             if (accountInfo) walletBadge = ` - ${accountInfo.nombre}`;
         }
         expCat.textContent = infoCat.nombre + walletBadge;
-                 
+        
         const expDate = document.createElement('span');
         expDate.className = 'expense-date';
         expDate.textContent = fechaStr;
-                 
+        
         expenseInfo.appendChild(expDesc);
         expenseInfo.appendChild(expCat);
         expenseInfo.appendChild(expDate);
-                 
+        
         const expAmount = document.createElement('span');
         expAmount.className = 'expense-amount';
         expAmount.style.marginRight = '8px';
         expAmount.textContent = formatCurrency(g.monto, state.monedaActual);
-                 
+        
         swipeContent.appendChild(catIcon);
         swipeContent.appendChild(expenseInfo);
         swipeContent.appendChild(expAmount);
-                 
+        
         li.appendChild(swipeActions);
         li.appendChild(swipeContent);
         fragList.appendChild(li);
@@ -595,31 +568,26 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     if (filtroHistorialActivo.tipo === 'cuenta' && !state.cuentas.some(c => c.id === filtroHistorialActivo.id)) {
         filtroHistorialActivo = { tipo: 'todos', id: null };
     }
-
-    // Aplica o filtro selecionado (categoria/conta)
+    
     let gastosFiltrados = gastosMesActual;
     if (filtroHistorialActivo.tipo === 'cuenta') {
         gastosFiltrados = gastosMesActual.filter(g => g.cuentaId === filtroHistorialActivo.id);
     } else if (filtroHistorialActivo.tipo === 'categoria') {
         gastosFiltrados = gastosMesActual.filter(g => g.categoria === filtroHistorialActivo.id);
     }
-
-    // Filtro do Mini Calendário por Múltiplos Dias Selecionados
+    
     if (diasSeleccionadosCalendario.size > 0) {
         gastosFiltrados = gastosFiltrados.filter(g => diasSeleccionadosCalendario.has(new Date(g.fecha).getDate()));
     }
-
-    // Lógica dos Últimos 7 dias e Botão "Mostrar histórico completo"
+    
     const containerMostrarMais = document.getElementById('container-mostrar-mais');
     const labelMostrarMais = document.getElementById('label-mostrar-mais');
     let gastosExibicao = gastosFiltrados;
-
+    
     if (diasSeleccionadosCalendario.size === 0) {
         const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
         const dataLimiteSeteDias = new Date(hoy.getTime() - seteDiasMs);
-
         const temGastosAntigos = gastosFiltrados.some(g => new Date(g.fecha) < dataLimiteSeteDias);
-
         if (!mostrarTodosGastos && temGastosAntigos) {
             gastosExibicao = gastosFiltrados.filter(g => new Date(g.fecha) >= dataLimiteSeteDias);
             if (containerMostrarMais) containerMostrarMais.classList.remove('oculto');
@@ -633,13 +601,13 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     } else {
         if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
     }
-
-    // Atualiza o indicador com o total somado dos filtros
+    
     const infoSomaEl = document.getElementById('info-soma-filtro');
     const textoSomaEl = document.getElementById('texto-soma-filtro');
     if (infoSomaEl && textoSomaEl) {
         if (filtroHistorialActivo.tipo !== 'todos' || diasSeleccionadosCalendario.size > 0) {
             const totalFiltroCents = gastosFiltrados.reduce((acc, g) => acc + g.monto, 0);
+            
             let nomeFiltro = '';
             if (filtroHistorialActivo.tipo === 'cuenta') {
                 const acc = state.cuentas.find(c => c.id === filtroHistorialActivo.id);
@@ -649,13 +617,11 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 const cat = cats.find(c => c.id === filtroHistorialActivo.id);
                 nomeFiltro = cat ? `${cat.emoji} ${cat.nombre}` : '';
             }
-
             if (diasSeleccionadosCalendario.size > 0) {
                 const diasOrdenados = Array.from(diasSeleccionadosCalendario).sort((a, b) => a - b);
                 const textoDias = diasOrdenados.length === 1 ? `Dia ${diasOrdenados[0]}` : `Dias ${diasOrdenados.join(', ')}`;
-                nomeFiltro += (nomeFiltro ? ' • ' : '') + textoDias;
+                nomeFiltro += (nomeFiltro ? ' + ' : '') + textoDias;
             }
-
             const labelTotal = t('filterTotal') || 'Total do Filtro:';
             textoSomaEl.innerText = `${labelTotal} ${formatCurrency(totalFiltroCents, state.monedaActual)} (${nomeFiltro})`;
             infoSomaEl.classList.remove('oculto');
@@ -663,7 +629,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
             infoSomaEl.classList.add('oculto');
         }
     }
-
+    
     const viewDate = new Date(viewYear, viewMonth, 1);
     const currentMonthDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     const isPastMonth = viewDate < currentMonthDate;
@@ -731,17 +697,14 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
     
-    // Renderiza a barra de filtros rápidos
     renderFiltrosHistorial(state, gastosMesActual, () => {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
-
-    // Renderiza o mini calendário diário
+    
     renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear, localeStr, () => {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
-
-    // Renderiza a lista de despesas filtradas
+    
     renderExpenseList(state, gastosExibicao, localeStr, !isPastMonth);
 }
 
@@ -779,8 +742,10 @@ export function resetFormularioGasto(setGastoCallback) {
         containerCuotas.style.display = '';
     }
     
+    const warnEl = document.getElementById('edit-installment-warning');
+    if (warnEl) warnEl.style.display = 'none';
+    
     document.getElementById('btn-guardar-gasto').innerText = t('btnAdd');
-
     setTimeout(() => {
         const selectConta = document.getElementById('input-cuenta-origen');
         if (selectConta) selectConta.dispatchEvent(new Event('change'));

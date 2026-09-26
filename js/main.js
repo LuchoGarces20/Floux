@@ -1,4 +1,4 @@
-import { state, loadStore, saveStore, isValidoHistorialSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe, addRegistroPatrimonio } from './store.js';
+import { state, loadStore, saveStore, isValidBackupSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
@@ -34,7 +34,6 @@ const executeSave = async () => {
         needsAnotherSave = true;
         return;
     }
-
     isSaving = true;
     try {
         await saveStore();
@@ -47,7 +46,6 @@ const executeSave = async () => {
         }
     } finally {
         isSaving = false;
-        
         if (needsAnotherSave) {
             needsAnotherSave = false;
             executeSave();
@@ -55,9 +53,21 @@ const executeSave = async () => {
     }
 };
 
-subscribe((property, value) => {
+// FILTRAGEM DO PROXY REATIVO (Evita re-renders pesados para alterações visuais)
+subscribe((property) => {
+    if (property === 'privacyMode') {
+        actualizarModoPrivacidade();
+        return;
+    }
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(executeSave, 50);
+});
+
+window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && (saveTimeout || isSaving)) {
+        clearTimeout(saveTimeout);
+        executeSave();
+    }
 });
 
 function transicionPantalla(callback) {
@@ -78,9 +88,9 @@ const displayNetSurvival = document.getElementById('display-net-survival');
 const displayFreeSpending = document.getElementById('display-free-spending');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
-
 const selectCuotas = document.getElementById('select-cuotas');
 const inputCuotas = document.getElementById('input-cuotas');
+
 if (selectCuotas && inputCuotas) {
     selectCuotas.addEventListener('change', (e) => {
         if (e.target.value === 'custom') {
@@ -105,19 +115,43 @@ if (btnSettingsToggle && settingsDropdown) {
     });
 }
 
-// Fecha o menu de configurações se o clique ocorrer fora dele e do botão de engrenagem
+// LEMBRETE DIÁRIO / NOTIFICAÇÕES PUSH
+const btnLembrete = document.getElementById('btn-lembrete');
+if (btnLembrete) {
+    btnLembrete.addEventListener('click', async () => {
+        if (settingsDropdown) settingsDropdown.classList.add('oculto');
+        
+        if (!('Notification' in window)) {
+            showToast("⚠️ " + t('notifUnsupported'));
+            return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            showToast("🔔 " + t('notifActivated'));
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                const reg = await navigator.serviceWorker.ready;
+                reg.showNotification("Floux", {
+                    body: t('notifBody'),
+                    icon: './img/logo180.png',
+                    badge: './img/logo-floux.svg'
+                });
+            }
+        } else {
+            showToast("⚠️ " + t('notifDenied'));
+        }
+    });
+}
+
 document.addEventListener('click', (e) => {
     if (settingsDropdown && !settingsDropdown.classList.contains('oculto')) {
         const isClickInsideMenu = settingsDropdown.contains(e.target);
         const isClickOnToggle = btnSettingsToggle && btnSettingsToggle.contains(e.target);
-        
         if (!isClickInsideMenu && !isClickOnToggle) {
             settingsDropdown.classList.add('oculto');
         }
     }
-}, true); // O parâmetro "true" habilita a fase de captura de eventos
-
-document.addEventListener('click', (e) => {
+    
     const btnEliminarBoleto = e.target.closest('.btn-eliminar-boleto');
     if (btnEliminarBoleto) {
         state.boletos = state.boletos.filter(b => b.id !== btnEliminarBoleto.dataset.id);
@@ -125,7 +159,7 @@ document.addEventListener('click', (e) => {
         recalcularPresupuestoOnboarding();
         return;
     }
-
+    
     const btnPagar = e.target.closest('.btn-pagar-boleto');
     if (btnPagar) {
         const boletoId = btnPagar.dataset.id;
@@ -134,12 +168,10 @@ document.addEventListener('click', (e) => {
         if (boleto) {
             const contaSelect = document.getElementById('input-cuenta-origen');
             const cuentaId = contaSelect ? contaSelect.value : (state.cuentas.length > 0 ? state.cuentas[0].id : null);
-
             if (!cuentaId) {
                 showToast("Erro: Nenhuma conta disponível para pagar.");
                 return;
             }
-
             if (confirm(`Pagar "${boleto.desc}" no valor de ${formatCurrency(boleto.monto, state.monedaActual)}?`)) {
                 addExpense({
                     id: Date.now(),
@@ -150,10 +182,8 @@ document.addEventListener('click', (e) => {
                     cuentaId: cuentaId,
                     boletoId: boleto.id
                 });
-
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("✓ Boleto pago e contabilizado!");
-
+                showToast("💳 Boleto pago e contabilizado!");
                 renderBoletosList(state);
                 if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
                     actualizarInterfaz(state, viewMonth, viewYear, hoy);
@@ -161,23 +191,28 @@ document.addEventListener('click', (e) => {
             }
         }
     }
+
+    const btnCuentaDelete = e.target.closest('.btn-eliminar-cuenta');
+    if (btnCuentaDelete) {
+        state.cuentas = state.cuentas.filter(c => c.id !== btnCuentaDelete.dataset.id);
+        renderCuentasList(state);
+    }
 });
 
-function actualizarModoPrivacidade() {     
-    if (!btnPrivacidade) return;     
-    if (state.privacyMode) {         
-        document.body.classList.add('privacy-mode');         
-        btnPrivacidade.innerText = '👁️‍🗨️'; 
-    } else {         
-        document.body.classList.remove('privacy-mode');         
-        btnPrivacidade.innerText = '👁️'; 
-    } 
+function actualizarModoPrivacidade() {
+    if (!btnPrivacidade) return;
+    if (state.privacyMode) {
+        document.body.classList.add('privacy-mode');
+        btnPrivacidade.innerText = '👁️‍🗨️';
+    } else {
+        document.body.classList.remove('privacy-mode');
+        btnPrivacidade.innerText = '👁️';
+    }
 }
 
 if (btnPrivacidade) {
     btnPrivacidade.addEventListener('click', () => {
         state.privacyMode = !state.privacyMode;
-        actualizarModoPrivacidade();
     });
 }
 
@@ -197,7 +232,7 @@ async function init() {
     renderizarSelectCategorias(state.categoriasCustom);
     
     if (hasData) {
-        if (localStorage.getItem(STORAGE_KEYS.MES_GUARDADO) === null || parseInt(localStorage.getItem(STORAGE_KEYS.MES_GUARDADO)) !== mesActual) {
+        if (localStorage.getItem(STORAGE_KEYS.MES_GUARDADO) === null || parseInt(localStorage.getItem(STORAGE_KEYS.MES_GUARDADO), 10) !== mesActual) {
             localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, mesActual);
         }
         mostrarPantallaPrincipal();
@@ -247,22 +282,15 @@ function mostrarPantallaPrincipal() {
     }, INTERACTION_CONFIG.KEYBOARD_FOCUS_DELAY_MS || 300);
 }
 
-// Botões de Ação do Histórico (Mostrar Mais e Limpar Calendário)
-const btnMostrarMais = document.getElementById('btn-mostrar-mais-historial');
-if (btnMostrarMais) {
-    btnMostrarMais.addEventListener('click', () => {
-        toggleMostrarTodosGastos();
-        actualizarInterfaz(state, viewMonth, viewYear, hoy);
-    });
-}
+document.getElementById('btn-mostrar-mais-historial')?.addEventListener('click', () => {
+    toggleMostrarTodosGastos();
+    actualizarInterfaz(state, viewMonth, viewYear, hoy);
+});
 
-const btnLimparDia = document.getElementById('btn-limpar-dia-calendario');
-if (btnLimparDia) {
-    btnLimparDia.addEventListener('click', () => {
-        limparDiaCalendario();
-        actualizarInterfaz(state, viewMonth, viewYear, hoy);
-    });
-}
+document.getElementById('btn-limpar-dia-calendario')?.addEventListener('click', () => {
+    limparDiaCalendario();
+    actualizarInterfaz(state, viewMonth, viewYear, hoy);
+});
 
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     viewMonth--;
@@ -285,8 +313,14 @@ document.getElementById('lang-container').addEventListener('click', (e) => {
         setLangStr(e.target.getAttribute('data-lang'));
         document.querySelectorAll('.flag').forEach(f => f.classList.remove('active'));
         e.target.classList.add('active');
+        
         aplicarTraduccion(gastoEnEdicion);
         renderizarSelectCategorias(state.categoriasCustom);
+        
+        renderCuentasList(state);
+        renderBoletosList(state);
+        recalcularPresupuestoOnboarding();
+        
         if(!document.getElementById('pantalla-principal').classList.contains('oculto')) {
             actualizarInterfaz(state, viewMonth, viewYear, hoy);
         }
@@ -300,17 +334,17 @@ const modoCalculadora = document.getElementById('modo-calculadora');
 
 tabDirecto.addEventListener('click', () => {
     modoActual = 'directo';
-    tabDirecto.classList.add('active'); 
+    tabDirecto.classList.add('active');
     tabCalc.classList.remove('active');
-    modoDirecto.classList.remove('oculto'); 
+    modoDirecto.classList.remove('oculto');
     modoCalculadora.classList.add('oculto');
 });
 
 tabCalc.addEventListener('click', () => {
     modoActual = 'calculadora';
-    tabCalc.classList.add('active'); 
+    tabCalc.classList.add('active');
     tabDirecto.classList.remove('active');
-    modoCalculadora.classList.remove('oculto'); 
+    modoCalculadora.classList.remove('oculto');
     modoDirecto.classList.add('oculto');
     recalcularPresupuestoOnboarding();
     renderBoletosList(state);
@@ -400,7 +434,7 @@ document.getElementById('form-onboarding-boleto').addEventListener('submit', (e)
         montoInput.dataset.cents = '0';
         document.getElementById('input-onboarding-boleto-dia').value = '';
         
-        showToast("✅ " + t('btnSave'));
+        showToast("✨ " + t('btnSave'));
         renderBoletosList(state);
         recalcularPresupuestoOnboarding();
     }
@@ -433,7 +467,7 @@ document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e)
         
         document.getElementById('input-onboarding-cuenta-nombre').value = '';
         document.getElementById('input-onboarding-cuenta-cierre').value = '';
-        showToast("✅ " + t('btnSave'));
+        showToast("✨ " + t('btnSave'));
         renderCuentasList(state);
     }
 });
@@ -473,6 +507,7 @@ function formatInputCents(e) {
 document.getElementById('input-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-boleto-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-onboarding-boleto-monto').addEventListener('input', formatInputCents);
+
 const inputNwMonto = document.getElementById('input-nw-monto');
 if (inputNwMonto) inputNwMonto.addEventListener('input', formatInputCents);
 
@@ -498,16 +533,44 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
 });
 
+// CRIAR NOVA CATEGORIA PERSONALIZADA
+const btnToggleNuevaCat = document.getElementById('btn-toggle-nueva-cat');
+const areaNuevaCat = document.getElementById('area-nueva-categoria');
+const btnGuardarNuevaCat = document.getElementById('btn-guardar-nueva-cat');
+
+if (btnToggleNuevaCat && areaNuevaCat) {
+    btnToggleNuevaCat.addEventListener('click', () => {
+        areaNuevaCat.classList.toggle('oculto');
+    });
+}
+
+if (btnGuardarNuevaCat) {
+    btnGuardarNuevaCat.addEventListener('click', () => {
+        const nombreInput = document.getElementById('input-nueva-cat-nombre');
+        const emojiInput = document.getElementById('input-nueva-cat-emoji');
+        const nombre = nombreInput.value.trim();
+        const emoji = emojiInput.value.trim() || '📌';
+
+        if (nombre) {
+            const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
+            state.categoriasCustom = [...state.categoriasCustom, newCat];
+            nombreInput.value = '';
+            emojiInput.value = '';
+            areaNuevaCat.classList.add('oculto');
+            renderizarSelectCategorias(state.categoriasCustom);
+            showToast("✨ " + t('btnSave'));
+        }
+    });
+}
+
 function atualizarCheckboxMes() {
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     const inputFecha = document.getElementById('input-fecha-gasto').value;
     const checkbox = document.getElementById('checkbox-mes-siguiente');
     
     if (!cuentaId || !checkbox) return;
-
     const cuenta = state.cuentas.find(c => c.id === cuentaId);
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
-
     if (cuenta && cuenta.tipo === 'credit' && cuenta.cierreTC && dataBase.getDate() > cuenta.cierreTC) {
         checkbox.checked = true;
     } else {
@@ -532,14 +595,13 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
     
     const inputCuotas = document.getElementById('input-cuotas');
-    const cuotas = parseInt(inputCuotas?.value) || 1;
-
+    const cuotas = parseInt(inputCuotas?.value, 10) || 1;
     const inputFecha = document.getElementById('input-fecha-gasto').value;
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
     const checkboxMarcado = document.getElementById('checkbox-mes-siguiente').checked;
-    const startOffset = checkboxMarcado ? 1 : 0; 
-
+    const startOffset = checkboxMarcado ? 1 : 0;
+    
     if (!isNaN(montoCents) && montoCents > 0 && desc) {
         const wasEditing = gastoEnEdicion;
         const baseIso = dataBase.toISOString();
@@ -559,6 +621,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
             const montoUltimaCuota = montoCents - (montoCuotaNormal * (cuotas - 1));
             
             const nuevasCuotas = [];
+            const groupId = 'group_' + Date.now();
             for (let i = 0; i < cuotas; i++) {
                 const totalMonthOffset = startOffset + i;
                 let mesEfectivo = undefined;
@@ -575,6 +638,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                 
                 nuevasCuotas.push({
                     id: Date.now() + i,
+                    groupId: groupId,
                     monto: montoMapeado,
                     desc: descCuota,
                     fecha: fechaIso,
@@ -589,40 +653,66 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         
         if (document.activeElement) document.activeElement.blur();
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
-        showToast(wasEditing ? "✔️ " + t('btnEdit') : "✔️ " + t('btnAdd'));
+        showToast(wasEditing ? "✨ " + t('btnEdit') : "✨ " + t('btnAdd'));
     }
 });
 
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-eliminar-cuenta');
-    if (btn) {
-        state.cuentas = state.cuentas.filter(c => c.id !== btn.dataset.id);
-        renderCuentasList(state);
-    }
-});
-
+// TELA DE GESTÃO DE CONTAS & FORMULÁRIO DEDICADO
 document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    
     history.pushState({ view: 'cuentas' }, '');
     
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
         document.getElementById('pantalla-cuentas').classList.remove('oculto');
     });
-    
     renderCuentasList(state);
 });
 
-const btnCerrarCuentas = document.getElementById('btn-cerrar-cuentas');
-if (btnCerrarCuentas) {
-    btnCerrarCuentas.addEventListener('click', mostrarPantallaPrincipal);
+document.getElementById('btn-cerrar-cuentas')?.addEventListener('click', mostrarPantallaPrincipal);
+
+const inputCuentaTipo = document.getElementById('input-cuenta-tipo');
+if (inputCuentaTipo) {
+    inputCuentaTipo.addEventListener('change', (e) => {
+        const groupCierre = document.getElementById('group-cuenta-cierre');
+        if (e.target.value === 'credit') {
+            groupCierre.classList.remove('oculto');
+        } else {
+            groupCierre.classList.add('oculto');
+            document.getElementById('input-cuenta-cierre').value = '';
+        }
+    });
 }
 
+const formCuenta = document.getElementById('form-cuenta');
+if (formCuenta) {
+    formCuenta.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const nombre = document.getElementById('input-cuenta-nombre').value.trim();
+        const tipo = document.getElementById('input-cuenta-tipo').value;
+        const cierreInput = document.getElementById('input-cuenta-cierre').value;
+        
+        if (nombre) {
+            const id = 'acc_' + Date.now();
+            state.cuentas = [...state.cuentas, { 
+                id, 
+                nombre, 
+                tipo, 
+                cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
+            }];
+            
+            document.getElementById('input-cuenta-nombre').value = '';
+            document.getElementById('input-cuenta-cierre').value = '';
+            showToast("✨ " + t('btnSave'));
+            renderCuentasList(state);
+        }
+    });
+}
+
+// TELA DE BOLETOS E GASTOS FIJOS
 document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    
-    history.pushState({ view: 'boletos' }, ''); 
+    history.pushState({ view: 'boletos' }, '');
     
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
@@ -631,7 +721,7 @@ document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     renderBoletosList(state);
 });
 
-document.getElementById('btn-cerrar-boletos').addEventListener('click', mostrarPantallaPrincipal);
+document.getElementById('btn-cerrar-boletos')?.addEventListener('click', mostrarPantallaPrincipal);
 
 document.getElementById('form-boleto').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -649,17 +739,8 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
         montoInput.value = '';
         montoInput.dataset.cents = '0';
         document.getElementById('input-boleto-dia').value = '';
-        showToast("✅ " + t('btnSave'));
+        showToast("✨ " + t('btnSave'));
         renderBoletosList(state);
-    }
-});
-
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.btn-eliminar-boleto');
-    if (btn) {
-        state.boletos = state.boletos.filter(b => b.id !== btn.dataset.id);
-        renderBoletosList(state);
-        recalcularPresupuestoOnboarding();
     }
 });
 
@@ -704,6 +785,7 @@ document.getElementById('btn-importar').addEventListener('click', () => {
     document.getElementById('input-archivo').click();
 });
 
+// IMPORTAÇÃO COM VALIDAÇÃO DE SCHEMA COMPLETA
 document.getElementById('input-archivo').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -718,23 +800,29 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
     reader.onload = function(event) {
         try {
             const data = JSON.parse(event.target.result);
-            const historyToImport = Array.isArray(data) ? data : (data.historial || []);
             
-            if (isValidoHistorialSchema(historyToImport)) {
-                resetFormularioGasto(setGastoEnEdicion);
-                if (confirm(t('confirmOverwrite'))) {
-                    if(!Array.isArray(data) && data.cuentas) state.cuentas = data.cuentas;
-                    if(!Array.isArray(data) && data.boletos) state.boletos = data.boletos;
-                    if(!Array.isArray(data) && data.patrimonio) state.historialPatrimonio = data.patrimonio;
-                    replaceHistory(historyToImport);
-                } else {
-                    replaceHistory(state.historialGlobal.concat(historyToImport));
-                }
-            } else {
+            if (!isValidBackupSchema(data)) {
                 showToast(t('errFormat'));
+                e.target.value = '';
+                return;
             }
-        } catch (err) { 
-            showToast(t('errInvalid')); 
+
+            const historyToImport = Array.isArray(data) ? data : (data.historial || []);
+            resetFormularioGasto(setGastoEnEdicion);
+
+            if (confirm(t('confirmOverwrite'))) {
+                if(!Array.isArray(data)) {
+                    if (data.cuentas) state.cuentas = data.cuentas;
+                    if (data.boletos) state.boletos = data.boletos;
+                    if (data.patrimonio) state.historialPatrimonio = data.patrimonio;
+                }
+                replaceHistory(historyToImport);
+            } else {
+                replaceHistory(state.historialGlobal.concat(historyToImport));
+            }
+            showToast("✨ Dados importados com sucesso!");
+        } catch (err) {
+            showToast(t('errInvalid'));
         }
     };
     reader.readAsText(file);
@@ -798,17 +886,27 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         const isInstallment = /\(\d+\/\d+\)$/.test((gasto.desc || '').trim());
         
         if (isInstallment) {
-            const relatedExpenses = state.historialGlobal.filter(g => g.fecha === gasto.fecha);
+            let relatedExpenses = [];
+            if (gasto.groupId) {
+                relatedExpenses = state.historialGlobal.filter(g => g.groupId === gasto.groupId);
+            } else {
+                const baseDesc = gasto.desc.replace(/\s*\(\d+\/\d+\)$/, '').trim();
+                relatedExpenses = state.historialGlobal.filter(g => 
+                    g.desc.startsWith(baseDesc) && 
+                    g.cuentaId === gasto.cuentaId &&
+                    Math.abs(g.monto - gasto.monto) <= 100
+                );
+            }
             if (relatedExpenses.length > 1) {
                 const deleteAll = confirm(t('confirmDeleteAllInst'));
                 if (deleteAll) {
                     const idsToRemove = relatedExpenses.map(r => r.id);
                     state.historialGlobal = state.historialGlobal.filter(g => !idsToRemove.includes(g.id));
                     
-                    if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
+                    if (gastoEnEdicion && idsToRemove.includes(gastoEnEdicion)) resetFormularioGasto(setGastoEnEdicion);
                     if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-                    showToast("✅ " + t('toastAllDeleted'));
-                    return; 
+                    showToast("✨ " + t('toastAllDeleted'));
+                    return;
                 }
             }
         }
@@ -816,7 +914,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-        showToast("🗑️ " + t('toastDeleted'));
+        showToast("✨ " + t('toastDeleted'));
     },
     onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
@@ -835,7 +933,6 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                 const dia = String(dataGasto.getDate()).padStart(2, '0');
                 inputFecha.value = `${ano}-${mes}-${dia}`;
             }
-
             const inputHidden = document.getElementById('input-categoria');
             inputHidden.value = gasto.categoria;
             document.querySelectorAll('.cat-chip').forEach(c => {
@@ -850,6 +947,31 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
             const containerCuotas = document.getElementById('container-cuotas');
             if (containerCuotas) containerCuotas.style.display = 'none';
             
+            const isInstallment = /\(\d+\/\d+\)$/.test((gasto.desc || '').trim());
+            let warnEl = document.getElementById('edit-installment-warning');
+            
+            if (!warnEl) {
+                warnEl = document.createElement('div');
+                warnEl.id = 'edit-installment-warning';
+                warnEl.style.color = 'var(--danger-color)';
+                warnEl.style.fontSize = '0.85rem';
+                warnEl.style.marginBottom = '15px';
+                warnEl.style.marginTop = '-5px';
+                warnEl.style.padding = '10px';
+                warnEl.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                warnEl.style.borderRadius = '8px';
+                if (containerCuotas) {
+                    containerCuotas.parentNode.insertBefore(warnEl, containerCuotas.nextSibling);
+                }
+            }
+            if (isInstallment) {
+                warnEl.innerText = "⚠️ " + t('warnEditInstallmentMsg');
+                warnEl.style.display = 'block';
+                showToast("⚠️ " + t('warnEditInstallment'));
+            } else {
+                warnEl.style.display = 'none';
+            }
+            
             setGastoEnEdicion(id);
             document.getElementById('btn-guardar-gasto').innerText = t('btnEdit');
             document.getElementById('input-monto').focus();
@@ -858,70 +980,10 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
     }
 });
 
-const btnLembrete = document.getElementById('btn-lembrete');
-if (btnLembrete) {
-    btnLembrete.addEventListener('click', async () => {
-        if (settingsDropdown) settingsDropdown.classList.add('oculto');
-
-        if (!('Notification' in window)) {
-            showToast(t('notifUnsupported'));
-            return;
-        }
-
-        let permission = Notification.permission;
-        if (permission !== 'granted') {
-            permission = await Notification.requestPermission();
-        }
-
-        if (permission === 'granted') {
-            showToast(t('notifActivated'));
-            localStorage.setItem('floux_lembrete_20h', 'true');
-            agendarNotificacao(20, 0);
-        } else {
-            showToast(t('notifDenied'));
-        }
-    });
-}
-
-function agendarNotificacao(hora, minuto) {
-    const agora = new Date();
-    const alvo = new Date();
-    alvo.setHours(hora, minuto, 0, 0);
-
-    if (agora.getTime() > alvo.getTime()) {
-        alvo.setDate(alvo.getDate() + 1);
-    }
-
-    const tempoAteLembrete = alvo.getTime() - agora.getTime();
-
-    setTimeout(() => {
-        mostrarNotificacao();
-        setInterval(mostrarNotificacao, 24 * 60 * 60 * 1000);
-    }, tempoAteLembrete);
-}
-
-function mostrarNotificacao() {
-    if (navigator.serviceWorker) {
-        navigator.serviceWorker.ready.then(registration => {
-            registration.showNotification('Floux', {
-                body: t('notifBody'),
-                icon: './img/logo180.png',
-                badge: './img/logo-floux.svg',
-                vibrate: [200, 100, 200, 100, 200],
-                data: { url: './?action=add-expense' }
-            });
-        });
-    }
-}
-
 init();
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
-}
-
-if (localStorage.getItem('floux_lembrete_20h') === 'true' && Notification.permission === 'granted') {
-    agendarNotificacao(20, 0);
 }
 
 window.addEventListener('popstate', () => {

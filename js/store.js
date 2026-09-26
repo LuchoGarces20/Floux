@@ -25,10 +25,14 @@ const rawState = {
 };
 
 const listeners = new Set();
-export const subscribe = (fn) => listeners.add(fn);
+export const subscribe = (fn) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+};
 
 export const state = new Proxy(rawState, {
     set(target, property, value) {
+        if (target[property] === value) return true;
         target[property] = value;
         listeners.forEach(fn => fn(property, value));
         return true;
@@ -42,7 +46,10 @@ function getDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, 1);
         request.onupgradeneeded = e => {
-            e.target.result.createObjectStore(STORE_NAME);
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);
@@ -56,16 +63,6 @@ async function dbGet(key) {
         const req = tx.objectStore(STORE_NAME).get(key);
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
-    });
-}
-
-async function dbPut(key, value) {
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const req = tx.objectStore(STORE_NAME).put(value, key);
-        req.onsuccess = () => resolve();
-        req.onerror = (e) => reject(e.target.error);
     });
 }
 
@@ -85,46 +82,65 @@ export async function loadStore() {
 
     if (priv === true) rawState.privacyMode = true;
     if (m) rawState.monedaActual = m;
-    if (c) rawState.categoriasCustom = c;
+    if (Array.isArray(c)) rawState.categoriasCustom = c;
     if (cierre !== undefined) rawState.cierreTC = cierre;
     
-    if (cuentas && cuentas.length > 0) {
+    if (Array.isArray(cuentas) && cuentas.length > 0) {
         rawState.cuentas = cuentas;
     } else {
         rawState.cuentas = [{ id: 'acc_default', nombre: 'Conta Principal', tipo: 'cash', cierreTC: null }];
     }
     
-    if (boletos) rawState.boletos = boletos;
-    if (pat) rawState.historialPatrimonio = pat;
-
+    if (Array.isArray(boletos)) rawState.boletos = boletos;
+    if (Array.isArray(pat)) rawState.historialPatrimonio = pat;
     if (p !== undefined) {
         rawState.presupuestoMensual = p;
         if (isValidoHistorialSchema(h)) rawState.historialGlobal = h;
-        return true; 
+        return true;
     }
     return false;
 }
 
+/**
+ * SALVAMENTO ATÔMICO EM UMA ÚNICA TRANSAÇÃO READWRITE
+ * Previne Race Conditions e Corrupção parcial no IndexedDB
+ */
 export async function saveStore() {
-    await dbPut(STORAGE_KEYS.PRESUPUESTO, state.presupuestoMensual);
-    await dbPut(STORAGE_KEYS.HISTORIAL, state.historialGlobal);
-    await dbPut(STORAGE_KEYS.MONEDA, state.monedaActual);
-    await dbPut(STORAGE_KEYS.CATEGORIAS, state.categoriasCustom);
-    await dbPut(STORAGE_KEYS.PRIVACY, state.privacyMode);
-    await dbPut(STORAGE_KEYS.CIERRE_TC, state.cierreTC);
-    await dbPut(STORAGE_KEYS.CUENTAS, state.cuentas);
-    await dbPut(STORAGE_KEYS.BOLETOS, state.boletos);
-    await dbPut(STORAGE_KEYS.PATRIMONIO, state.historialPatrimonio);
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+
+        store.put(state.presupuestoMensual, STORAGE_KEYS.PRESUPUESTO);
+        store.put(state.historialGlobal, STORAGE_KEYS.HISTORIAL);
+        store.put(state.monedaActual, STORAGE_KEYS.MONEDA);
+        store.put(state.categoriasCustom, STORAGE_KEYS.CATEGORIAS);
+        store.put(state.privacyMode, STORAGE_KEYS.PRIVACY);
+        store.put(state.cierreTC, STORAGE_KEYS.CIERRE_TC);
+        store.put(state.cuentas, STORAGE_KEYS.CUENTAS);
+        store.put(state.boletos, STORAGE_KEYS.BOLETOS);
+        store.put(state.historialPatrimonio, STORAGE_KEYS.PATRIMONIO);
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+        tx.onabort = (e) => reject(e.target.error || new Error('Transação abortada'));
+    });
 }
 
 async function migrateFromLocalStorage() {
-    await dbPut(STORAGE_KEYS.PRESUPUESTO, parseInt(localStorage.getItem(STORAGE_KEYS.PRESUPUESTO), 10));
-    await dbPut(STORAGE_KEYS.HISTORIAL, JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORIAL) || '[]'));
-    await dbPut(STORAGE_KEYS.MONEDA, localStorage.getItem(STORAGE_KEYS.MONEDA));
-    await dbPut(STORAGE_KEYS.CATEGORIAS, JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIAS) || '[]'));
-    await dbPut(STORAGE_KEYS.PRIVACY, localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true');
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+
+    store.put(parseInt(localStorage.getItem(STORAGE_KEYS.PRESUPUESTO), 10) || 0, STORAGE_KEYS.PRESUPUESTO);
+    store.put(JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORIAL) || '[]'), STORAGE_KEYS.HISTORIAL);
+    store.put(localStorage.getItem(STORAGE_KEYS.MONEDA) || 'BRL', STORAGE_KEYS.MONEDA);
+    store.put(JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIAS) || '[]'), STORAGE_KEYS.CATEGORIAS);
+    store.put(localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true', STORAGE_KEYS.PRIVACY);
     const cierreLocal = localStorage.getItem(STORAGE_KEYS.CIERRE_TC);
-    await dbPut(STORAGE_KEYS.CIERRE_TC, cierreLocal !== null ? parseInt(cierreLocal, 10) : 24);
+    store.put(cierreLocal !== null ? parseInt(cierreLocal, 10) : 24, STORAGE_KEYS.CIERRE_TC);
+
+    await new Promise((resolve) => { tx.oncomplete = resolve; });
     Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
 }
 
@@ -138,14 +154,22 @@ export function isValidoHistorialSchema(data) {
     );
 }
 
+export function isValidBackupSchema(data) {
+    if (!data || typeof data !== 'object') return false;
+    const history = Array.isArray(data) ? data : data.historial;
+    if (!isValidoHistorialSchema(history)) return false;
+
+    if (!Array.isArray(data)) {
+        if (data.cuentas && !Array.isArray(data.cuentas)) return false;
+        if (data.boletos && !Array.isArray(data.boletos)) return false;
+        if (data.patrimonio && !Array.isArray(data.patrimonio)) return false;
+    }
+    return true;
+}
+
 export function addExpense(expense) { state.historialGlobal = [...state.historialGlobal, expense]; }
 export function addMultipleExpenses(expensesArray) { state.historialGlobal = [...state.historialGlobal, ...expensesArray]; }
-export function updateExpense(id, updatedData) {
-    state.historialGlobal = state.historialGlobal.map(g => g.id === id ? { ...g, ...updatedData } : g);
-}
+export function updateExpense(id, updatedData) { state.historialGlobal = state.historialGlobal.map(g => g.id === id ? { ...g, ...updatedData } : g); }
 export function removeExpense(id) { state.historialGlobal = state.historialGlobal.filter(g => g.id !== id); }
 export function replaceHistory(newHistory) { state.historialGlobal = newHistory; }
-
-export function addRegistroPatrimonio(registro) {
-    state.historialPatrimonio = [...state.historialPatrimonio, registro];
-}
+export function addRegistroPatrimonio(registro) { state.historialPatrimonio = [...state.historialPatrimonio, registro]; }

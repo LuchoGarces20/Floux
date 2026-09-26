@@ -12,7 +12,7 @@ export const diccionario = {
         remainsMonth: "Liquidez", spentMonth: "Gastado", addExpenseTitle: "Registrar Gasto", expenseDate: "Fecha del Gasto", amountPlaceholder: "Monto", descPlaceholder: "Descripción", selectCategory: "Selecciona una categoría",
         btnAdd: "Agregar", btnEdit: "Guardar Edición", analysisTitle: "Distribución de Gastos", expensesMonth: "Historial",
         btnExport: "Exportar", btnImport: "Importar", btnReset: "Borrar App", noExpenses: "Sin gastos.",
-        prevExpense: "Gasto Previo", alertReset: "⚠️ ¿SEGURO?", cat_comida: "Comida",
+        prevExpense: "Gasto Previo", alertReset: "⚠️ ¿ESTÁS SEGURO?", cat_comida: "Comida",
         cat_transporte: "Transporte", cat_supermercado: "Super", cat_cuentas: "Cuentas",
         cat_ocio: "Ocio", cat_otros: "Otros", newCategory: "Nueva Categoría", catNamePlaceholder: "Nombre (ej: Gimnasio)",
         catEmojiPlaceholder: "Emoji (ej: 🏋️)", btnSave: "Guardar", errorBudget: "Por favor ingresa un presupuesto mayor a 0.",
@@ -34,19 +34,12 @@ export const diccionario = {
         errFormat: "Error: El archivo no tiene el formato correcto.", errInvalid: "Error: Archivo inválido o corrupto.",
         confirmOverwrite: "Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.",
         confirmDeleteAllInst: "Este gasto es una cuota.\n\n¿Deseas eliminar TODAS las cuotas asociadas?\n\n[Aceptar] = Eliminar TODAS\n[Cancelar] = Eliminar SOLO esta",
-        toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado",
-        btnReminder: "Recordatorio Diario (20h)", 
-notifActivated: "Recordatorio activado a las 20:00", 
-notifDenied: "Permiso de notificación denegado", 
-notifUnsupported: "Notificaciones no soportadas en este navegador", 
-notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!",
-filterAll: "Todas", filterTotal: "Total filtrado:",
-btnShowMore: "Mostrar más", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Día", btnClearDayFilter: "Ver todos",        
+        toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado", 
+        btnReminder: "Recordatorio Diario (20h)",  notifActivated: "Recordatorio activado a las 20:00",  notifDenied: "Permiso de notificación denegado",  notifUnsupported: "Notificaciones no soportadas en este navegador",  notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!", filterAll: "Todas", filterTotal: "Total filtrado:", btnShowMore: "Mostrar más", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Día", btnClearDayFilter: "Ver todos",
+        // Avisos Extra
+        warnEditInstallment: "Editando solo una cuota", warnEditInstallmentMsg: "Atención: Modificar esta cuota no alterará las demás. El valor total de la compra original quedará desequilibrado.",
         // Net Worth
-accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.", 
-nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión", 
-nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico."
-      
+        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.",  nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión",  nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico."
     },
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
@@ -80,18 +73,11 @@ nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agr
         confirmOverwrite: "OK: Overwrite all data.\nCancel: Merge with current data.",
         confirmDeleteAllInst: "This expense is an installment.\n\nDo you want to delete ALL associated installments?\n\n[OK] = Delete ALL\n[Cancel] = Delete ONLY this one",
         toastAllDeleted: "All installments deleted", toastDeleted: "Deleted", 
-        btnReminder: "Daily Reminder (8 PM)", 
-notifActivated: "Reminder set for 8:00 PM", 
-notifDenied: "Notification permission denied", 
-notifUnsupported: "Notifications not supported in this browser", 
-notifBody: "Time to log your daily expenses in Floux!",
-filterAll: "All", filterTotal: "Filtered Total:",
-btnShowMore: "Show more", btnShowLess: "Show less", filterByDay: "Filter by Day", btnClearDayFilter: "Show all",
-// Net Worth
-accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.", 
-nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment", 
-nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart."
-
+        btnReminder: "Daily Reminder (8 PM)",  notifActivated: "Reminder set for 8:00 PM",  notifDenied: "Notification permission denied",  notifUnsupported: "Notifications not supported in this browser",  notifBody: "Time to log your daily expenses in Floux!", filterAll: "All", filterTotal: "Filtered Total:", btnShowMore: "Show more", btnShowLess: "Show less", filterByDay: "Filter by Day", btnClearDayFilter: "Show all",
+        // Avisos Extra
+        warnEditInstallment: "Editing a single installment", warnEditInstallmentMsg: "Warning: Modifying this installment won't affect the others. The total purchase value will be unbalanced.",
+        // Net Worth
+        accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.",  nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment",  nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart."
     },
     pt: {
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
@@ -124,19 +110,11 @@ nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add
         errFormat: "Erro: O arquivo não tem o formato correto.", errInvalid: "Erro: Arquivo inválido ou corrompido.",
         confirmOverwrite: "OK: Sobrescrever todos os dados.\nCancelar: Combinar com os dados atuais.",
         confirmDeleteAllInst: "Este gasto é uma parcela.\n\nDeseja apagar TODAS as parcelas associadas?\n\n[OK] = Apagar TODAS\n[Cancelar] = Apagar APENAS esta",
-        toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado",
-btnReminder: "Lembrete Diário (20h)", 
-notifActivated: "Lembrete ativado para as 20:00", 
-notifDenied: "Permissão de notificação negada", 
-notifUnsupported: "Notificações não suportadas neste navegador", 
-notifBody: "Hora de registrar seus gastos de hoje no Floux!",
-filterAll: "Todas", filterTotal: "Total do Filtro:",
-btnShowMore: "Mostrar mais", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Dia", btnClearDayFilter: "Ver todos",
+        toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado", btnReminder: "Lembrete Diário (20h)",  notifActivated: "Lembrete ativado para as 20:00",  notifDenied: "Permissão de notificação negada",  notifUnsupported: "Notificações não suportadas neste navegador",  notifBody: "Hora de registrar seus gastos de hoje no Floux!", filterAll: "Todas", filterTotal: "Total do Filtro:", btnShowMore: "Mostrar mais", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Dia", btnClearDayFilter: "Ver todos",
+        // Avisos Extra
+        warnEditInstallment: "Editando apenas uma parcela", warnEditInstallmentMsg: "Atenção: Modificar esta parcela não alterará as demais. O valor total da compra ficará desequilibrado.",
         // Net Worth
-accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.", 
-nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento", 
-nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico."
-
+        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.",  nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento",  nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico."
     }
 };
 
