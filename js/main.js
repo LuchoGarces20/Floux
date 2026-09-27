@@ -41,7 +41,7 @@ const executeSave = async () => {
         }
     } catch (error) {
         if (error && error.name === 'QuotaExceededError') {
-            showToast("Erro: Armazenamento cheio. Libere espaço para salvar.");
+            showToast(t('errStorageFull'));
         }
     } finally {
         isSaving = false;
@@ -179,10 +179,14 @@ document.addEventListener('click', (e) => {
             const contaSelect = document.getElementById('input-cuenta-origen');
             const cuentaId = contaSelect ? contaSelect.value : (state.cuentas.length > 0 ? state.cuentas[0].id : null);
             if (!cuentaId) {
-                showToast("Erro: Nenhuma conta disponível para pagar.");
+                showToast(t('errNoAccountAvailable'));
                 return;
             }
-            if (confirm(`Pagar "${boleto.desc}" no valor de ${formatCurrency(boleto.monto, state.monedaActual)}?`)) {
+            const msgConfirm = t('confirmPayBill')
+                .replace('{desc}', boleto.desc)
+                .replace('{monto}', formatCurrency(boleto.monto, state.monedaActual));
+
+            if (confirm(msgConfirm)) {
                 addExpense({
                     id: Date.now(),
                     monto: boleto.monto,
@@ -193,7 +197,7 @@ document.addEventListener('click', (e) => {
                     boletoId: boleto.id
                 });
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast(" Boleto pago e contabilizado!");
+                showToast(" " + t('toastBillPaid'));
                 renderBoletosList(state);
                 if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
                     actualizarInterfaz(state, viewMonth, viewYear, hoy);
@@ -242,7 +246,7 @@ async function actualizarEstadoAuthUI() {
 
 document.getElementById('btn-logout')?.addEventListener('click', async () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    if (confirm("Deseja realmente sair da sua conta?")) {
+    if (confirm(t('confirmLogout'))) {
         await signOutUser();
         showToast(t('authLogoutSuccess'));
         location.reload();
@@ -340,6 +344,9 @@ async function init() {
         transicionPantalla(() => {
             document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
             document.getElementById('pantalla-configuracion').classList.remove('oculto');
+            // Exibe explicitamente o conteúdo do Passo 1 do assistente
+            document.getElementById('wizard-step-1')?.classList.remove('oculto');
+            document.getElementById('wizard-ind-1')?.classList.add('active');
         });
     }
 }
@@ -697,7 +704,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     if (!cuentaId) {
-        showToast(" Erro: Selecione uma conta de origem.");
+        showToast(t('errSelectSourceAccount'));
         return;
     }
     

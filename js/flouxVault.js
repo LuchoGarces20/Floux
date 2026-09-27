@@ -178,7 +178,7 @@ function renderVaultHistory(state) {
     const records = [...(state.historialPatrimonio || [])].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     
     if (records.length === 0) {
-        historyList.innerHTML = `<li class="no-expenses-li" style="box-shadow:none; background:transparent;"><div class="text-center text-muted-small py-10">Sem lançamentos.</div></li>`;
+        historyList.innerHTML = `<li class="no-expenses-li" style="box-shadow:none; background:transparent;"><div class="text-center text-muted-small py-10">${t('noRecords')}</div></li>`;
         return;
     }
     
@@ -206,11 +206,11 @@ function renderVaultHistory(state) {
             const btn = e.target.closest('.btn-eliminar-vault');
             if (btn) {
                 const id = parseInt(btn.dataset.id, 10);
-                if(confirm("Remover este registro de auditoria histórico?")) {
+                if(confirm(t('confirmRemoveAudit'))) {
                     removeRegistroPatrimonio(id);
                     saveStore();
                     renderNetWorthSection(state);
-                    showToast("🗑️ Registro removido");
+                    showToast(" " + t('toastRecordRemoved'));
                 }
             }
         });
@@ -272,7 +272,7 @@ export function initFlouxVault(closeModalCallback) {
 
                 document.getElementById('input-vault-nome').value = '';
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("📌 Ativo criado com sucesso!");
+                showToast(" " + t('toastAssetCreated'));
                 saveStore();
                 renderNetWorthSection(state);
             }
@@ -298,7 +298,7 @@ export function initFlouxVault(closeModalCallback) {
                 inputNwMonto.value = '';
                 inputNwMonto.dataset.cents = '0';
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("💾 " + t('btnSave'));
+                showToast(" " + t('btnSave'));
                 saveStore();
                 renderNetWorthSection(state);
             }

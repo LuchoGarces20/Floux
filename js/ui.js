@@ -164,7 +164,7 @@ export function renderBoletosList(state) {
             li.className = 'list-item-flex';
             
             const isPago = boletosPagosMes.has(b.id);
-            const badgePago = isPago ? `<span class="badge-tipo badge-cash" style="margin-left: 8px;">✅ Pago</span>` : '';
+            const badgePago = isPago ? `<span class="badge-tipo badge-cash" style="margin-left: 8px;">✅ ${t('paidBadge')}</span>` : '';
             const btnPagar = isPago ? '' : `<button type="button" class="btn-eliminar-simple btn-pagar-boleto" data-id="${escapeHTML(b.id)}" style="background: rgba(16, 185, 129, 0.1); color: var(--success-color); margin-right: 8px;" title="Pagar">💳</button>`;
             
             li.innerHTML = `
@@ -258,12 +258,10 @@ function updateBalances(state, balances) {
     }
 }
 
-// js/ui.js (Função interna, MANTÉM SEM EXPORT)
 function updateProgressIndicators(state, balances, diasEnElMes, diaCalculo, gastosMesActual) {
     const barraFill = document.getElementById('progreso-mensual-fill');
     
     if (barraFill) {
-        // Trava visualmente em 100% no comprimento, mas aplica a animação de estouro se excedido
         const larguraVisual = Math.min(100, balances.percentualConsumido || 0);
         barraFill.style.width = `${larguraVisual}%`;
         
@@ -286,8 +284,8 @@ function updateProgressIndicators(state, balances, diasEnElMes, diaCalculo, gast
         for (let d = 1; d <= diaCalculo; d++) if (!diasConGasto.has(d)) diasCero++;
         
         if (diasCero > 0) {
-            zeroSpendBadge.innerText = `  ${diasCero} Dias sem gastos`;
-            zeroSpendBadge.title = `${diasCero} Dias sem gastos`;
+            zeroSpendBadge.innerText = ` ${diasCero} ${t('daysWithoutExpenses')}`;
+            zeroSpendBadge.title = `${diasCero} ${t('daysWithoutExpenses')}`;
             zeroSpendBadge.classList.remove('oculto');
         } else {
             zeroSpendBadge.classList.add('oculto');
@@ -408,7 +406,7 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
     if (btnLimpar) {
         if (diasSeleccionadosCalendario.size > 0) {
             btnLimpar.classList.remove('oculto');
-            btnLimpar.innerText = diasSeleccionadosCalendario.size > 1 ? 'Limpar dias' : 'Limpar data';
+            btnLimpar.innerText = diasSeleccionadosCalendario.size > 1 ? t('clearDays') : t('clearDate');
         } else {
             btnLimpar.classList.add('oculto');
         }
@@ -556,13 +554,11 @@ export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) 
     listaUI.appendChild(fragList);
 }
 
-// js/ui.js
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
 
     const gastosMesActual = state.historialGlobal.filter(g => {
-        // Garante extração de mês/ano considerando o fuso local de forma segura
         const d = new Date(g.fecha);
         let mes = d.getMonth();
         let ano = d.getFullYear();
@@ -629,7 +625,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
             }
             if (diasSeleccionadosCalendario.size > 0) {
                 const diasOrdenados = Array.from(diasSeleccionadosCalendario).sort((a, b) => a - b);
-                const textoDias = diasOrdenados.length === 1 ? `Dia ${diasOrdenados[0]}` : `Dias ${diasOrdenados.join(', ')}`;
+                const textoDias = diasOrdenados.length === 1 ? `${t('daySingular')} ${diasOrdenados[0]}` : `${t('dayPlural')} ${diasOrdenados.join(', ')}`;
                 nomeFiltro += (nomeFiltro ? ' + ' : '') + textoDias;
             }
             const labelTotal = t('filterTotal') || 'Total do Filtro:';
@@ -703,22 +699,20 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         }
     }
 
-    // --- ATUALIZAÇÃO DO CARD PRINCIPAL EM CASO DE ESTOURO ---
     const cardDiario = document.querySelector('.daily-card.highlight');
     const tituloDiario = document.getElementById('titulo-disponivel-hoje');
 
     if (cardDiario && tituloDiario) {
-    if (balances.isExcedido) {
-        cardDiario.classList.add('overbudget-card');
-        tituloDiario.innerText = t('overbudgetTitle') || "Teto Excedido";
-    } else {
-        cardDiario.classList.remove('overbudget-card');
-        tituloDiario.innerText = t('availableToday') || "Disponível Hoje";
+        if (balances.isExcedido) {
+            cardDiario.classList.add('overbudget-card');
+            tituloDiario.innerText = t('overbudgetTitle') || "Teto Excedido";
+        } else {
+            cardDiario.classList.remove('overbudget-card');
+            tituloDiario.innerText = t('availableToday') || "Disponível Hoje";
+        }
     }
-}
 
     updateBalances(state, balances);
-    // Chamada atualizada com a variável 'balances'
     updateProgressIndicators(state, balances, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
 
