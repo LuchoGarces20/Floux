@@ -1,3 +1,4 @@
+// js/i18n.js
 import { STORAGE_KEYS } from './store.js';
 
 export const diccionario = {
@@ -12,7 +13,7 @@ export const diccionario = {
         remainsMonth: "Liquidez", spentMonth: "Gastado", addExpenseTitle: "Registrar Gasto", expenseDate: "Fecha del Gasto", amountPlaceholder: "Monto", descPlaceholder: "Descripción", selectCategory: "Selecciona una categoría",
         btnAdd: "Agregar", btnEdit: "Guardar Edición", analysisTitle: "Distribución de Gastos", expensesMonth: "Historial",
         btnExport: "Exportar", btnImport: "Importar", btnReset: "Borrar App", noExpenses: "Sin gastos.",
-        prevExpense: "Gasto Previo", alertReset: "¿ESTÁS SEGURO?", cat_comida: "Comida",
+        prevExpense: "Gasto Previo", alertReset: "⚠️ ¿ESTÁS SEGURO?", cat_comida: "Comida",
         cat_transporte: "Transporte", cat_supermercado: "Super", cat_cuentas: "Cuentas",
         cat_ocio: "Ocio", cat_otros: "Otros", newCategory: "Nueva Categoría", catNamePlaceholder: "Nombre (ej: Gimnasio)",
         catEmojiPlaceholder: "Emoji (ej: 🏋️)", btnSave: "Guardar", errorBudget: "Por favor ingresa un presupuesto mayor a 0.",
@@ -29,7 +30,7 @@ export const diccionario = {
         menuBills: "Gastos Fijos", billsTitle: "Boletos / Gastos Fijos", dueDateLabel: "Día de Vencimiento en el mes (1-31)", btnAddBill: "Agregar Gasto", overbudgetTitle: "Tope Excedido",
         billsExplanation: "Registra tus gastos fijos. Floux los restará automáticamente de tu liquidez antes de calcular tu límite diario.", billsExplanationShort: "Ingresa tus cuentas (Ej: Alquiler, Luz).",
         wizardStep1Title: "Moneda y Presupuesto", wizardStep2Title: "Cuentas y Tarjetas", wizardStep2Desc: "Agrega tus cuentas corrientes o tarjetas de crédito para organizar tus pagos.",
-        wizardStep3Title: "Ajustes Finales", wizardNextAccounts: "Siguiente: Cuentas ➡️", wizardNextFinal: "Siguiente ➡️", wizardBack: "⬅️ Volver", wizardFinish: "Concluir 🚀",
+        wizardStep3Title: "Ajustes Finales", wizardNextAccounts: "Siguiente: Cuentas ➡", wizardNextFinal: "Siguiente ➡", wizardBack: "⬅ Volver", wizardFinish: "Concluir ✅",
         btnDeleteAria: "Eliminar", errFileSize: "Error: El archivo excede el tamaño máximo permitido (5MB).",
         errFormat: "Error: El archivo no tiene el formato correcto.", errInvalid: "Error: Archivo inválido o corrupto.",
         confirmOverwrite: "Aceptar: Sobrescribir todos los datos.\nCancelar: Combinar con datos actuales.",
@@ -37,7 +38,8 @@ export const diccionario = {
         toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado", 
         btnReminder: "Recordatorio Diario (20h)",  notifActivated: "Recordatorio activado a las 20:00",  notifDenied: "Permiso de notificación denegado",  notifUnsupported: "Notificaciones no soportadas en este navegador",  notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!", filterAll: "Todas", filterTotal: "Total filtrado:", btnShowMore: "Mostrar más", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Día", btnClearDayFilter: "Ver todos",
         warnEditInstallment: "Editando solo una cuota", warnEditInstallmentMsg: "Atención: Modificar esta cuota no alterará las demás. El valor total de la compra original quedará desequilibrado.",
-        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.",  nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión",  nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico.", vaultFixed: "Renta Fija", vaultVariable: "Renta Variable", nwAddAsset: "Agregar Nuevo Activo", nwUpdateHistory: "Historial de Actualizaciones"
+        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.",  nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión",  nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico.", vaultFixed: "Renta Fija", vaultVariable: "Renta Variable", nwAddAsset: "Agregar Nuevo Activo", nwUpdateHistory: "Historial de Actualizaciones",
+        menuAuth: "Iniciar Sesión / Registrarse", menuLogout: "Cerrar Sesión", authTitleLogin: "Iniciar Sesión", authTitleSignup: "Crear Cuenta", authExplanation: "Sincroniza tus gastos en la nube de forma segura.", authEmailLabel: "Correo Electrónico", authPasswordLabel: "Contraseña", authBtnLogin: "Entrar", authBtnSignup: "Registrarse", authSwitchToSignup: "¿No tienes cuenta? Regístrate", authSwitchToLogin: "¿Ya tienes cuenta? Inicia sesión", authSuccessLogin: "¡Sesión iniciada con éxito!", authSuccessSignup: "¡Cuenta creada! Revisa tu correo.", authLogoutSuccess: "Has cerrado sesión."
     },
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
@@ -65,7 +67,7 @@ export const diccionario = {
         menuBills: "Fixed Expenses", billsTitle: "Fixed Bills", dueDateLabel: "Due Day in month (1-31)", btnAddBill: "Add Bill",
         billsExplanation: "Log your fixed bills. Floux will automatically subtract them from your liquidity before calculating your daily limit.", billsExplanationShort: "Enter your bills (e.g. Rent, Energy).",
         wizardStep1Title: "Currency & Budget", wizardStep2Title: "Accounts & Cards", wizardStep2Desc: "Add your checking accounts or credit cards to organize payments.",
-        wizardStep3Title: "Final Adjustments", wizardNextAccounts: "Next: Accounts ➡️", wizardNextFinal: "Next ➡️", wizardBack: "⬅️ Back", wizardFinish: "Finish 🚀",
+        wizardStep3Title: "Final Adjustments", wizardNextAccounts: "Next: Accounts ➡", wizardNextFinal: "Next ➡", wizardBack: "⬅ Back", wizardFinish: "Finish ✅",
         btnDeleteAria: "Delete", errFileSize: "Error: File exceeds the maximum allowed size (5MB).",
         errFormat: "Error: Incorrect file format.", errInvalid: "Error: Invalid or corrupt file.",
         confirmOverwrite: "OK: Overwrite all data.\nCancel: Merge with current data.",
@@ -73,7 +75,8 @@ export const diccionario = {
         toastAllDeleted: "All installments deleted", toastDeleted: "Deleted", 
         btnReminder: "Daily Reminder (8 PM)",  notifActivated: "Reminder set for 8:00 PM",  notifDenied: "Notification permission denied",  notifUnsupported: "Notifications not supported in this browser",  notifBody: "Time to log your daily expenses in Floux!", filterAll: "All", filterTotal: "Filtered Total:", btnShowMore: "Show more", btnShowLess: "Show less", filterByDay: "Filter by Day", btnClearDayFilter: "Show all",
         warnEditInstallment: "Editing a single installment", warnEditInstallmentMsg: "Warning: Modifying this installment won't affect the others. The total purchase value will be unbalanced.",
-        accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.",  nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment",  nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart.", vaultFixed: "Fixed Income", vaultVariable: "Variable Income", nwAddAsset: "Add New Asset", nwUpdateHistory: "Update History"
+        accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.",  nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment",  nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart.", vaultFixed: "Fixed Income", vaultVariable: "Variable Income", nwAddAsset: "Add New Asset", nwUpdateHistory: "Update History",
+        menuAuth: "Sign In / Register", menuLogout: "Log Out", authTitleLogin: "Sign In", authTitleSignup: "Create Account", authExplanation: "Sync your expenses and net worth securely in the cloud.", authEmailLabel: "Email", authPasswordLabel: "Password", authBtnLogin: "Sign In", authBtnSignup: "Sign Up", authSwitchToSignup: "Don't have an account? Sign Up", authSwitchToLogin: "Already have an account? Sign In", authSuccessLogin: "Successfully logged in!", authSuccessSignup: "Account created! Check your email.", authLogoutSuccess: "Logged out successfully."
     },
     pt: {
         appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda a calcular",
@@ -101,19 +104,19 @@ export const diccionario = {
         menuBills: "Gastos Fixos", billsTitle: "Boletos / Gastos Fixos", dueDateLabel: "Dia de Vencimento no mês (1-31)", btnAddBill: "Adicionar Boleto",
         billsExplanation: "Registre seus gastos fixos. O Floux os subtrairá automaticamente da sua liquidez antes de calcular seu limite diário.", billsExplanationShort: "Insira suas contas (Ex: Aluguel, Luz).",
         wizardStep1Title: "Moeda e Orçamento", wizardStep2Title: "Contas e Cartões", wizardStep2Desc: "Adicione suas contas correntes ou cartões de crédito para organizar os pagamentos.",
-        wizardStep3Title: "Ajustes Finais", wizardNextAccounts: "Próximo: Contas ➡️", wizardNextFinal: "Próximo ➡️", wizardBack: "⬅️ Voltar", wizardFinish: "Concluir 🚀",
+        wizardStep3Title: "Ajustes Finais", wizardNextAccounts: "Próximo: Contas ➡", wizardNextFinal: "Próximo ➡", wizardBack: "⬅ Voltar", wizardFinish: "Concluir ✅",
         btnDeleteAria: "Apagar", errFileSize: "Erro: O arquivo excede o tamanho máximo permitido (5MB).",
         errFormat: "Erro: O arquivo não tem o formato correto.", errInvalid: "Erro: Arquivo inválido ou corrompido.",
         confirmOverwrite: "OK: Sobrescrever todos os dados.\nCancelar: Combinar com os dados atuais.",
         confirmDeleteAllInst: "Este gasto é uma parcela.\n\nDeseja apagar TODAS as parcelas associadas?\n\n[OK] = Apagar TODAS\n[Cancelar] = Apagar APENAS esta",
         toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado", btnReminder: "Lembrete Diário (20h)",  notifActivated: "Lembrete ativado para as 20:00",  notifDenied: "Permissão de notificação negada",  notifUnsupported: "Notificações não suportadas neste navegador",  notifBody: "Hora de registrar seus gastos de hoje no Floux!", filterAll: "Todas", filterTotal: "Total do Filtro:", btnShowMore: "Mostrar mais", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Dia", btnClearDayFilter: "Ver todos",
         warnEditInstallment: "Editando apenas uma parcela", warnEditInstallmentMsg: "Atenção: Modificar esta parcela não alterará as demais. O valor total da compra ficará desequilibrado.",
-        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.",  nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento",  nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico.", vaultFixed: "Renda Fixa", vaultVariable: "Renda Variável", nwAddAsset: "Adicionar Novo Ativo", nwUpdateHistory: "Histórico de Atualizações"
+        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.",  nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento",  nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico.", vaultFixed: "Renda Fixa", vaultVariable: "Renda Variável", nwAddAsset: "Adicionar Novo Ativo", nwUpdateHistory: "Histórico de Atualizações",
+        menuAuth: "Entrar / Cadastrar", menuLogout: "Sair da Conta", authTitleLogin: "Entrar", authTitleSignup: "Criar Conta", authExplanation: "Sincronize seus gastos e patrimônio na nuvem com total segurança.", authEmailLabel: "E-mail", authPasswordLabel: "Senha", authBtnLogin: "Entrar", authBtnSignup: "Cadastrar", authSwitchToSignup: "Não tem conta? Cadastre-se", authSwitchToLogin: "Já tem conta? Entrar", authSuccessLogin: "Conectado com sucesso!", authSuccessSignup: "Conta criada! Verifique seu e-mail.", authLogoutSuccess: "Você saiu da conta."
     }
 };
 
 export let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) || (navigator.language || navigator.userLanguage).substring(0, 2);
-
 if (!diccionario[currentLang]) {
     currentLang = 'en';
 }

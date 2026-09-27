@@ -1,3 +1,6 @@
+// js/store.js
+import { pushLocalStateToSupabase } from './supabaseClient.js';
+
 export const STORAGE_KEYS = {
     PRESUPUESTO: 'floux_presupuesto_v8',
     HISTORIAL: 'floux_historial_v8',
@@ -93,6 +96,7 @@ export async function loadStore() {
     
     if (Array.isArray(boletos)) rawState.boletos = boletos;
     if (Array.isArray(pat)) rawState.historialPatrimonio = pat;
+
     if (p !== undefined) {
         rawState.presupuestoMensual = p;
         if (isValidoHistorialSchema(h)) rawState.historialGlobal = h;
@@ -101,16 +105,11 @@ export async function loadStore() {
     return false;
 }
 
-/**
- * SALVAMENTO ATÔMICO EM UMA ÚNICA TRANSAÇÃO READWRITE
- * Previne Race Conditions e Corrupção parcial no IndexedDB
- */
 export async function saveStore() {
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-
         store.put(state.presupuestoMensual, STORAGE_KEYS.PRESUPUESTO);
         store.put(state.historialGlobal, STORAGE_KEYS.HISTORIAL);
         store.put(state.monedaActual, STORAGE_KEYS.MONEDA);
@@ -120,8 +119,12 @@ export async function saveStore() {
         store.put(state.cuentas, STORAGE_KEYS.CUENTAS);
         store.put(state.boletos, STORAGE_KEYS.BOLETOS);
         store.put(state.historialPatrimonio, STORAGE_KEYS.PATRIMONIO);
-
-        tx.oncomplete = () => resolve();
+        
+        tx.oncomplete = () => {
+            // Sincroniza em background sem travar a interface
+            pushLocalStateToSupabase(state).catch(console.error);
+            resolve();
+        };
         tx.onerror = (e) => reject(e.target.error);
         tx.onabort = (e) => reject(e.target.error || new Error('Transação abortada'));
     });
@@ -164,7 +167,6 @@ export function isValidBackupSchema(data) {
     if (!data || typeof data !== 'object') return false;
     const history = Array.isArray(data) ? data : data.historial;
     if (!isValidoHistorialSchema(history)) return false;
-
     if (!Array.isArray(data)) {
         if (data.cuentas && !Array.isArray(data.cuentas)) return false;
         if (data.boletos && !Array.isArray(data.boletos)) return false;

@@ -1,9 +1,11 @@
+// js/main.js
 import { state, loadStore, saveStore, isValidBackupSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario } from './ui.js';
 import { initFlouxVision } from './flouxVision.js';
 import { initFlouxVault } from './flouxVault.js';
 import { initSwipeActions } from './swipeHandler.js';
+import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState } from './supabaseClient.js';
 
 const INTERACTION_CONFIG = {
     KEYBOARD_FOCUS_DELAY_MS: 300,
@@ -18,12 +20,10 @@ const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
 const hoy = new Date();
 const mesActual = hoy.getMonth();
 const anoActual = hoy.getFullYear();
-
 let viewMonth = mesActual;
 let viewYear = anoActual;
 let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
-
 let saveTimeout;
 let isSaving = false;
 let needsAnotherSave = false;
@@ -52,7 +52,6 @@ const executeSave = async () => {
     }
 };
 
-// FILTRAGEM DO PROXY REATIVO (Evita re-renders pesados para alterações visuais)
 subscribe((property) => {
     if (property === 'privacyMode') {
         actualizarModoPrivacidade();
@@ -65,7 +64,6 @@ subscribe((property) => {
 window.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
         if (saveTimeout) clearTimeout(saveTimeout);
-        // Tenta salvar via IndexedDB e garante cópia de emergência síncrona
         try {
             localStorage.setItem('floux_emergency_backup', JSON.stringify({
                 presupuesto: state.presupuestoMensual,
@@ -80,6 +78,7 @@ window.addEventListener('visibilitychange', () => {
         executeSave();
     }
 });
+
 function transicionPantalla(callback) {
     if (!document.startViewTransition) {
         callback();
@@ -98,7 +97,6 @@ const displayNetSurvival = document.getElementById('display-net-survival');
 const displayFreeSpending = document.getElementById('display-free-spending');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
-
 const selectCuotas = document.getElementById('select-cuotas');
 const inputCuotas = document.getElementById('input-cuotas');
 
@@ -126,14 +124,13 @@ if (btnSettingsToggle && settingsDropdown) {
     });
 }
 
-// LEMBRETE DIÁRIO / NOTIFICAÇÕES PUSH
 const btnLembrete = document.getElementById('btn-lembrete');
 if (btnLembrete) {
     btnLembrete.addEventListener('click', async () => {
         if (settingsDropdown) settingsDropdown.classList.add('oculto');
         
         if (!('Notification' in window)) {
-            showToast("❌ " + t('notifUnsupported'));
+            showToast("ℹ️ " + t('notifUnsupported'));
             return;
         }
         const permission = await Notification.requestPermission();
@@ -148,7 +145,7 @@ if (btnLembrete) {
                 });
             }
         } else {
-            showToast("⚠️ " + t('notifDenied'));
+            showToast("❌ " + t('notifDenied'));
         }
     });
 }
@@ -201,7 +198,7 @@ document.addEventListener('click', (e) => {
             }
         }
     }
-
+    
     const btnCuentaDelete = e.target.closest('.btn-eliminar-cuenta');
     if (btnCuentaDelete) {
         state.cuentas = state.cuentas.filter(c => c.id !== btnCuentaDelete.dataset.id);
@@ -226,6 +223,101 @@ if (btnPrivacidade) {
     });
 }
 
+// ==========================================
+// LÓGICA DE AUTENTICAÇÃO (SUPABASE)
+// ==========================================
+let authMode = 'login'; 
+
+async function actualizarEstadoAuthUI() {
+    const user = await getUser();
+    const banner = document.getElementById('user-info-banner');
+    const emailDisplay = document.getElementById('user-email-display');
+    const labelMenu = document.getElementById('label-menu-auth');
+
+    if (user) {
+        if (banner && emailDisplay) {
+            emailDisplay.innerText = user.email;
+            banner.classList.remove('oculto');
+        }
+        if (labelMenu) labelMenu.innerText = t('menuLogout');
+    } else {
+        if (banner) banner.classList.add('oculto');
+        if (labelMenu) labelMenu.innerText = t('menuAuth');
+    }
+}
+
+document.getElementById('btn-menu-auth').addEventListener('click', async () => {
+    if (settingsDropdown) settingsDropdown.classList.add('oculto');
+    const user = await getUser();
+
+    if (user) {
+        if (confirm("Deseja realmente sair da sua conta?")) {
+            await signOutUser();
+            showToast(t('authLogoutSuccess'));
+            await actualizarEstadoAuthUI();
+        }
+    } else {
+        history.pushState({ view: 'auth' }, '');
+        transicionPantalla(() => {
+            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            document.getElementById('pantalla-auth').classList.remove('oculto');
+        });
+    }
+});
+
+document.getElementById('btn-cerrar-auth').addEventListener('click', mostrarPantallaPrincipal);
+
+document.getElementById('btn-toggle-auth-mode').addEventListener('click', () => {
+    authMode = authMode === 'login' ? 'signup' : 'login';
+    const isLogin = authMode === 'login';
+
+    document.getElementById('auth-title-header').innerText = isLogin ? t('authTitleLogin') : t('authTitleSignup');
+    document.getElementById('btn-auth-submit').innerText = isLogin ? t('authBtnLogin') : t('authBtnSignup');
+    document.getElementById('text-toggle-auth').innerText = isLogin ? t('authSwitchToSignup') : t('authSwitchToLogin');
+});
+
+document.getElementById('form-auth').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('input-auth-email').value.trim();
+    const password = document.getElementById('input-auth-password').value;
+    const btnSubmit = document.getElementById('btn-auth-submit');
+
+    if (!email || !password) return;
+
+    btnSubmit.disabled = true;
+    btnSubmit.style.opacity = '0.6';
+
+    try {
+        if (authMode === 'signup') {
+            await signUpWithEmail(email, password);
+            showToast(t('authSuccessSignup'));
+        } else {
+            await signInWithEmail(email, password);
+            showToast(t('authSuccessLogin'));
+
+            const remoteData = await pullSupabaseToLocalState();
+            if (remoteData) {
+                if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
+                if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
+                if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
+                if (remoteData.boletos) state.boletos = remoteData.boletos;
+                if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
+                if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
+                await saveStore();
+            }
+        }
+
+        await actualizarEstadoAuthUI();
+        mostrarPantallaPrincipal();
+    } catch (err) {
+        showToast("❌ Erro: " + (err.message || "Falha na autenticação"));
+    } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.style.opacity = '1';
+    }
+});
+// ==========================================
+
 async function init() {
     const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
@@ -234,6 +326,7 @@ async function init() {
     if (inputCierre) inputCierre.value = state.cierreTC || 24;
     
     actualizarModoPrivacidade();
+    await actualizarEstadoAuthUI();
     
     const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
     if (activeFlag) activeFlag.classList.add('active');
@@ -552,7 +645,6 @@ document.getElementById('input-desc').addEventListener('input', (e) => {
     }, INTERACTION_CONFIG.DEBOUNCE_DELAY_MS);
 });
 
-// CRIAR NOVA CATEGORIA PERSONALIZADA
 const btnToggleNuevaCat = document.getElementById('btn-toggle-nueva-cat');
 const areaNuevaCat = document.getElementById('area-nueva-categoria');
 const btnGuardarNuevaCat = document.getElementById('btn-guardar-nueva-cat');
@@ -562,12 +654,13 @@ if (btnToggleNuevaCat && areaNuevaCat) {
         areaNuevaCat.classList.toggle('oculto');
     });
 }
+
 if (btnGuardarNuevaCat) {
     btnGuardarNuevaCat.addEventListener('click', () => {
         const nombreInput = document.getElementById('input-nueva-cat-nombre');
         const emojiInput = document.getElementById('input-nueva-cat-emoji');
         const nombre = nombreInput.value.trim();
-        const emoji = emojiInput.value.trim() || '🏷️';
+        const emoji = emojiInput.value.trim() || '📂';
         if (nombre) {
             const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
             state.categoriasCustom = [...state.categoriasCustom, newCat];
@@ -584,7 +677,6 @@ function atualizarCheckboxMes() {
     const cuentaId = document.getElementById('input-cuenta-origen')?.value;
     const inputFecha = document.getElementById('input-fecha-gasto')?.value;
     const checkbox = document.getElementById('checkbox-mes-siguiente');
-
     if (!cuentaId || !checkbox) return;
     const cuenta = state.cuentas.find(c => c.id === cuentaId);
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
@@ -598,6 +690,7 @@ function atualizarCheckboxMes() {
         checkbox.checked = false;
     }
 }
+
 document.getElementById('input-cuenta-origen').addEventListener('change', atualizarCheckboxMes);
 document.getElementById('input-fecha-gasto').addEventListener('change', atualizarCheckboxMes);
 
@@ -608,12 +701,10 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
     
-    // FALLBACK DE CURSOR/VALOR ZERADO MAS DIGITADO:
     if (montoCents === 0 && inputMonto.value) {
         const digits = inputMonto.value.replace(/\D/g, '');
         if (digits) montoCents = parseInt(digits, 10);
     }
-
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     if (!cuentaId) {
         showToast("⚠️ Erro: Selecione uma conta de origem.");
@@ -623,12 +714,10 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     const inputCuotas = document.getElementById('input-cuotas');
     const cuotas = parseInt(inputCuotas?.value, 10) || 1;
     
-    // VALIDAÇÃO DE PARCELA INVÁLIDA:
     if (cuotas < 1) {
         showToast(t('errInvalid') || "Erro: Parcelas inválidas.");
         return;
     }
-
     const inputFecha = document.getElementById('input-fecha-gasto').value;
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
@@ -690,7 +779,6 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
 });
 
-// TELA DE GESTÃO DE CONTAS & FORMULÁRIO DEDICADO
 document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     history.pushState({ view: 'cuentas' }, '');
@@ -701,6 +789,7 @@ document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     });
     renderCuentasList(state);
 });
+
 document.getElementById('btn-cerrar-cuentas')?.addEventListener('click', mostrarPantallaPrincipal);
 
 const inputCuentaTipo = document.getElementById('input-cuenta-tipo');
@@ -741,7 +830,6 @@ if (formCuenta) {
     });
 }
 
-// TELA DE BOLETOS E GASTOS FIJOS
 document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     history.pushState({ view: 'boletos' }, '');
@@ -752,6 +840,7 @@ document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     });
     renderBoletosList(state);
 });
+
 document.getElementById('btn-cerrar-boletos')?.addEventListener('click', mostrarPantallaPrincipal);
 
 document.getElementById('form-boleto').addEventListener('submit', (e) => {
@@ -816,7 +905,6 @@ document.getElementById('btn-importar').addEventListener('click', () => {
     document.getElementById('input-archivo').click();
 });
 
-// IMPORTAÇÃO COM VALIDAÇÃO DE SCHEMA COMPLETA
 document.getElementById('input-archivo').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -844,7 +932,6 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
                     if (data.cuentas) state.cuentas = data.cuentas;
                     if (data.boletos) state.boletos = data.boletos;
                     if (data.patrimonio) state.historialPatrimonio = data.patrimonio;
-                    // FIX: PRESERVAR O ORÇAMENTO MENSAL DO BACKUP
                     if (data.presupuesto) state.presupuestoMensual = data.presupuesto; 
                 }
                 replaceHistory(historyToImport);
@@ -860,7 +947,6 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-// RESET DO APLICATIVO CORRIGIDO (LIMPEZA CONDICIONAL DO LOCALSTORAGE)
 document.getElementById('btn-reiniciar').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     if(confirm(t('alertReset'))) {
@@ -871,7 +957,6 @@ document.getElementById('btn-reiniciar').addEventListener('click', () => {
             const tx = db.transaction('floux_store', 'readwrite');
             tx.objectStore('floux_store').clear();
             tx.oncomplete = () => {
-                // FIX: Limpeza só ocorre se a transação do banco confirmar o reset com sucesso
                 localStorage.clear();
                 db.close();
                 location.reload();
@@ -1014,6 +1099,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
 });
 
 init();
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
 }

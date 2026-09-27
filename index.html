@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light-dark">
     <title>Floux</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <!-- CSP Atualizado para permitir Supabase -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co;">
     <link rel="icon" type="image/svg+xml" href="img/logo-floux.svg">
     <link rel="apple-touch-icon" href="img/logo180.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0F766E">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <main id="app-movil">
@@ -32,12 +35,23 @@
                     </div>
                 </div>
                 <hr class="divider-small">
+                
+                <!-- Autenticação (Novo) -->
+                <div id="user-info-banner" class="oculto text-muted-small mb-10 text-center" style="font-weight: 600; color: var(--primary-color);">
+                    <span id="user-email-display"></span>
+                </div>
+                <button id="btn-menu-auth" class="btn-dropdown">
+                    <span class="dropdown-icon">☁️</span>
+                    <span id="label-menu-auth" data-i18n="menuAuth">Entrar / Cadastrar</span>
+                </button>
+                <hr class="divider-small">
+
                 <button id="btn-menu-cuentas" class="btn-dropdown">
                     <span class="dropdown-icon">💳</span>
                     <span data-i18n="menuAccounts">Cuentas y Tarjetas</span>
                 </button>
                 <button id="btn-menu-boletos" class="btn-dropdown">
-                    <span class="dropdown-icon">📅</span>
+                    <span class="dropdown-icon">📄</span>
                     <span data-i18n="menuBills">Gastos Fijos</span>
                 </button>
                 <hr class="divider-small">
@@ -63,10 +77,38 @@
         </div>
     </div>
     
+    <!-- TELA DE AUTENTICAÇÃO -->
+    <section id="pantalla-auth" class="transicion-seccion oculto">
+        <div class="header-actions mb-15">
+            <button type="button" id="btn-cerrar-auth" class="btn-base btn-secundario btn-pequeno w-auto m-0">✕</button>
+            <h3 id="auth-title-header" data-i18n="authTitleLogin" class="m-0 flex-grow text-center" style="flex-grow:1;">Entrar</h3>
+        </div>
+        <div class="text-center mb-20">
+            <div class="emoji-large">☁️</div>
+            <p data-i18n="authExplanation" class="text-muted-small">Sincronize seus dados na nuvem com total segurança.</p>
+        </div>
+        <form id="form-auth" class="mb-20">
+            <div class="form-group mb-12">
+                <label data-i18n="authEmailLabel">E-mail</label>
+                <input type="email" id="input-auth-email" placeholder="seu@email.com" required autocomplete="email">
+            </div>
+            <div class="form-group mb-20">
+                <label data-i18n="authPasswordLabel">Senha</label>
+                <input type="password" id="input-auth-password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
+            </div>
+            <button type="submit" id="btn-auth-submit" class="btn-principal mb-10" data-i18n="authBtnLogin">Entrar</button>
+        </form>
+        <div class="text-center mb-15">
+            <button type="button" id="btn-toggle-auth-mode" class="btn-base btn-secundario btn-pequeno" style="background:transparent; box-shadow:none;">
+                <span id="text-toggle-auth" data-i18n="authSwitchToSignup">Não tem uma conta? Cadastre-se</span>
+            </button>
+        </div>
+    </section>
+
     <!-- TELA DE PATRIMÔNIO (FLOUXVAULT) -->
     <section id="pantalla-flouxvault" class="transicion-seccion oculto">
         <div class="text-center mb-24">
-            <div class="emoji-large">🏦</div>
+            <div class="emoji-large">🏛️</div>
             <h3 data-i18n="nwTitle">FlouxVault</h3>
             <p data-i18n="nwExplanation" class="text-muted-small">Rastrea el crecimiento de tus inversiones a lo largo del tiempo.</p>
         </div>
@@ -122,7 +164,7 @@
     <!-- TELA DE BOLETOS -->
     <section id="pantalla-boletos" class="transicion-seccion oculto">
         <div class="header-actions mb-15">
-            <button type="button" id="btn-cerrar-boletos" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅️</button>
+            <button type="button" id="btn-cerrar-boletos" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅</button>
             <h3 data-i18n="billsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Boletos y Gastos Fijos</h3>
         </div>
         <p data-i18n="billsExplanation" class="text-muted-small text-center mb-15">Registra tus gastos fijos. Floux los restará automáticamente de tu liquidez antes de calcular tu límite diario.</p>
@@ -149,7 +191,7 @@
     <!-- TELA DE GESTÃO DE CONTAS -->
     <section id="pantalla-cuentas" class="transicion-seccion oculto">
         <div class="header-actions mb-15">
-            <button type="button" id="btn-cerrar-cuentas" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅️</button>
+            <button type="button" id="btn-cerrar-cuentas" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅</button>
             <h3 data-i18n="accountsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Cuentas</h3>
         </div>
         <form id="form-cuenta" class="mb-20">
@@ -173,7 +215,7 @@
     <!-- TELA DE SIMULADOR (FLOUXVISION) -->
     <section id="pantalla-simulador" class="transicion-seccion oculto">
         <div class="text-center mb-24">
-            <div class="emoji-large">🔮</div>
+            <div class="emoji-large">🔭</div>
             <h3 data-i18n="flouxVisionTitle">FlouxVision - Pérdida Invisible</h3>
             <p data-i18n="lsimExplanation" class="text-muted-small">El costo de oportunidad es el dinero que dejas de ganar al elegir gastar en lugar de invertir. Calcula el valor real a futuro de esa compra.</p>
         </div>
@@ -305,7 +347,7 @@
                     <strong id="display-calculado">0.00</strong>
                 </div>
             </div>
-            <button id="btn-wizard-next-1" class="btn-principal" data-i18n="wizardNextAccounts">Siguiente: Cuentas ➡️</button>
+            <button id="btn-wizard-next-1" class="btn-principal" data-i18n="wizardNextAccounts">Siguiente: Cuentas ➡</button>
         </div>
         <div id="wizard-step-2" class="transicion-seccion oculto">
             <h3 data-i18n="wizardStep2Title" class="text-center mb-15">Cuentas y Tarjetas</h3>
@@ -329,8 +371,8 @@
                 <ul class="log" id="lista-onboarding-cuentas"></ul>
             </div>
             <div class="wizard-actions">
-                <button id="btn-wizard-back-1" class="btn-base btn-secundario" data-i18n="wizardBack">⬅️ Volver</button>
-                <button id="btn-wizard-next-2" class="btn-principal" data-i18n="wizardNextFinal">Siguiente ➡️</button>
+                <button id="btn-wizard-back-1" class="btn-base btn-secundario" data-i18n="wizardBack">⬅ Volver</button>
+                <button id="btn-wizard-next-2" class="btn-principal" data-i18n="wizardNextFinal">Siguiente ➡</button>
             </div>
         </div>
         <div id="wizard-step-3" class="transicion-seccion oculto">
@@ -340,8 +382,8 @@
                 <input type="number" id="input-gastos-iniciales" value="0" inputmode="decimal">
             </div>
             <div class="wizard-actions">
-                <button id="btn-wizard-back-2" class="btn-base btn-secundario" data-i18n="wizardBack">⬅️ Volver</button>
-                <button id="btn-comenzar" class="btn-principal" data-i18n="wizardFinish">Concluir 🚀</button>
+                <button id="btn-wizard-back-2" class="btn-base btn-secundario" data-i18n="wizardBack">⬅ Volver</button>
+                <button id="btn-comenzar" class="btn-principal" data-i18n="wizardFinish">Concluir ✅</button>
             </div>
         </div>
     </section>
@@ -439,7 +481,7 @@
             </form>
             <hr class="divider">
         </div>
-                
+                 
         <div id="resumen-mes-pasado" class="summary-card transicion-seccion oculto">
             <h4 data-i18n="summaryTitle">Resumen del Mes</h4>
             <div class="summary-row">
@@ -463,15 +505,15 @@
         <div id="info-soma-filtro" class="text-center mb-10 oculto">
             <span id="texto-soma-filtro" class="badge-filtro"></span>
         </div>
-        <ul class="log" id="lista-historial"></ul> 
-        
+        <ul class="log" id="lista-historial"></ul>
+          
         <!-- BOTÃO PARA MOSTRAR HISTÓRICO COMPLETO DO MÊS -->
         <div id="container-mostrar-mais" class="text-center mt-15 mb-20 oculto">
             <button type="button" id="btn-mostrar-mais-historial" class="btn-base btn-secundario btn-pequeno w-auto m-0" style="padding: 10px 22px; font-weight: 600;">
                 <span id="label-mostrar-mais" data-i18n="btnShowMore">Ver histórico completo do mês</span>
             </button>
-        </div> 
-        
+        </div>
+          
         <!-- CALENDÁRIO PARA FILTRAR POR DATA ESPECÍFICA -->
         <div id="container-calendario-historial" class="summary-card mb-20">
             <div class="flex-between-center mb-10">
@@ -481,8 +523,8 @@
             <div id="strip-calendario-dias" class="calendar-strip"></div>
         </div>
         
-        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">📉 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
-        <button id="btn-abrir-flouxvault" class="btn-base btn-secundario btn-lsim mt-10">🏦 <span data-i18n="nwTitle">FlouxVault</span></button>
+        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">🔭 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
+        <button id="btn-abrir-flouxvault" class="btn-base btn-secundario btn-lsim mt-10">🏛️ <span data-i18n="nwTitle">FlouxVault</span></button>
         
         <button id="btn-editar-presupuesto" class="btn-base btn-secundario mt-20" aria-label="Editar Presupuesto">⚙️ <span data-i18n="menuAdjustBudget">Ajustar Presupuesto</span></button>
     </section>
