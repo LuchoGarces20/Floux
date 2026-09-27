@@ -84,28 +84,25 @@
 
         <!-- AUTH CARD -->
         <div class="auth-card">
-            <div class="text-center mb-24">
-                <h3 id="auth-title-header" data-i18n="authTitleLogin" class="auth-title">Entrar</h3>
-                <p data-i18n="authExplanation" class="auth-subtitle">Sincronize seus dados na nuvem com total segurança.</p>
+            <!-- ABAS DE AUTENTICAÇÃO -->
+            <div class="auth-tabs-container mb-24">
+                <button type="button" id="tab-auth-login" class="auth-tab-btn active" data-i18n="authTitleLogin">Entrar</button>
+                <button type="button" id="tab-auth-signup" class="auth-tab-btn" data-i18n="authTitleSignup">Criar Conta</button>
             </div>
 
+            <p data-i18n="authExplanation" class="auth-subtitle text-center mb-28">Sincronize seus dados na nuvem com total segurança.</p>
+
             <form id="form-auth">
-                <div class="form-group mb-16">
+                <div class="form-group mb-20">
                     <label data-i18n="authEmailLabel" class="field-label">E-mail</label>
                     <input type="email" id="input-auth-email" placeholder="seu@email.com" required autocomplete="email">
                 </div>
-                <div class="form-group mb-24">
-                    <label data-i18n="authPasswordLabel" class="field-label" style="margin-top: 12px;">Senha</label>
+                <div class="form-group mb-28">
+                    <label data-i18n="authPasswordLabel" class="field-label">Senha</label>
                     <input type="password" id="input-auth-password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
                 </div>
-                <button type="submit" id="btn-auth-submit" class="btn-principal mb-16" data-i18n="authBtnLogin">Entrar</button>
+                <button type="submit" id="btn-auth-submit" class="btn-principal mb-0" data-i18n="authBtnLogin">Entrar</button>
             </form>
-
-            <div class="text-center pt-8">
-                <button type="button" id="btn-toggle-auth-mode" class="btn-toggle-auth">
-                    <span id="text-toggle-auth" data-i18n="authSwitchToSignup">Não tem uma conta? Cadastre-se</span>
-                </button>
-            </div>
         </div>
     </div>
 </section>

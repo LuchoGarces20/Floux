@@ -249,13 +249,26 @@ document.getElementById('btn-logout')?.addEventListener('click', async () => {
     }
 });
 
-document.getElementById('btn-toggle-auth-mode')?.addEventListener('click', () => {
-    authMode = authMode === 'login' ? 'signup' : 'login';
-    const isLogin = authMode === 'login';
-    document.getElementById('auth-title-header').innerText = isLogin ? t('authTitleLogin') : t('authTitleSignup');
-    document.getElementById('btn-auth-submit').innerText = isLogin ? t('authBtnLogin') : t('authBtnSignup');
-    document.getElementById('text-toggle-auth').innerText = isLogin ? t('authSwitchToSignup') : t('authSwitchToLogin');
-});
+// Alternador de Abas (Entrar / Criar Conta)
+const tabAuthLogin = document.getElementById('tab-auth-login');
+const tabAuthSignup = document.getElementById('tab-auth-signup');
+
+function setAuthMode(mode) {
+    authMode = mode;
+    const btnSubmit = document.getElementById('btn-auth-submit');
+    if (mode === 'login') {
+        tabAuthLogin?.classList.add('active');
+        tabAuthSignup?.classList.remove('active');
+        if (btnSubmit) btnSubmit.innerText = t('authBtnLogin');
+    } else {
+        tabAuthSignup?.classList.add('active');
+        tabAuthLogin?.classList.remove('active');
+        if (btnSubmit) btnSubmit.innerText = t('authBtnSignup');
+    }
+}
+
+tabAuthLogin?.addEventListener('click', () => setAuthMode('login'));
+tabAuthSignup?.addEventListener('click', () => setAuthMode('signup'));
 
 document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     e.preventDefault();
