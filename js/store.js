@@ -96,7 +96,6 @@ export async function loadStore() {
     
     if (Array.isArray(boletos)) rawState.boletos = boletos;
     if (Array.isArray(pat)) rawState.historialPatrimonio = pat;
-
     if (p !== undefined) {
         rawState.presupuestoMensual = p;
         if (isValidoHistorialSchema(h)) rawState.historialGlobal = h;
@@ -121,7 +120,6 @@ export async function saveStore() {
         store.put(state.historialPatrimonio, STORAGE_KEYS.PATRIMONIO);
         
         tx.oncomplete = () => {
-            // Sincroniza em background sem travar a interface
             pushLocalStateToSupabase(state).catch(console.error);
             resolve();
         };

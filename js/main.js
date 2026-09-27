@@ -17,6 +17,7 @@ const INTERACTION_CONFIG = {
 
 let gastoEnEdicion = null;
 const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
+
 const hoy = new Date();
 const mesActual = hoy.getMonth();
 const anoActual = hoy.getFullYear();
@@ -41,7 +42,7 @@ const executeSave = async () => {
         }
     } catch (error) {
         if (error && error.name === 'QuotaExceededError') {
-            showToast("⚠️ Erro: Armazenamento cheio. Libere espaço para salvar.");
+            showToast("Erro: Armazenamento cheio. Libere espaço para salvar.");
         }
     } finally {
         isSaving = false;
@@ -130,12 +131,12 @@ if (btnLembrete) {
         if (settingsDropdown) settingsDropdown.classList.add('oculto');
         
         if (!('Notification' in window)) {
-            showToast("ℹ️ " + t('notifUnsupported'));
+            showToast(" " + t('notifUnsupported'));
             return;
         }
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            showToast("✅ " + t('notifActivated'));
+            showToast(" " + t('notifActivated'));
             if (navigator.serviceWorker && navigator.serviceWorker.ready) {
                 const reg = await navigator.serviceWorker.ready;
                 reg.showNotification("Floux", {
@@ -145,7 +146,7 @@ if (btnLembrete) {
                 });
             }
         } else {
-            showToast("❌ " + t('notifDenied'));
+            showToast(" " + t('notifDenied'));
         }
     });
 }
@@ -190,7 +191,7 @@ document.addEventListener('click', (e) => {
                     boletoId: boleto.id
                 });
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("✅ Boleto pago e contabilizado!");
+                showToast(" Boleto pago e contabilizado!");
                 renderBoletosList(state);
                 if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
                     actualizarInterfaz(state, viewMonth, viewYear, hoy);
@@ -210,10 +211,10 @@ function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
     if (state.privacyMode) {
         document.body.classList.add('privacy-mode');
-        btnPrivacidade.innerText = '🙈';
+        btnPrivacidade.innerText = '👀';
     } else {
         document.body.classList.remove('privacy-mode');
-        btnPrivacidade.innerText = '👁️';
+        btnPrivacidade.innerText = '🔒';
     }
 }
 
@@ -224,7 +225,7 @@ if (btnPrivacidade) {
 }
 
 // ==========================================
-// LÓGICA DE AUTENTICAÇÃO (SUPABASE)
+// LÓGICA DE AUTENTICAÇÃO E SESSÃO
 // ==========================================
 let authMode = 'login'; 
 
@@ -233,7 +234,6 @@ async function actualizarEstadoAuthUI() {
     const banner = document.getElementById('user-info-banner');
     const emailDisplay = document.getElementById('user-email-display');
     const labelMenu = document.getElementById('label-menu-auth');
-
     if (user) {
         if (banner && emailDisplay) {
             emailDisplay.innerText = user.email;
@@ -246,18 +246,16 @@ async function actualizarEstadoAuthUI() {
     }
 }
 
-document.getElementById('btn-menu-auth').addEventListener('click', async () => {
+document.getElementById('btn-menu-auth')?.addEventListener('click', async () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     const user = await getUser();
-
     if (user) {
         if (confirm("Deseja realmente sair da sua conta?")) {
             await signOutUser();
             showToast(t('authLogoutSuccess'));
-            await actualizarEstadoAuthUI();
+            location.reload(); 
         }
     } else {
-        history.pushState({ view: 'auth' }, '');
         transicionPantalla(() => {
             document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
             document.getElementById('pantalla-auth').classList.remove('oculto');
@@ -265,28 +263,24 @@ document.getElementById('btn-menu-auth').addEventListener('click', async () => {
     }
 });
 
-document.getElementById('btn-cerrar-auth').addEventListener('click', mostrarPantallaPrincipal);
-
-document.getElementById('btn-toggle-auth-mode').addEventListener('click', () => {
+document.getElementById('btn-toggle-auth-mode')?.addEventListener('click', () => {
     authMode = authMode === 'login' ? 'signup' : 'login';
     const isLogin = authMode === 'login';
-
     document.getElementById('auth-title-header').innerText = isLogin ? t('authTitleLogin') : t('authTitleSignup');
     document.getElementById('btn-auth-submit').innerText = isLogin ? t('authBtnLogin') : t('authBtnSignup');
     document.getElementById('text-toggle-auth').innerText = isLogin ? t('authSwitchToSignup') : t('authSwitchToLogin');
 });
 
-document.getElementById('form-auth').addEventListener('submit', async (e) => {
+document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('input-auth-email').value.trim();
     const password = document.getElementById('input-auth-password').value;
     const btnSubmit = document.getElementById('btn-auth-submit');
-
     if (!email || !password) return;
-
+    
     btnSubmit.disabled = true;
     btnSubmit.style.opacity = '0.6';
-
+    
     try {
         if (authMode === 'signup') {
             await signUpWithEmail(email, password);
@@ -294,71 +288,84 @@ document.getElementById('form-auth').addEventListener('submit', async (e) => {
         } else {
             await signInWithEmail(email, password);
             showToast(t('authSuccessLogin'));
-
-            const remoteData = await pullSupabaseToLocalState();
-            if (remoteData) {
-                if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
-                if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
-                if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
-                if (remoteData.boletos) state.boletos = remoteData.boletos;
-                if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
-                if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
-                await saveStore();
-            }
         }
-
+        
+        const remoteData = await pullSupabaseToLocalState();
+        if (remoteData) {
+            if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
+            if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
+            if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
+            if (remoteData.boletos) state.boletos = remoteData.boletos;
+            if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
+            if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
+            await saveStore();
+        }
+        
         await actualizarEstadoAuthUI();
-        mostrarPantallaPrincipal();
+        
+        const hasData = await loadStore();
+        if (hasData && state.presupuestoMensual > 0) {
+            mostrarPantallaPrincipal();
+        } else {
+            transicionPantalla(() => {
+                document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+                document.getElementById('pantalla-configuracion').classList.remove('oculto');
+            });
+        }
     } catch (err) {
-        showToast("❌ Erro: " + (err.message || "Falha na autenticação"));
+        showToast("Erro: " + (err.message || "Falha na autenticação"));
     } finally {
         btnSubmit.disabled = false;
         btnSubmit.style.opacity = '1';
     }
 });
-// ==========================================
 
+// ==========================================
+// INICIALIZAÇÃO DA APLICAÇÃO
+// ==========================================
 async function init() {
+    const user = await getUser();
+    if (!user) {
+        transicionPantalla(() => {
+            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            document.getElementById('pantalla-auth').classList.remove('oculto');
+        });
+        
+        const btnCerrarAuth = document.getElementById('btn-cerrar-auth');
+        if (btnCerrarAuth) btnCerrarAuth.style.display = 'none';
+        return;
+    }
+    
+    const btnCerrarAuth = document.getElementById('btn-cerrar-auth');
+    if (btnCerrarAuth) btnCerrarAuth.style.display = '';
+    
+    const remoteData = await pullSupabaseToLocalState();
+    if (remoteData) {
+        if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
+        if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
+        if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
+        if (remoteData.boletos) state.boletos = remoteData.boletos;
+        if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
+        if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
+        await saveStore();
+    }
+    
     const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
-    
-    const inputCierre = document.getElementById('input-cierre-tc');
-    if (inputCierre) inputCierre.value = state.cierreTC || 24;
     
     actualizarModoPrivacidade();
     await actualizarEstadoAuthUI();
     
-    const activeFlag = document.querySelector(`.flag[data-lang="${currentLang}"]`);
-    if (activeFlag) activeFlag.classList.add('active');
-    
     aplicarTraduccion(gastoEnEdicion);
     renderizarSelectCategorias(state.categoriasCustom);
     
-    if (hasData) {
-        if (localStorage.getItem(STORAGE_KEYS.MES_GUARDADO) === null || parseInt(localStorage.getItem(STORAGE_KEYS.MES_GUARDADO), 10) !== mesActual) {
-            localStorage.setItem(STORAGE_KEYS.MES_GUARDADO, mesActual);
-        }
+    if (hasData && state.presupuestoMensual > 0) {
         mostrarPantallaPrincipal();
-        resetFormularioGasto(setGastoEnEdicion);
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const action = urlParams.get('action');
-        
-        if (action) {
-            if (action === 'add-expense') {
-                const inputMonto = document.getElementById('input-monto');
-                const areaRegistro = document.getElementById('area-registrar-gasto');
-                if (inputMonto && areaRegistro) {
-                    setTimeout(() => {
-                        areaRegistro.scrollIntoView({ behavior: 'instant', block: 'start' });
-                        inputMonto.focus();
-                    }, 100);
-                }
-            } else if (action === 'simulador') {
-                document.getElementById('btn-abrir-simulador').click();
-            }
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+    } else {
+        transicionPantalla(() => {
+            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            document.getElementById('pantalla-configuracion').classList.remove('oculto');
+        });
     }
 }
 
@@ -547,7 +554,7 @@ document.getElementById('form-onboarding-boleto').addEventListener('submit', (e)
         montoInput.dataset.cents = '0';
         document.getElementById('input-onboarding-boleto-dia').value = '';
         
-        showToast("✅ " + t('btnSave'));
+        showToast(" " + t('btnSave'));
         renderBoletosList(state);
         recalcularPresupuestoOnboarding();
     }
@@ -580,7 +587,7 @@ document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e)
         
         document.getElementById('input-onboarding-cuenta-nombre').value = '';
         document.getElementById('input-onboarding-cuenta-cierre').value = '';
-        showToast("✅ " + t('btnSave'));
+        showToast(" " + t('btnSave'));
         renderCuentasList(state);
     }
 });
@@ -660,7 +667,7 @@ if (btnGuardarNuevaCat) {
         const nombreInput = document.getElementById('input-nueva-cat-nombre');
         const emojiInput = document.getElementById('input-nueva-cat-emoji');
         const nombre = nombreInput.value.trim();
-        const emoji = emojiInput.value.trim() || '📂';
+        const emoji = emojiInput.value.trim() || '📝';
         if (nombre) {
             const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
             state.categoriasCustom = [...state.categoriasCustom, newCat];
@@ -668,7 +675,7 @@ if (btnGuardarNuevaCat) {
             emojiInput.value = '';
             areaNuevaCat.classList.add('oculto');
             renderizarSelectCategorias(state.categoriasCustom);
-            showToast("✅ " + t('btnSave'));
+            showToast(" " + t('btnSave'));
         }
     });
 }
@@ -707,7 +714,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     if (!cuentaId) {
-        showToast("⚠️ Erro: Selecione uma conta de origem.");
+        showToast(" Erro: Selecione uma conta de origem.");
         return;
     }
     
@@ -775,7 +782,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         
         if (document.activeElement) document.activeElement.blur();
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
-        showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
+        showToast(wasEditing ? " " + t('btnEdit') : " " + t('btnAdd'));
     }
 });
 
@@ -824,7 +831,7 @@ if (formCuenta) {
             
             document.getElementById('input-cuenta-nombre').value = '';
             document.getElementById('input-cuenta-cierre').value = '';
-            showToast("✅ " + t('btnSave'));
+            showToast(" " + t('btnSave'));
             renderCuentasList(state);
         }
     });
@@ -859,7 +866,7 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
         montoInput.value = '';
         montoInput.dataset.cents = '0';
         document.getElementById('input-boleto-dia').value = '';
-        showToast("✅ " + t('btnSave'));
+        showToast(" " + t('btnSave'));
         renderBoletosList(state);
     }
 });
@@ -932,13 +939,13 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
                     if (data.cuentas) state.cuentas = data.cuentas;
                     if (data.boletos) state.boletos = data.boletos;
                     if (data.patrimonio) state.historialPatrimonio = data.patrimonio;
-                    if (data.presupuesto) state.presupuestoMensual = data.presupuesto; 
+                    if (data.presupuesto) state.presupuestoMensual = data.presupuesto;
                 }
                 replaceHistory(historyToImport);
             } else {
                 replaceHistory(state.historialGlobal.concat(historyToImport));
             }
-            showToast("✅ Dados importados com sucesso!");
+            showToast(" Dados importados com sucesso!");
         } catch (err) {
             showToast(t('errInvalid'));
         }
@@ -977,25 +984,19 @@ if (fabGasto) {
     });
 }
 
-initFlouxVision(
-    () => {
-        transicionPantalla(() => {
-            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-            document.getElementById('pantalla-simulador').classList.remove('oculto');
-        });
-    },
-    mostrarPantallaPrincipal
-);
+initFlouxVision(() => {
+    transicionPantalla(() => {
+        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        document.getElementById('pantalla-simulador').classList.remove('oculto');
+    });
+}, mostrarPantallaPrincipal);
 
-initFlouxVault(
-    () => {
-        transicionPantalla(() => {
-            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-            document.getElementById('pantalla-flouxvault').classList.remove('oculto');
-        });
-    },
-    mostrarPantallaPrincipal
-);
+initFlouxVault(() => {
+    transicionPantalla(() => {
+        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        document.getElementById('pantalla-flouxvault').classList.remove('oculto');
+    });
+}, mostrarPantallaPrincipal);
 
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: (id) => {
@@ -1023,7 +1024,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                     
                     if (gastoEnEdicion && idsToRemove.includes(gastoEnEdicion)) resetFormularioGasto(setGastoEnEdicion);
                     if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-                    showToast("✅ " + t('toastAllDeleted'));
+                    showToast(" " + t('toastAllDeleted'));
                     return;
                 }
             }
@@ -1032,7 +1033,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-        showToast("✅ " + t('toastDeleted'));
+        showToast(" " + t('toastDeleted'));
     },
     onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
@@ -1083,9 +1084,9 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                 }
             }
             if (isInstallment) {
-                warnEl.innerText = "⚠️ " + t('warnEditInstallmentMsg');
+                warnEl.innerText = " " + t('warnEditInstallmentMsg');
                 warnEl.style.display = 'block';
-                showToast("⚠️ " + t('warnEditInstallment'));
+                showToast(" " + t('warnEditInstallment'));
             } else {
                 warnEl.style.display = 'none';
             }
