@@ -26,7 +26,7 @@
         </div>
         <div class="settings-menu-container action-right">
             <button id="btn-settings-toggle" class="btn-icono" aria-label="Configuraciones">⚙️</button>
-            <div id="settings-dropdown" class="settings-dropdown transicion-seccion oculto">
+            <div id="settings-dropdown" class="settings-dropdown oculto">
                 
                 <!-- TARJETA DE PERFIL (USUÁRIO SEMPRE AUTENTICADO) -->
                 <div class="user-info-box">
@@ -262,7 +262,7 @@
     </section>
 
     <!-- TELA DE CONFIGURAÇÃO / ONBOARDING -->
-    <section id="pantalla-configuracion" class="transicion-seccion">
+    <section id="pantalla-configuracion" class="transicion-seccion oculto">
         <div class="wizard-header">
             <div class="wizard-step-indicator active" id="wizard-ind-1">1</div>
             <div class="wizard-step-line"></div>
@@ -270,7 +270,7 @@
             <div class="wizard-step-line"></div>
             <div class="wizard-step-indicator" id="wizard-ind-3">3</div>
         </div>
-        <div id="wizard-step-1" class="transicion-seccion">
+        <div id="wizard-step-1">
             <h3 data-i18n="wizardStep1Title" class="text-center mb-15">Moneda y Presupuesto</h3>
             <div class="form-group">
                 <label data-i18n="currencyLabel">Moneda</label>
@@ -286,13 +286,13 @@
                 <button id="tab-directo" class="tab-btn active" data-i18n="tabDirect">Ya sé mi presupuesto</button>
                 <button id="tab-calc" class="tab-btn" data-i18n="tabCalc">Ayúdame a calcular</button>
             </div>
-            <div id="modo-directo" class="transicion-seccion">
+            <div id="modo-directo">
                 <div class="form-group">
                     <label data-i18n="budgetLabel">Presupuesto Total Libre al Mes</label>
                     <input type="number" id="input-presupuesto" data-i18n-ph="budgetPlaceholder" placeholder="Ej: 2000" inputmode="decimal">
                 </div>
             </div>
-            <div id="modo-calculadora" class="transicion-seccion oculto">
+            <div id="modo-calculadora" class="oculto">
                 <div class="form-group">
                     <label data-i18n="incomeLabel">Renta Mensual Total</label>
                     <input type="number" id="input-ingresos" placeholder="Ej: 5000" inputmode="decimal" class="input-calc">
@@ -351,7 +351,7 @@
             </div>
             <button id="btn-wizard-next-1" class="btn-principal" data-i18n="wizardNextAccounts">Siguiente: Cuentas ➡</button>
         </div>
-        <div id="wizard-step-2" class="transicion-seccion oculto">
+        <div id="wizard-step-2" class="oculto">
             <h3 data-i18n="wizardStep2Title" class="text-center mb-15">Cuentas y Tarjetas</h3>
             <p data-i18n="wizardStep2Desc" class="text-muted-small text-center mb-15">Agrega tus cuentas corrientes o tarjetas de crédito para organizar tus pagos.</p>
             <div class="onboarding-embedded-section mb-15">
@@ -377,7 +377,7 @@
                 <button id="btn-wizard-next-2" class="btn-principal" data-i18n="wizardNextFinal">Siguiente ➡</button>
             </div>
         </div>
-        <div id="wizard-step-3" class="transicion-seccion oculto">
+        <div id="wizard-step-3" class="oculto">
             <h3 data-i18n="wizardStep3Title" class="text-center mb-15">Ajustes Finales</h3>
             <div class="form-group" id="area-gastos-previos">
                 <label data-i18n="spentLabel">¿Ya gastaste algo este mes?</label>
@@ -431,7 +431,7 @@
         </div>
         <hr class="divider">
         
-        <div id="area-registrar-gasto" class="transicion-seccion">
+        <div id="area-registrar-gasto">
             <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="form-group">
@@ -475,7 +475,7 @@
                 </div>
                 <button type="submit" id="btn-guardar-gasto" class="btn-principal mb-10">Agregar</button>
                 <button type="button" id="btn-toggle-nueva-cat" class="btn-base btn-secundario btn-pequeno">➕ <span data-i18n="newCategory">Nueva Categoría</span></button>
-                <div id="area-nueva-categoria" class="nueva-cat-container transicion-seccion oculto">
+                <div id="area-nueva-categoria" class="nueva-cat-container oculto">
                     <input type="text" id="input-nueva-cat-nombre" data-i18n-ph="catNamePlaceholder" placeholder="Nombre (ej: Gimnasio)" class="mb-5">
                     <input type="text" id="input-nueva-cat-emoji" data-i18n-ph="catEmojiPlaceholder" placeholder="Emoji (ej: 🏋️)" class="mb-5" maxlength="2">
                     <button type="button" id="btn-guardar-nueva-cat" class="btn-principal mb-0 p-0-5" data-i18n="btnSave">Guardar</button>
@@ -484,7 +484,7 @@
             <hr class="divider">
         </div>
                  
-        <div id="resumen-mes-pasado" class="summary-card transicion-seccion oculto">
+        <div id="resumen-mes-pasado" class="summary-card oculto">
             <h4 data-i18n="summaryTitle">Resumen del Mes</h4>
             <div class="summary-row">
                 <span class="summary-label" data-i18n="summaryPerf">Rendimiento:</span>

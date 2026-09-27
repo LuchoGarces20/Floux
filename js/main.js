@@ -79,6 +79,11 @@ window.addEventListener('visibilitychange', () => {
     }
 });
 
+// Oculta exclusivamente as secções principais da aplicação
+function ocultarTodasPantallas() {
+    document.querySelectorAll('main > section').forEach(s => s.classList.add('oculto'));
+}
+
 function transicionPantalla(callback) {
     if (!document.startViewTransition) {
         callback();
@@ -310,7 +315,7 @@ async function init() {
         if (headerApp) headerApp.style.display = 'none';
         
         transicionPantalla(() => {
-            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            ocultarTodasPantallas();
             document.getElementById('pantalla-auth').classList.remove('oculto');
         });
         return;
@@ -342,10 +347,11 @@ async function init() {
         mostrarPantallaPrincipal();
     } else {
         transicionPantalla(() => {
-            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+            ocultarTodasPantallas();
             document.getElementById('pantalla-configuracion').classList.remove('oculto');
-            // Exibe explicitamente o conteúdo do Passo 1 do assistente
             document.getElementById('wizard-step-1')?.classList.remove('oculto');
+            document.getElementById('modo-directo')?.classList.remove('oculto');
+            document.getElementById('modo-calculadora')?.classList.add('oculto');
             document.getElementById('wizard-ind-1')?.classList.add('active');
         });
     }
@@ -353,9 +359,8 @@ async function init() {
 
 function mostrarPantallaPrincipal() {
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-principal').classList.remove('oculto');
-        document.getElementById('area-registrar-gasto').classList.remove('oculto');
     });
     
     viewMonth = hoy.getMonth();
@@ -781,7 +786,7 @@ document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     history.pushState({ view: 'cuentas' }, '');
     
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-cuentas').classList.remove('oculto');
     });
     renderCuentasList(state);
@@ -834,7 +839,7 @@ document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     history.pushState({ view: 'boletos' }, '');
     
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-boletos').classList.remove('oculto');
     });
     renderBoletosList(state);
@@ -870,12 +875,12 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     resetFormularioGasto(setGastoEnEdicion);
     
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-configuracion').classList.remove('oculto');
         document.getElementById('wizard-step-1').classList.remove('oculto');
-        tabDirecto.click();
         document.getElementById('wizard-step-2').classList.add('oculto');
         document.getElementById('wizard-step-3').classList.add('oculto');
+        tabDirecto.click();
         document.getElementById('wizard-ind-1').classList.add('active');
         document.getElementById('wizard-ind-2').classList.remove('active');
         document.getElementById('wizard-ind-3').classList.remove('active');
@@ -928,7 +933,7 @@ document.getElementById('btn-abrir-simulador')?.addEventListener('click', async 
     }
     history.pushState({ view: 'simulador' }, '');
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-simulador').classList.remove('oculto');
     });
     visionModule.actualizarPerdidaInvisibleUI();
@@ -941,7 +946,7 @@ document.getElementById('btn-abrir-flouxvault')?.addEventListener('click', async
     }
     history.pushState({ view: 'flouxvault' }, '');
     transicionPantalla(() => {
-        document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
+        ocultarTodasPantallas();
         document.getElementById('pantalla-flouxvault').classList.remove('oculto');
     });
     vaultModule.renderNetWorthSection(state);
