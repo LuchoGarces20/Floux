@@ -1,7 +1,11 @@
-import { state, saveStore, addRegistroPatrimonio } from './store.js';
+// js/flouxVault.js
+import { state, saveStore, addRegistroPatrimonio, removeRegistroPatrimonio } from './store.js';
 import { t, formatCurrency } from './i18n.js';
 import { calculateNetWorth } from './financeEngine.js';
 import { escapeHTML, showToast } from './ui.js';
+import { pushCuentaToSupabase } from './supabaseClient.js';
+
+let isVaultInitialized = false;
 
 function drawSVGChart(dataPoints) {
     const svgNS = "http://www.w3.org/2000/svg";
@@ -44,13 +48,11 @@ function drawSVGChart(dataPoints) {
     let polylinePoints = "";
     const frag = document.createDocumentFragment();
     const pointsData = [];
-
     dataPoints.forEach((dp, index) => {
         const x = getX(dp.date);
         const y = getY(dp.value);
         polylinePoints += `${x},${y} `;
         pointsData.push({ x, y, date: dp.date, value: dp.value });
-
         const circle = document.createElementNS(svgNS, "circle");
         circle.setAttribute("cx", x);
         circle.setAttribute("cy", y);
@@ -102,10 +104,6 @@ function drawSVGChart(dataPoints) {
     return svg;
 }
 
-/**
- * LISTENERS VINCULADOS DIRETAMENTE AO SVG
- * Quando o SVG é destruído/substituído pelo DOM, o Garbage Collector descarta todos os listeners automaticamente.
- */
 function bindChartInteractivity(svg, nwData, state) {
     if (!svg || !svg.__pointsData) return;
     const pointsData = svg.__pointsData;
@@ -116,6 +114,7 @@ function bindChartInteractivity(svg, nwData, state) {
     const locale = navigator.language.startsWith('pt') ? 'pt-BR' : 'es-ES';
     const defaultTotal = formatCurrency(nwData.totalCents, state.monedaActual);
     const defaultLabelText = t('nwTotalLabel') || "Patrimonio Total";
+    
     let activePointIndex = -1;
 
     const handleMove = (e) => {
@@ -124,10 +123,11 @@ function bindChartInteractivity(svg, nwData, state) {
         let clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const rect = svg.getBoundingClientRect();
         const xInSVG = ((clientX - rect.left) / rect.width) * 400;
+        
         let closest = pointsData[0];
         let minDx = Math.abs(xInSVG - closest.x);
         let closestIdx = 0;
-
+        
         pointsData.forEach((p, i) => {
             const dx = Math.abs(xInSVG - p.x);
             if (dx < minDx) {
@@ -141,8 +141,10 @@ function bindChartInteractivity(svg, nwData, state) {
             activePointIndex = closestIdx;
             crosshair.setAttribute("x1", closest.x);
             crosshair.setAttribute("x2", closest.x);
+            
             circles.forEach(c => c.classList.remove('nw-active-point'));
             circles[closestIdx].classList.add('nw-active-point');
+            
             totalDisplay.innerText = formatCurrency(closest.value, state.monedaActual);
             labelDisplay.innerText = new Date(closest.date).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
             if (navigator.vibrate) navigator.vibrate(10);
@@ -164,7 +166,6 @@ function bindChartInteractivity(svg, nwData, state) {
     svg.addEventListener('pointerup', handleEnd);
     svg.addEventListener('pointerleave', handleEnd);
     svg.addEventListener('pointercancel', handleEnd);
-
     svg.addEventListener('touchstart', handleMove, { passive: false });
     svg.addEventListener('touchmove', handleMove, { passive: false });
     svg.addEventListener('touchend', handleEnd);
@@ -200,14 +201,13 @@ function renderVaultHistory(state) {
         historyList.appendChild(li);
     });
 
-    // Delegação de evento única para a lista
     if (!historyList.dataset.bound) {
         historyList.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-eliminar-vault');
             if (btn) {
                 const id = parseInt(btn.dataset.id, 10);
                 if(confirm("Remover este registro de auditoria histórico?")) {
-                    state.historialPatrimonio = state.historialPatrimonio.filter(reg => reg.id !== id);
+                    removeRegistroPatrimonio(id);
                     saveStore();
                     renderNetWorthSection(state);
                     showToast("🗑️ Registro removido");
@@ -251,14 +251,11 @@ export function renderNetWorthSection(state) {
     renderVaultHistory(state);
 }
 
-export function initFlouxVault(openModalCallback, closeModalCallback) {
-    document.getElementById('btn-abrir-flouxvault')?.addEventListener('click', () => {
-        history.pushState({ view: 'flouxvault' }, '');
-        openModalCallback();
-        renderNetWorthSection(state);
-    });
-
+export function initFlouxVault(closeModalCallback) {
     document.getElementById('btn-cerrar-flouxvault')?.addEventListener('click', closeModalCallback);
+
+    if (isVaultInitialized) return;
+    isVaultInitialized = true;
 
     const formNovoAtivo = document.getElementById('form-novo-ativo-vault');
     if (formNovoAtivo && !formNovoAtivo.dataset.bound) {
@@ -269,10 +266,13 @@ export function initFlouxVault(openModalCallback, closeModalCallback) {
             
             if (nome) {
                 const id = 'vault_' + Date.now();
-                state.cuentas = [...state.cuentas, { id, nombre: nome, tipo, cierreTC: null }];
+                const novaCuenta = { id, nombre: nome, tipo, cierreTC: null };
+                state.cuentas = [...state.cuentas, novaCuenta];
+                pushCuentaToSupabase(novaCuenta).catch(console.error);
+
                 document.getElementById('input-vault-nome').value = '';
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("✨ Ativo criado com sucesso!");
+                showToast("📌 Ativo criado com sucesso!");
                 saveStore();
                 renderNetWorthSection(state);
             }
@@ -298,7 +298,7 @@ export function initFlouxVault(openModalCallback, closeModalCallback) {
                 inputNwMonto.value = '';
                 inputNwMonto.dataset.cents = '0';
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("✨ " + t('btnSave'));
+                showToast("💾 " + t('btnSave'));
                 saveStore();
                 renderNetWorthSection(state);
             }

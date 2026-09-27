@@ -30,13 +30,15 @@ export async function signOutUser() {
     if (error) throw error;
 }
 
-export async function pushLocalStateToSupabase(state) {
+// ==========================================
+// ROTAS DE SINCRONIZAÇÃO INCREMENTAL (CIRÚRGICAS)
+// ==========================================
+
+export async function pushProfileToSupabase(state) {
     const user = await getUser();
     if (!user) return;
-    const userId = user.id;
-
     await supabase.from('profiles').upsert({
-        id: userId,
+        id: user.id,
         presupuesto_mensual: state.presupuestoMensual,
         moneda_actual: state.monedaActual,
         cierre_tc: state.cierreTC,
@@ -44,6 +46,118 @@ export async function pushLocalStateToSupabase(state) {
         categorias_custom: state.categoriasCustom,
         updated_at: new Date().toISOString()
     });
+}
+
+export async function pushExpenseToSupabase(g) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('gastos').upsert({
+        id: g.id,
+        user_id: user.id,
+        monto: g.monto,
+        description: g.desc,
+        fecha: g.fecha,
+        categoria: g.categoria,
+        mes_efectivo: g.mesEfectivo || null,
+        cuenta_id: g.cuentaId || null,
+        boleto_id: g.boletoId || null
+    });
+}
+
+export async function pushMultipleExpensesToSupabase(expensesArray) {
+    const user = await getUser();
+    if (!user || !expensesArray || expensesArray.length === 0) return;
+    const payload = expensesArray.map(g => ({
+        id: g.id,
+        user_id: user.id,
+        monto: g.monto,
+        description: g.desc,
+        fecha: g.fecha,
+        categoria: g.categoria,
+        mes_efectivo: g.mesEfectivo || null,
+        cuenta_id: g.cuentaId || null,
+        boleto_id: g.boletoId || null
+    }));
+    await supabase.from('gastos').upsert(payload);
+}
+
+export async function deleteExpenseFromSupabase(id) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('gastos').delete().eq('id', id).eq('user_id', user.id);
+}
+
+export async function deleteMultipleExpensesFromSupabase(idsArray) {
+    const user = await getUser();
+    if (!user || !idsArray || idsArray.length === 0) return;
+    await supabase.from('gastos').delete().in('id', idsArray).eq('user_id', user.id);
+}
+
+export async function pushCuentaToSupabase(c) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('cuentas').upsert({
+        id: c.id,
+        user_id: user.id,
+        nombre: c.nombre,
+        tipo: c.tipo,
+        cierre_tc: c.cierreTC
+    });
+}
+
+export async function deleteCuentaFromSupabase(id) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('cuentas').delete().eq('id', id).eq('user_id', user.id);
+}
+
+export async function pushBoletoToSupabase(b) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('boletos').upsert({
+        id: b.id,
+        user_id: user.id,
+        description: b.desc,
+        monto: b.monto,
+        dia_vencimiento: b.diaVencimiento,
+        categoria: b.categoria
+    });
+}
+
+export async function deleteBoletoFromSupabase(id) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('boletos').delete().eq('id', id).eq('user_id', user.id);
+}
+
+export async function pushPatrimonioToSupabase(p) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('patrimonio_historial').upsert({
+        id: p.id,
+        user_id: user.id,
+        cuenta_id: p.cuentaId,
+        monto: p.monto,
+        fecha: p.fecha
+    });
+}
+
+export async function deletePatrimonioFromSupabase(id) {
+    const user = await getUser();
+    if (!user) return;
+    await supabase.from('patrimonio_historial').delete().eq('id', id).eq('user_id', user.id);
+}
+
+// ==========================================
+// SINCRONIZAÇÃO COMPLETA (CARREGAMENTO / FALLBACK)
+// ==========================================
+
+export async function pushLocalStateToSupabase(state) {
+    const user = await getUser();
+    if (!user) return;
+    const userId = user.id;
+
+    await pushProfileToSupabase(state);
 
     if (state.cuentas.length > 0) {
         const cuentasPayload = state.cuentas.map(c => ({
@@ -51,21 +165,18 @@ export async function pushLocalStateToSupabase(state) {
         }));
         await supabase.from('cuentas').upsert(cuentasPayload);
     }
-
     if (state.boletos.length > 0) {
         const boletosPayload = state.boletos.map(b => ({
             id: b.id, user_id: userId, description: b.desc, monto: b.monto, dia_vencimiento: b.diaVencimiento, categoria: b.categoria
         }));
         await supabase.from('boletos').upsert(boletosPayload);
     }
-
     if (state.historialGlobal.length > 0) {
         const gastosPayload = state.historialGlobal.map(g => ({
             id: g.id, user_id: userId, monto: g.monto, description: g.desc, fecha: g.fecha, categoria: g.categoria, mes_efectivo: g.mesEfectivo || null, cuenta_id: g.cuentaId || null, boleto_id: g.boletoId || null
         }));
         await supabase.from('gastos').upsert(gastosPayload);
     }
-
     if (state.historialPatrimonio.length > 0) {
         const patrimonioPayload = state.historialPatrimonio.map(p => ({
             id: p.id, user_id: userId, cuenta_id: p.cuentaId, monto: p.monto, fecha: p.fecha
@@ -77,7 +188,6 @@ export async function pushLocalStateToSupabase(state) {
 export async function pullSupabaseToLocalState() {
     const user = await getUser();
     if (!user) return null;
-
     const [
         { data: profile }, { data: cuentas }, { data: boletos }, { data: gastos }, { data: patrimonio }
     ] = await Promise.all([
@@ -87,9 +197,7 @@ export async function pullSupabaseToLocalState() {
         supabase.from('gastos').select('*').eq('user_id', user.id),
         supabase.from('patrimonio_historial').select('*').eq('user_id', user.id)
     ]);
-
     if (!profile) return null;
-
     return {
         presupuestoMensual: profile.presupuesto_mensual || 0,
         monedaActual: profile.moneda_actual || 'BRL',

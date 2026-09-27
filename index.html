@@ -17,6 +17,7 @@
 </head>
 <body>
 <main id="app-movil">
+    <!-- HEADER DA APLICAÇÃO (FICA OCULTO ENQUANTO NÃO HOUVER SESSÃO) -->
     <div class="header-app">
         <button id="btn-privacidade" class="btn-icono action-left" aria-label="Modo Privacidade">👁️</button>
         <div class="brand-title">
@@ -26,6 +27,19 @@
         <div class="settings-menu-container action-right">
             <button id="btn-settings-toggle" class="btn-icono" aria-label="Configuraciones">⚙️</button>
             <div id="settings-dropdown" class="settings-dropdown transicion-seccion oculto">
+                
+                <!-- TARJETA DE PERFIL (USUÁRIO SEMPRE AUTENTICADO) -->
+                <div class="user-info-box">
+                    <div class="user-avatar">👤</div>
+                    <div class="user-details">
+                        <span id="user-email-display" class="user-email"></span>
+                        <span class="user-status-badge">☁️ Conectado</span>
+                    </div>
+                    <button id="btn-logout" class="btn-icon-logout" title="Sair da conta">🚪</button>
+                </div>
+
+                <hr class="divider-small">
+
                 <div class="dropdown-section">
                     <span class="dropdown-label">Idioma / Language</span>
                     <div class="lang-flags" id="lang-container">
@@ -34,16 +48,7 @@
                         <span class="flag" data-lang="pt" title="Português">🇧🇷</span>
                     </div>
                 </div>
-                <hr class="divider-small">
                 
-                <!-- Autenticação (Novo) -->
-                <div id="user-info-banner" class="oculto text-muted-small mb-10 text-center" style="font-weight: 600; color: var(--primary-color);">
-                    <span id="user-email-display"></span>
-                </div>
-                <button id="btn-menu-auth" class="btn-dropdown">
-                    <span class="dropdown-icon">☁️</span>
-                    <span id="label-menu-auth" data-i18n="menuAuth">Entrar / Cadastrar</span>
-                </button>
                 <hr class="divider-small">
 
                 <button id="btn-menu-cuentas" class="btn-dropdown">
@@ -59,34 +64,27 @@
                     <span class="dropdown-icon">🔔</span>
                     <span data-i18n="btnReminder">Lembrete Diário (20h)</span>
                 </button>
-                <button id="btn-exportar" class="btn-dropdown" aria-label="Exportar">
-                    <span class="dropdown-icon">💾</span>
-                    <span data-i18n="btnExport">Exportar</span>
-                </button>
-                <button id="btn-importar" class="btn-dropdown" aria-label="Importar">
-                    <span class="dropdown-icon">📂</span>
-                    <span data-i18n="btnImport">Importar</span>
-                </button>
                 <hr class="divider-small">
                 <button id="btn-reiniciar" class="btn-dropdown text-danger" aria-label="Borrar App">
                     <span class="dropdown-icon">🗑️</span>
                     <span data-i18n="btnReset">Borrar App</span>
                 </button>
-                <input type="file" id="input-archivo" accept=".json" class="hidden-file">
             </div>
         </div>
     </div>
     
-    <!-- TELA DE AUTENTICAÇÃO -->
+    <!-- TELA DE AUTENTICAÇÃO (MÁSCARA DE ENTRADA OBRIGATÓRIA) -->
     <section id="pantalla-auth" class="transicion-seccion oculto">
-        <div class="header-actions mb-15">
-            <button type="button" id="btn-cerrar-auth" class="btn-base btn-secundario btn-pequeno w-auto m-0">✕</button>
-            <h3 id="auth-title-header" data-i18n="authTitleLogin" class="m-0 flex-grow text-center" style="flex-grow:1;">Entrar</h3>
+        <div class="brand-title mb-24 text-center">
+            <img src="img/logo-light.svg" alt="Floux" class="logo-light" style="max-height: 60px;">
+            <img src="img/logo-dark.svg" alt="Floux" class="logo-dark" style="max-height: 60px;">
         </div>
+
         <div class="text-center mb-20">
-            <div class="emoji-large">☁️</div>
-            <p data-i18n="authExplanation" class="text-muted-small">Sincronize seus dados na nuvem com total segurança.</p>
+            <h3 id="auth-title-header" data-i18n="authTitleLogin" class="m-0 mb-8">Entrar</h3>
+            <p data-i18n="authExplanation" class="text-muted-small m-0">Sincronize seus dados na nuvem com total segurança.</p>
         </div>
+
         <form id="form-auth" class="mb-20">
             <div class="form-group mb-12">
                 <label data-i18n="authEmailLabel">E-mail</label>
@@ -98,6 +96,7 @@
             </div>
             <button type="submit" id="btn-auth-submit" class="btn-principal mb-10" data-i18n="authBtnLogin">Entrar</button>
         </form>
+
         <div class="text-center mb-15">
             <button type="button" id="btn-toggle-auth-mode" class="btn-base btn-secundario btn-pequeno" style="background:transparent; box-shadow:none;">
                 <span id="text-toggle-auth" data-i18n="authSwitchToSignup">Não tem uma conta? Cadastre-se</span>

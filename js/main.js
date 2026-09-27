@@ -1,16 +1,13 @@
 // js/main.js
-import { state, loadStore, saveStore, isValidBackupSchema, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, replaceHistory, subscribe } from './store.js';
+import { state, loadStore, saveStore, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, removeMultipleExpenses, replaceHistory, subscribe, syncProfileToSupabase } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario } from './ui.js';
-import { initFlouxVision } from './flouxVision.js';
-import { initFlouxVault } from './flouxVault.js';
 import { initSwipeActions } from './swipeHandler.js';
-import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState } from './supabaseClient.js';
+import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState, pushBoletoToSupabase, deleteBoletoFromSupabase, pushCuentaToSupabase, deleteCuentaFromSupabase } from './supabaseClient.js';
 
 const INTERACTION_CONFIG = {
     KEYBOARD_FOCUS_DELAY_MS: 300,
     DEBOUNCE_DELAY_MS: 300,
-    MAX_IMPORT_FILE_SIZE_BYTES: 5 * 1024 * 1024,
     SWIPE: { MAX_PX: -110, THRESHOLD_PX: -40, MIN_DRAG_PX: 5 },
     HAPTICS: { SHORT_MS: 15, DELETE_PATTERN_MS: [30, 50, 30] }
 };
@@ -21,10 +18,12 @@ const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
 const hoy = new Date();
 const mesActual = hoy.getMonth();
 const anoActual = hoy.getFullYear();
+
 let viewMonth = mesActual;
 let viewYear = anoActual;
 let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
+
 let saveTimeout;
 let isSaving = false;
 let needsAnotherSave = false;
@@ -98,6 +97,7 @@ const displayNetSurvival = document.getElementById('display-net-survival');
 const displayFreeSpending = document.getElementById('display-free-spending');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+
 const selectCuotas = document.getElementById('select-cuotas');
 const inputCuotas = document.getElementById('input-cuotas');
 
@@ -162,7 +162,9 @@ document.addEventListener('click', (e) => {
     
     const btnEliminarBoleto = e.target.closest('.btn-eliminar-boleto');
     if (btnEliminarBoleto) {
-        state.boletos = state.boletos.filter(b => b.id !== btnEliminarBoleto.dataset.id);
+        const idDel = btnEliminarBoleto.dataset.id;
+        state.boletos = state.boletos.filter(b => b.id !== idDel);
+        deleteBoletoFromSupabase(idDel).catch(console.error);
         renderBoletosList(state);
         recalcularPresupuestoOnboarding();
         return;
@@ -202,7 +204,9 @@ document.addEventListener('click', (e) => {
     
     const btnCuentaDelete = e.target.closest('.btn-eliminar-cuenta');
     if (btnCuentaDelete) {
-        state.cuentas = state.cuentas.filter(c => c.id !== btnCuentaDelete.dataset.id);
+        const idDel = btnCuentaDelete.dataset.id;
+        state.cuentas = state.cuentas.filter(c => c.id !== idDel);
+        deleteCuentaFromSupabase(idDel).catch(console.error);
         renderCuentasList(state);
     }
 });
@@ -211,11 +215,12 @@ function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
     if (state.privacyMode) {
         document.body.classList.add('privacy-mode');
-        btnPrivacidade.innerText = '👀';
+        btnPrivacidade.innerText = '🙈';
     } else {
         document.body.classList.remove('privacy-mode');
-        btnPrivacidade.innerText = '🔒';
+        btnPrivacidade.innerText = '👁️';
     }
+    syncProfileToSupabase();
 }
 
 if (btnPrivacidade) {
@@ -224,42 +229,23 @@ if (btnPrivacidade) {
     });
 }
 
-// ==========================================
-// LÓGICA DE AUTENTICAÇÃO E SESSÃO
-// ==========================================
-let authMode = 'login'; 
+// Autenticação
+let authMode = 'login';
 
 async function actualizarEstadoAuthUI() {
     const user = await getUser();
-    const banner = document.getElementById('user-info-banner');
     const emailDisplay = document.getElementById('user-email-display');
-    const labelMenu = document.getElementById('label-menu-auth');
-    if (user) {
-        if (banner && emailDisplay) {
-            emailDisplay.innerText = user.email;
-            banner.classList.remove('oculto');
-        }
-        if (labelMenu) labelMenu.innerText = t('menuLogout');
-    } else {
-        if (banner) banner.classList.add('oculto');
-        if (labelMenu) labelMenu.innerText = t('menuAuth');
+    if (user && emailDisplay) {
+        emailDisplay.innerText = user.email;
     }
 }
 
-document.getElementById('btn-menu-auth')?.addEventListener('click', async () => {
+document.getElementById('btn-logout')?.addEventListener('click', async () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    const user = await getUser();
-    if (user) {
-        if (confirm("Deseja realmente sair da sua conta?")) {
-            await signOutUser();
-            showToast(t('authLogoutSuccess'));
-            location.reload(); 
-        }
-    } else {
-        transicionPantalla(() => {
-            document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-            document.getElementById('pantalla-auth').classList.remove('oculto');
-        });
+    if (confirm("Deseja realmente sair da sua conta?")) {
+        await signOutUser();
+        showToast(t('authLogoutSuccess'));
+        location.reload();
     }
 });
 
@@ -289,29 +275,7 @@ document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
             await signInWithEmail(email, password);
             showToast(t('authSuccessLogin'));
         }
-        
-        const remoteData = await pullSupabaseToLocalState();
-        if (remoteData) {
-            if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
-            if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
-            if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
-            if (remoteData.boletos) state.boletos = remoteData.boletos;
-            if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
-            if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
-            await saveStore();
-        }
-        
-        await actualizarEstadoAuthUI();
-        
-        const hasData = await loadStore();
-        if (hasData && state.presupuestoMensual > 0) {
-            mostrarPantallaPrincipal();
-        } else {
-            transicionPantalla(() => {
-                document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
-                document.getElementById('pantalla-configuracion').classList.remove('oculto');
-            });
-        }
+        await init();
     } catch (err) {
         showToast("Erro: " + (err.message || "Falha na autenticação"));
     } finally {
@@ -320,24 +284,22 @@ document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     }
 });
 
-// ==========================================
-// INICIALIZAÇÃO DA APLICAÇÃO
-// ==========================================
+// Inicialização
 async function init() {
     const user = await getUser();
+    const headerApp = document.querySelector('.header-app');
+    
     if (!user) {
+        if (headerApp) headerApp.style.display = 'none';
+        
         transicionPantalla(() => {
             document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
             document.getElementById('pantalla-auth').classList.remove('oculto');
         });
-        
-        const btnCerrarAuth = document.getElementById('btn-cerrar-auth');
-        if (btnCerrarAuth) btnCerrarAuth.style.display = 'none';
         return;
     }
     
-    const btnCerrarAuth = document.getElementById('btn-cerrar-auth');
-    if (btnCerrarAuth) btnCerrarAuth.style.display = '';
+    if (headerApp) headerApp.style.display = 'grid';
     
     const remoteData = await pullSupabaseToLocalState();
     if (remoteData) {
@@ -496,6 +458,7 @@ document.querySelectorAll('.input-calc').forEach(input => {
 
 inputMoneda.addEventListener('change', () => {
     state.monedaActual = inputMoneda.value;
+    syncProfileToSupabase();
     recalcularPresupuestoOnboarding();
     renderBoletosList(state);
     renderCuentasList(state);
@@ -529,6 +492,7 @@ document.getElementById('btn-wizard-next-1').addEventListener('click', () => {
         return;
     }
     state.presupuestoMensual = nuevoPresupuesto;
+    syncProfileToSupabase();
     renderCuentasList(state);
     goWizardStep(2);
 });
@@ -547,7 +511,9 @@ document.getElementById('form-onboarding-boleto').addEventListener('submit', (e)
     
     if (desc && montoCents > 0 && dia >= 1 && dia <= 31) {
         const id = 'bol_' + Date.now();
-        state.boletos = [...state.boletos, { id, desc, monto: montoCents, diaVencimiento: dia, categoria }];
+        const novoBoleto = { id, desc, monto: montoCents, diaVencimiento: dia, categoria };
+        state.boletos = [...state.boletos, novoBoleto];
+        pushBoletoToSupabase(novoBoleto).catch(console.error);
         
         document.getElementById('input-onboarding-boleto-desc').value = '';
         montoInput.value = '';
@@ -578,12 +544,14 @@ document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e)
     
     if (nombre) {
         const id = 'acc_' + Date.now();
-        state.cuentas = [...state.cuentas, { 
+        const novaCuenta = { 
             id, 
             nombre, 
             tipo, 
             cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
-        }];
+        };
+        state.cuentas = [...state.cuentas, novaCuenta];
+        pushCuentaToSupabase(novaCuenta).catch(console.error);
         
         document.getElementById('input-onboarding-cuenta-nombre').value = '';
         document.getElementById('input-onboarding-cuenta-cierre').value = '';
@@ -597,11 +565,11 @@ document.getElementById('btn-comenzar').addEventListener('click', () => {
         const inicialCents = Math.round((parseFloat(document.getElementById('input-gastos-iniciales').value) || 0) * 100);
         if (inicialCents > 0) {
             const defaultCuenta = state.cuentas.length > 0 ? state.cuentas[0].id : null;
-            addExpense({ 
-                id: Date.now(), 
-                monto: inicialCents, 
-                desc: t('prevExpense'), 
-                fecha: new Date().toISOString(), 
+            addExpense({
+                id: Date.now(),
+                monto: inicialCents,
+                desc: t('prevExpense'),
+                fecha: new Date().toISOString(),
                 categoria: 'otros_previo',
                 cuentaId: defaultCuenta
             });
@@ -627,6 +595,7 @@ function formatInputCents(e) {
 document.getElementById('input-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-boleto-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-onboarding-boleto-monto').addEventListener('input', formatInputCents);
+
 const inputNwMonto = document.getElementById('input-nw-monto');
 if (inputNwMonto) inputNwMonto.addEventListener('input', formatInputCents);
 
@@ -667,10 +636,11 @@ if (btnGuardarNuevaCat) {
         const nombreInput = document.getElementById('input-nueva-cat-nombre');
         const emojiInput = document.getElementById('input-nueva-cat-emoji');
         const nombre = nombreInput.value.trim();
-        const emoji = emojiInput.value.trim() || '📝';
+        const emoji = emojiInput.value.trim() || '🏷️';
         if (nombre) {
             const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
             state.categoriasCustom = [...state.categoriasCustom, newCat];
+            syncProfileToSupabase();
             nombreInput.value = '';
             emojiInput.value = '';
             areaNuevaCat.classList.add('oculto');
@@ -822,12 +792,14 @@ if (formCuenta) {
         
         if (nombre) {
             const id = 'acc_' + Date.now();
-            state.cuentas = [...state.cuentas, { 
+            const novaCuenta = { 
                 id, 
                 nombre, 
                 tipo, 
                 cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
-            }];
+            };
+            state.cuentas = [...state.cuentas, novaCuenta];
+            pushCuentaToSupabase(novaCuenta).catch(console.error);
             
             document.getElementById('input-cuenta-nombre').value = '';
             document.getElementById('input-cuenta-cierre').value = '';
@@ -860,7 +832,9 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
     
     if (desc && montoCents > 0 && dia >= 1 && dia <= 31) {
         const id = 'bol_' + Date.now();
-        state.boletos = [...state.boletos, { id, desc, monto: montoCents, diaVencimiento: dia, categoria }];
+        const novoBoleto = { id, desc, monto: montoCents, diaVencimiento: dia, categoria };
+        state.boletos = [...state.boletos, novoBoleto];
+        pushBoletoToSupabase(novoBoleto).catch(console.error);
         
         document.getElementById('input-boleto-desc').value = '';
         montoInput.value = '';
@@ -889,69 +863,6 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     
     inputPresupuesto.value = (state.presupuestoMensual / 100).toString();
     inputMoneda.value = state.monedaActual;
-});
-
-document.getElementById('btn-exportar').addEventListener('click', () => {
-    const backup = {
-        historial: state.historialGlobal,
-        cuentas: state.cuentas,
-        boletos: state.boletos,
-        presupuesto: state.presupuestoMensual,
-        patrimonio: state.historialPatrimonio
-    };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
-    const anchor = document.createElement('a');
-    anchor.href = dataStr;
-    anchor.download = "floux_backup.json";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-});
-
-document.getElementById('btn-importar').addEventListener('click', () => {
-    document.getElementById('input-archivo').click();
-});
-
-document.getElementById('input-archivo').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    if (file.size > INTERACTION_CONFIG.MAX_IMPORT_FILE_SIZE_BYTES) {
-        showToast(t('errFileSize'));
-        e.target.value = '';
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        try {
-            const data = JSON.parse(event.target.result);
-            
-            if (!isValidBackupSchema(data)) {
-                showToast(t('errFormat'));
-                e.target.value = '';
-                return;
-            }
-            const historyToImport = Array.isArray(data) ? data : (data.historial || []);
-            resetFormularioGasto(setGastoEnEdicion);
-            if (confirm(t('confirmOverwrite'))) {
-                if(!Array.isArray(data)) {
-                    if (data.cuentas) state.cuentas = data.cuentas;
-                    if (data.boletos) state.boletos = data.boletos;
-                    if (data.patrimonio) state.historialPatrimonio = data.patrimonio;
-                    if (data.presupuesto) state.presupuestoMensual = data.presupuesto;
-                }
-                replaceHistory(historyToImport);
-            } else {
-                replaceHistory(state.historialGlobal.concat(historyToImport));
-            }
-            showToast(" Dados importados com sucesso!");
-        } catch (err) {
-            showToast(t('errInvalid'));
-        }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
 });
 
 document.getElementById('btn-reiniciar').addEventListener('click', () => {
@@ -984,19 +895,37 @@ if (fabGasto) {
     });
 }
 
-initFlouxVision(() => {
+// ==========================================
+// CARREGAMENTO SOB DEMANDA (CODE SPLITTING)
+// ==========================================
+let visionModule = null;
+let vaultModule = null;
+
+document.getElementById('btn-abrir-simulador')?.addEventListener('click', async () => {
+    if (!visionModule) {
+        visionModule = await import('./flouxVision.js');
+        visionModule.initFlouxVision(mostrarPantallaPrincipal);
+    }
+    history.pushState({ view: 'simulador' }, '');
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
         document.getElementById('pantalla-simulador').classList.remove('oculto');
     });
-}, mostrarPantallaPrincipal);
+    visionModule.actualizarPerdidaInvisibleUI();
+});
 
-initFlouxVault(() => {
+document.getElementById('btn-abrir-flouxvault')?.addEventListener('click', async () => {
+    if (!vaultModule) {
+        vaultModule = await import('./flouxVault.js');
+        vaultModule.initFlouxVault(mostrarPantallaPrincipal);
+    }
+    history.pushState({ view: 'flouxvault' }, '');
     transicionPantalla(() => {
         document.querySelectorAll('.transicion-seccion').forEach(s => s.classList.add('oculto'));
         document.getElementById('pantalla-flouxvault').classList.remove('oculto');
     });
-}, mostrarPantallaPrincipal);
+    vaultModule.renderNetWorthSection(state);
+});
 
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
     onDelete: (id) => {
@@ -1020,7 +949,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                 const deleteAll = confirm(t('confirmDeleteAllInst'));
                 if (deleteAll) {
                     const idsToRemove = relatedExpenses.map(r => r.id);
-                    state.historialGlobal = state.historialGlobal.filter(g => !idsToRemove.includes(g.id));
+                    removeMultipleExpenses(idsToRemove);
                     
                     if (gastoEnEdicion && idsToRemove.includes(gastoEnEdicion)) resetFormularioGasto(setGastoEnEdicion);
                     if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);

@@ -1,5 +1,13 @@
 // js/store.js
-import { pushLocalStateToSupabase } from './supabaseClient.js';
+import {
+    pushExpenseToSupabase,
+    pushMultipleExpensesToSupabase,
+    deleteExpenseFromSupabase,
+    deleteMultipleExpensesFromSupabase,
+    pushPatrimonioToSupabase,
+    deletePatrimonioFromSupabase,
+    pushProfileToSupabase
+} from './supabaseClient.js';
 
 export const STORAGE_KEYS = {
     PRESUPUESTO: 'floux_presupuesto_v8',
@@ -72,7 +80,7 @@ async function dbGet(key) {
 export async function loadStore() {
     if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
     if (localStorage.getItem(STORAGE_KEYS.PRESUPUESTO) !== null) await migrateFromLocalStorage();
-    
+
     const priv = await dbGet(STORAGE_KEYS.PRIVACY);
     const m = await dbGet(STORAGE_KEYS.MONEDA);
     const c = await dbGet(STORAGE_KEYS.CATEGORIAS);
@@ -87,13 +95,13 @@ export async function loadStore() {
     if (m) rawState.monedaActual = m;
     if (Array.isArray(c)) rawState.categoriasCustom = c;
     if (cierre !== undefined) rawState.cierreTC = cierre;
-    
+
     if (Array.isArray(cuentas) && cuentas.length > 0) {
         rawState.cuentas = cuentas;
     } else {
         rawState.cuentas = [{ id: 'acc_default', nombre: 'Conta Principal', tipo: 'cash', cierreTC: null }];
     }
-    
+
     if (Array.isArray(boletos)) rawState.boletos = boletos;
     if (Array.isArray(pat)) rawState.historialPatrimonio = pat;
     if (p !== undefined) {
@@ -118,9 +126,8 @@ export async function saveStore() {
         store.put(state.cuentas, STORAGE_KEYS.CUENTAS);
         store.put(state.boletos, STORAGE_KEYS.BOLETOS);
         store.put(state.historialPatrimonio, STORAGE_KEYS.PATRIMONIO);
-        
+
         tx.oncomplete = () => {
-            pushLocalStateToSupabase(state).catch(console.error);
             resolve();
         };
         tx.onerror = (e) => reject(e.target.error);
@@ -133,16 +140,16 @@ async function migrateFromLocalStorage() {
         const db = await getDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-        
+
         const rawPresupuesto = localStorage.getItem(STORAGE_KEYS.PRESUPUESTO);
         const rawHistorial = localStorage.getItem(STORAGE_KEYS.HISTORIAL);
-        
+
         if (rawPresupuesto) store.put(parseInt(rawPresupuesto, 10) || 0, STORAGE_KEYS.PRESUPUESTO);
         if (rawHistorial) {
             const parsedHistorial = JSON.parse(rawHistorial);
             if (Array.isArray(parsedHistorial)) store.put(parsedHistorial, STORAGE_KEYS.HISTORIAL);
         }
-        
+
         await new Promise((resolve) => { tx.oncomplete = resolve; });
         Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
     } catch (e) {
@@ -153,7 +160,7 @@ async function migrateFromLocalStorage() {
 
 export function isValidoHistorialSchema(data) {
     if (!Array.isArray(data)) return false;
-    return data.every(item => 
+    return data.every(item =>
         typeof item === 'object' && item !== null &&
         typeof item.id === 'number' && typeof item.monto === 'number' &&
         typeof item.desc === 'string' && typeof item.fecha === 'string' &&
@@ -173,9 +180,55 @@ export function isValidBackupSchema(data) {
     return true;
 }
 
-export function addExpense(expense) { state.historialGlobal = [...state.historialGlobal, expense]; }
-export function addMultipleExpenses(expensesArray) { state.historialGlobal = [...state.historialGlobal, ...expensesArray]; }
-export function updateExpense(id, updatedData) { state.historialGlobal = state.historialGlobal.map(g => g.id === id ? { ...g, ...updatedData } : g); }
-export function removeExpense(id) { state.historialGlobal = state.historialGlobal.filter(g => g.id !== id); }
-export function replaceHistory(newHistory) { state.historialGlobal = newHistory; }
-export function addRegistroPatrimonio(registro) { state.historialPatrimonio = [...state.historialPatrimonio, registro]; }
+// Ações com Sincronização Incremental
+export function addExpense(expense) {
+    state.historialGlobal = [...state.historialGlobal, expense];
+    pushExpenseToSupabase(expense).catch(console.error);
+}
+
+export function addMultipleExpenses(expensesArray) {
+    state.historialGlobal = [...state.historialGlobal, ...expensesArray];
+    pushMultipleExpensesToSupabase(expensesArray).catch(console.error);
+}
+
+export function updateExpense(id, updatedData) {
+    let updatedItem = null;
+    state.historialGlobal = state.historialGlobal.map(g => {
+        if (g.id === id) {
+            updatedItem = { ...g, ...updatedData };
+            return updatedItem;
+        }
+        return g;
+    });
+    if (updatedItem) {
+        pushExpenseToSupabase(updatedItem).catch(console.error);
+    }
+}
+
+export function removeExpense(id) {
+    state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
+    deleteExpenseFromSupabase(id).catch(console.error);
+}
+
+export function removeMultipleExpenses(idsArray) {
+    state.historialGlobal = state.historialGlobal.filter(g => !idsArray.includes(g.id));
+    deleteMultipleExpensesFromSupabase(idsArray).catch(console.error);
+}
+
+export function replaceHistory(newHistory) {
+    state.historialGlobal = newHistory;
+}
+
+export function addRegistroPatrimonio(registro) {
+    state.historialPatrimonio = [...state.historialPatrimonio, registro];
+    pushPatrimonioToSupabase(registro).catch(console.error);
+}
+
+export function removeRegistroPatrimonio(id) {
+    state.historialPatrimonio = state.historialPatrimonio.filter(reg => reg.id !== id);
+    deletePatrimonioFromSupabase(id).catch(console.error);
+}
+
+export function syncProfileToSupabase() {
+    pushProfileToSupabase(state).catch(console.error);
+}
