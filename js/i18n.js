@@ -7,12 +7,12 @@ export const diccionario = {
         adjustPercentages: "Ajustar porcentajes recomendados", applyNextMonth: "¿Aplicar al próximo mes?",
         pctLongTerm: "Inversión Largo Plazo (%) - Rec: 20%", pctShortTerm: "Inversión Corto Plazo (%) - Rec: 10%",
         pctEdu: "Educación (%) - Rec: 5%", pctSurvival: "Supervivencia (%) - Rec: 55%", pctFree: "Gastos Libres (%) - Rec: 10%",
-        calcResult: "Valor seguro para gastar:", netSurvival: "Supervivencia Líquida:", freeSpending: "Teto Gastos Libres:",
-        spentLabel: "¿Ya gastaste algo?", btnStart: "Guardar y Continuar", limitToday: "Tu límite de hoy",
+        calcResult: "Valor seguro para gastar:", netSurvival: "Supervivencia Líquida:", freeSpending: "Tope Gastos Libres:",
+        spentLabel: "¿Ya gastaste algo?", btnStart: "Guardar y Continuar", limitToday: "Tu límite de hoy", availableToday: "Disponible Hoy",
         remainsMonth: "Liquidez", spentMonth: "Gastado", addExpenseTitle: "Registrar Gasto", expenseDate: "Fecha del Gasto", amountPlaceholder: "Monto", descPlaceholder: "Descripción", selectCategory: "Selecciona una categoría",
         btnAdd: "Agregar", btnEdit: "Guardar Edición", analysisTitle: "Distribución de Gastos", expensesMonth: "Historial",
         btnExport: "Exportar", btnImport: "Importar", btnReset: "Borrar App", noExpenses: "Sin gastos.",
-        prevExpense: "Gasto Previo", alertReset: "⚠️ ¿ESTÁS SEGURO?", cat_comida: "Comida",
+        prevExpense: "Gasto Previo", alertReset: "¿ESTÁS SEGURO?", cat_comida: "Comida",
         cat_transporte: "Transporte", cat_supermercado: "Super", cat_cuentas: "Cuentas",
         cat_ocio: "Ocio", cat_otros: "Otros", newCategory: "Nueva Categoría", catNamePlaceholder: "Nombre (ej: Gimnasio)",
         catEmojiPlaceholder: "Emoji (ej: 🏋️)", btnSave: "Guardar", errorBudget: "Por favor ingresa un presupuesto mayor a 0.",
@@ -26,7 +26,7 @@ export const diccionario = {
         installmentsLabel: "Cuotas / Parcelas", ccClosingLabel: "Día de Cierre de Tarjeta (TC)", ccClosingPh: "Día Cierre (ej: 24)", installments_1: "1x (Al contado)", installments_custom: "Otro...",
         menuAccounts: "Cuentas y Tarjetas", accountsTitle: "Cuentas", accountNamePh: "Nombre de la cuenta (ej. Nubank)",
         accTypeCash: "Efectivo / Débito", accTypeCredit: "Tarjeta de Crédito", btnAddAccount: "Agregar Cuenta", selectAccountLabel: "Cuenta de Origen",
-        menuBills: "Gastos Fijos", billsTitle: "Boletos / Gastos Fijos", dueDateLabel: "Día de Vencimiento en el mes (1-31)", btnAddBill: "Agregar Gasto",
+        menuBills: "Gastos Fijos", billsTitle: "Boletos / Gastos Fijos", dueDateLabel: "Día de Vencimiento en el mes (1-31)", btnAddBill: "Agregar Gasto", overbudgetTitle: "Tope Excedido",
         billsExplanation: "Registra tus gastos fijos. Floux los restará automáticamente de tu liquidez antes de calcular tu límite diario.", billsExplanationShort: "Ingresa tus cuentas (Ej: Alquiler, Luz).",
         wizardStep1Title: "Moneda y Presupuesto", wizardStep2Title: "Cuentas y Tarjetas", wizardStep2Desc: "Agrega tus cuentas corrientes o tarjetas de crédito para organizar tus pagos.",
         wizardStep3Title: "Ajustes Finales", wizardNextAccounts: "Siguiente: Cuentas ➡️", wizardNextFinal: "Siguiente ➡️", wizardBack: "⬅️ Volver", wizardFinish: "Concluir 🚀",
@@ -36,10 +36,8 @@ export const diccionario = {
         confirmDeleteAllInst: "Este gasto es una cuota.\n\n¿Deseas eliminar TODAS las cuotas asociadas?\n\n[Aceptar] = Eliminar TODAS\n[Cancelar] = Eliminar SOLO esta",
         toastAllDeleted: "Todas las cuotas eliminadas", toastDeleted: "Eliminado", 
         btnReminder: "Recordatorio Diario (20h)",  notifActivated: "Recordatorio activado a las 20:00",  notifDenied: "Permiso de notificación denegado",  notifUnsupported: "Notificaciones no soportadas en este navegador",  notifBody: "¡Es hora de registrar tus gastos de hoy en Floux!", filterAll: "Todas", filterTotal: "Total filtrado:", btnShowMore: "Mostrar más", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Día", btnClearDayFilter: "Ver todos",
-        // Avisos Extra
         warnEditInstallment: "Editando solo una cuota", warnEditInstallmentMsg: "Atención: Modificar esta cuota no alterará las demás. El valor total de la compra original quedará desequilibrado.",
-        // Net Worth
-        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.",  nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión",  nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico."
+        accTypeInvestment: "Inversión / Patrimonio", nwTitle: "FlouxVault", nwExplanation: "Gestiona tu patrimonio e inversiones de forma aislada, sin afectar tu liquidez diaria.",  nwTotalLabel: "Patrimonio Total", nwVarLabel: "Variación", nwUpdateFormTitle: "Actualizar Inversión",  nwSelectAcc: "Activo / Cuenta", nwAmountPh: "Nuevo Saldo (Total)", nwEmpty: "Agrega una cuenta de inversión y actualiza su saldo para ver tu gráfico.", vaultFixed: "Renta Fija", vaultVariable: "Renta Variable", nwAddAsset: "Agregar Nuevo Activo", nwUpdateHistory: "Historial de Actualizaciones"
     },
     en: {
         appTitle: "Floux - ", currencyLabel: "Currency", tabDirect: "I know my budget", tabCalc: "Help me calculate",
@@ -48,7 +46,7 @@ export const diccionario = {
         pctLongTerm: "Long Term Investment (%) - Rec: 20%", pctShortTerm: "Short Term Investment (%) - Rec: 10%",
         pctEdu: "Education (%) - Rec: 5%", pctSurvival: "Survival (%) - Rec: 55%", pctFree: "Free to Spend (%) - Rec: 10%",
         calcResult: "Safe value to spend:", netSurvival: "Net Survival:", freeSpending: "Free Spending Cap:",
-        spentLabel: "Already spent?", btnStart: "Save and Continue", limitToday: "Today's Limit", remainsMonth: "Liquidity", spentMonth: "Spent",
+        spentLabel: "Already spent?", btnStart: "Save and Continue", limitToday: "Today's Limit", availableToday: "Available Today", remainsMonth: "Liquidity", spentMonth: "Spent",
         addExpenseTitle: "Log Expense", expenseDate: "Expense Date", amountPlaceholder: "Amount", descPlaceholder: "Description", selectCategory: "Select a category",
         btnAdd: "Add", btnEdit: "Save Edit", analysisTitle: "Spending Breakdown", expensesMonth: "History",
         btnExport: "Export", btnImport: "Import", btnReset: "Reset App", noExpenses: "No expenses.", prevExpense: "Previous Expense", alertReset: "⚠️ ARE YOU SURE?", cat_comida: "Food",
@@ -71,22 +69,20 @@ export const diccionario = {
         btnDeleteAria: "Delete", errFileSize: "Error: File exceeds the maximum allowed size (5MB).",
         errFormat: "Error: Incorrect file format.", errInvalid: "Error: Invalid or corrupt file.",
         confirmOverwrite: "OK: Overwrite all data.\nCancel: Merge with current data.",
-        confirmDeleteAllInst: "This expense is an installment.\n\nDo you want to delete ALL associated installments?\n\n[OK] = Delete ALL\n[Cancel] = Delete ONLY this one",
+        confirmDeleteAllInst: "This expense is an installment.\n\nDo you want to delete ALL associated installments?\n\n[OK] = Delete ALL\n[Cancel] = Delete ONLY this one", overbudgetTitle: "Limit Exceeded",
         toastAllDeleted: "All installments deleted", toastDeleted: "Deleted", 
         btnReminder: "Daily Reminder (8 PM)",  notifActivated: "Reminder set for 8:00 PM",  notifDenied: "Notification permission denied",  notifUnsupported: "Notifications not supported in this browser",  notifBody: "Time to log your daily expenses in Floux!", filterAll: "All", filterTotal: "Filtered Total:", btnShowMore: "Show more", btnShowLess: "Show less", filterByDay: "Filter by Day", btnClearDayFilter: "Show all",
-        // Avisos Extra
         warnEditInstallment: "Editing a single installment", warnEditInstallmentMsg: "Warning: Modifying this installment won't affect the others. The total purchase value will be unbalanced.",
-        // Net Worth
-        accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.",  nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment",  nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart."
+        accTypeInvestment: "Investment / Wealth", nwTitle: "FlouxVault", nwExplanation: "Manage your wealth and investments in isolation, without affecting your daily liquidity.",  nwTotalLabel: "Total Net Worth", nwVarLabel: "Variation", nwUpdateFormTitle: "Update Investment",  nwSelectAcc: "Asset / Account", nwAmountPh: "New Balance (Total)", nwEmpty: "Add an investment account and update its balance to see your chart.", vaultFixed: "Fixed Income", vaultVariable: "Variable Income", nwAddAsset: "Add New Asset", nwUpdateHistory: "Update History"
     },
     pt: {
-        appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda calcular",
+        appTitle: "Floux - ", currencyLabel: "Moeda", tabDirect: "Já sei meu orçamento", tabCalc: "Me ajuda a calcular",
         budgetLabel: "Orçamento total para gastar mensalmente", budgetPlaceholder: "Ex: 2000", incomeLabel: "Renda Mensal Total",
         adjustPercentages: "Ajustar porcentagens recomendadas", applyNextMonth: "Aplicar no próximo mês?",
         pctLongTerm: "Investimento Longo Prazo (%) - Rec: 20%", pctShortTerm: "Investimento Curto Prazo (%) - Rec: 10%",
-        pctEdu: "Educação (%) - Rec: 5%", pctSurvival: "Sobrevivência (%) - Rec: 55%", pctFree: "Gastos Libres (%) - Rec: 10%",
+        pctEdu: "Educação (%) - Rec: 5%", pctSurvival: "Sobrevivência (%) - Rec: 55%", pctFree: "Gastos Livres (%) - Rec: 10%",
         calcResult: "Valor seguro para gastar:", netSurvival: "Sobrevivência Líquida:", freeSpending: "Teto Gastos Livres:",
-        spentLabel: "Já gastou algo?", btnStart: "Salvar e Continuar", limitToday: "Limite de hoje", remainsMonth: "Liquidez", spentMonth: "Gasto",
+        spentLabel: "Já gastou algo?", btnStart: "Salvar e Continuar", limitToday: "Limite de hoje", availableToday: "Disponível Hoje", remainsMonth: "Liquidez", spentMonth: "Gasto",
         addExpenseTitle: "Registrar Despesa", expenseDate: "Data do Gasto", amountPlaceholder: "Valor", descPlaceholder: "Descrição", selectCategory: "Selecione uma categoria",
         btnAdd: "Adicionar", btnEdit: "Salvar Edição", analysisTitle: "Análise de Gastos", expensesMonth: "Histórico",
         btnExport: "Exportar", btnImport: "Importar", btnReset: "Apagar App", noExpenses: "Sem despesas.", prevExpense: "Despesa Anterior", alertReset: "⚠️ TEM CERTEZA?", cat_comida: "Comida",
@@ -95,7 +91,7 @@ export const diccionario = {
         flouxVisionTitle: "FlouxVision - Perda Invisível", lsimExplanation: "O custo de oportunidade é o dinheiro que você deixa de ganhar ao escolher gastar em vez de investir. Calcule o verdadeiro valor futuro dessa compra.",
         lsimAmount: "Custo Inicial da Compra", lsimYears: "Anos Projetados", lsimHelpYears: "Por quanto tempo o dinheiro ficaria investido?",
         lsimRate: "Taxa de Retorno Anual", lsimHelpRate: "Retorno médio do mercado (ex: S&P 500 = 8-10%)",
-        lsimCostLabel: "Gasto Hoje:", lsimFutureLabel: "Valor Futuro:", lsimTotalLoss: "Você está perdendo ", lsimTotalLossEnd: " em ganhos potenciais.",
+        lsimCostLabel: "Gasto Hoje:", lsimFutureLabel: "Valor Futuro:", lsimTotalLoss: "Você está perdendo ", lsimTotalLossEnd: " em ganhos potenciais.", overbudgetTitle: "Teto Excedido",
         btnOpenFlouxVision: "FlouxVision", btnClose: "Fechar", menuAdjustBudget: "Ajustar Orçamento",
         emptyStateTitle: "Um novo mês!", emptyStateMsg: "Lembre-se: o dinheiro que você não gasta hoje aumenta automaticamente seu limite de amanhã.<br><br>Registre seu primeiro gasto.",
         summaryTitle: "Resumo do Mês", summaryPerf: "Desempenho:", summaryGreatest: "Maior Despesa:", summaryDaily: "Média Diária:", summarySave: "Economia: ", summaryDeficit: "Déficit: ",
@@ -111,15 +107,16 @@ export const diccionario = {
         confirmOverwrite: "OK: Sobrescrever todos os dados.\nCancelar: Combinar com os dados atuais.",
         confirmDeleteAllInst: "Este gasto é uma parcela.\n\nDeseja apagar TODAS as parcelas associadas?\n\n[OK] = Apagar TODAS\n[Cancelar] = Apagar APENAS esta",
         toastAllDeleted: "Todas as parcelas eliminadas", toastDeleted: "Eliminado", btnReminder: "Lembrete Diário (20h)",  notifActivated: "Lembrete ativado para as 20:00",  notifDenied: "Permissão de notificação negada",  notifUnsupported: "Notificações não suportadas neste navegador",  notifBody: "Hora de registrar seus gastos de hoje no Floux!", filterAll: "Todas", filterTotal: "Total do Filtro:", btnShowMore: "Mostrar mais", btnShowLess: "Mostrar menos", filterByDay: "Filtrar por Dia", btnClearDayFilter: "Ver todos",
-        // Avisos Extra
         warnEditInstallment: "Editando apenas uma parcela", warnEditInstallmentMsg: "Atenção: Modificar esta parcela não alterará as demais. O valor total da compra ficará desequilibrado.",
-        // Net Worth
-        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.",  nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento",  nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico."
+        accTypeInvestment: "Investimento / Patrimônio", nwTitle: "FlouxVault", nwExplanation: "Gerencie seu patrimônio e investimentos de forma isolada, sem afetar sua liquidez diária.",  nwTotalLabel: "Patrimônio Total", nwVarLabel: "Variação", nwUpdateFormTitle: "Atualizar Investimento",  nwSelectAcc: "Ativo / Conta", nwAmountPh: "Novo Saldo (Total)", nwEmpty: "Adicione uma conta de investimento e atualize o saldo para ver seu gráfico.", vaultFixed: "Renda Fixa", vaultVariable: "Renda Variável", nwAddAsset: "Adicionar Novo Ativo", nwUpdateHistory: "Histórico de Atualizações"
     }
 };
 
 export let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) || (navigator.language || navigator.userLanguage).substring(0, 2);
-if (!diccionario[currentLang]) { currentLang = 'en'; }
+
+if (!diccionario[currentLang]) {
+    currentLang = 'en';
+}
 
 export function t(key) {
     return diccionario[currentLang][key] || key;

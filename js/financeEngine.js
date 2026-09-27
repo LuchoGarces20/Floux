@@ -4,6 +4,8 @@
  * Nenhuma manipulação de DOM deve acontecer neste arquivo.
  */
 
+// js/financeEngine.js
+
 export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
     const viewDate = new Date(viewYear, viewMonth, 1);
@@ -24,18 +26,32 @@ export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, h
     let diasRestantes = new Date(viewYear, viewMonth + 1, 0).getDate();
 
     if (isCurrentMonth) {
-        diasRestantes = (diasRestantes - hoy.getDate()) + 1;
+        diasRestantes = Math.max(1, (diasRestantes - hoy.getDate()) + 1);
+        
         // Pega os gastos de hoje filtrando apenas os gastos livres
         const gastosHoje = gastosVariablesMes.filter(g => {
             const gDate = new Date(g.fecha);
-            return gDate.getDate() === hoy.getDate() && gDate.getMonth() === hoy.getMonth() && gDate.getFullYear() === hoy.getFullYear();
+            // IGNORA parcelas futuras/agendamentos criados no passado (que possuem mesEfectivo)
+            return gDate.getDate() === hoy.getDate() && 
+                   gDate.getMonth() === hoy.getMonth() && 
+                   gDate.getFullYear() === hoy.getFullYear() &&
+                   !g.mesEfectivo; 
         });
+
         gastosHojeCents = gastosHoje.reduce((acc, g) => acc + g.monto, 0);
     }
 
     const liquidezInicioDiaCents = liquidezLibreCents + gastosHojeCents;
     const tetoDoDiaCents = Math.max(0, Math.floor(liquidezInicioDiaCents / diasRestantes));
+
     const disponivelHojeCents = isCurrentMonth ? (tetoDoDiaCents - gastosHojeCents) : 0;
+
+    // --- NOVO: Métricas para UX/UI Premium de Estouro de Orçamento ---
+    const percentualConsumido = state.presupuestoMensual > 0 
+        ? (totalGastadoMesCents / state.presupuestoMensual) * 100 
+        : 0;
+
+    const isExcedido = liquidezLibreCents < 0;
 
     return {
         totalGastadoMesCents,
@@ -44,7 +60,9 @@ export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, h
         gastosHojeCents,
         tetoDoDiaCents,
         disponivelHojeCents,
-        diasRestantes
+        diasRestantes,
+        percentualConsumido,
+        isExcedido
     };
 }
 
@@ -92,9 +110,13 @@ export function calculateNetWorth(state) {
         }
 
         if (benchmarkRecord) {
-            variationCents = currentTotal - benchmarkRecord.value;
-            pct = benchmarkRecord.value > 0 ? (variationCents / benchmarkRecord.value) * 100 : 0;
-        }
+    variationCents = currentTotal - benchmarkRecord.value;
+    if (benchmarkRecord.value !== 0) {
+        pct = (variationCents / Math.abs(benchmarkRecord.value)) * 100;
+    } else {
+        pct = currentTotal > 0 ? 100 : 0;
+    }
+}
     }
 
     return { 

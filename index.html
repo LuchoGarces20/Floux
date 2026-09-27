@@ -37,7 +37,7 @@
                     <span data-i18n="menuAccounts">Cuentas y Tarjetas</span>
                 </button>
                 <button id="btn-menu-boletos" class="btn-dropdown">
-                    <span class="dropdown-icon">📄</span>
+                    <span class="dropdown-icon">📅</span>
                     <span data-i18n="menuBills">Gastos Fijos</span>
                 </button>
                 <hr class="divider-small">
@@ -46,11 +46,11 @@
                     <span data-i18n="btnReminder">Lembrete Diário (20h)</span>
                 </button>
                 <button id="btn-exportar" class="btn-dropdown" aria-label="Exportar">
-                    <span class="dropdown-icon">📤</span>
+                    <span class="dropdown-icon">💾</span>
                     <span data-i18n="btnExport">Exportar</span>
                 </button>
                 <button id="btn-importar" class="btn-dropdown" aria-label="Importar">
-                    <span class="dropdown-icon">📥</span>
+                    <span class="dropdown-icon">📂</span>
                     <span data-i18n="btnImport">Importar</span>
                 </button>
                 <hr class="divider-small">
@@ -62,7 +62,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- TELA DE PATRIMÔNIO (FLOUXVAULT) -->
     <section id="pantalla-flouxvault" class="transicion-seccion oculto">
         <div class="text-center mb-24">
@@ -84,17 +84,17 @@
             </div>
             <div id="nw-chart-container" class="nw-chart-wrapper"></div>
         </div>
-
+        
         <!-- FORMULÁRIO DE CRIAR ATIVO -->
-        <h4>Agregar Nuevo Activo</h4>
+        <h4 data-i18n="nwAddAsset">Agregar Nuevo Activo</h4>
         <form id="form-novo-ativo-vault" class="mb-20">
             <div class="form-group mb-8">
                 <input type="text" id="input-vault-nome" placeholder="Nombre (ej: Tesouro Direto)" required>
             </div>
             <div class="form-group mb-8">
                 <select id="input-vault-tipo" required>
-                    <option value="vault_fixa">Renda Fixa</option>
-                    <option value="vault_variavel">Renda Variável</option>
+                    <option value="vault_fixa" data-i18n="vaultFixed">Renda Fixa</option>
+                    <option value="vault_variavel" data-i18n="vaultVariable">Renda Variável</option>
                 </select>
             </div>
             <button type="submit" class="btn-base btn-secundario btn-pequeno m-0">➕ Agregar Activo</button>
@@ -113,18 +113,16 @@
             </div>
             <button type="submit" class="btn-principal mb-10" data-i18n="btnSave">Guardar</button>
         </form>
-
         <hr class="divider">
-        <h4>Historial de Actualizaciones</h4>
+        <h4 data-i18n="nwUpdateHistory">Historial de Actualizaciones</h4>
         <ul class="log mb-20" id="lista-vault-historial"></ul>
-
         <button id="btn-cerrar-flouxvault" class="btn-base btn-secundario mt-20" data-i18n="btnClose">Cerrar</button>
     </section>
 
     <!-- TELA DE BOLETOS -->
     <section id="pantalla-boletos" class="transicion-seccion oculto">
         <div class="header-actions mb-15">
-            <button type="button" id="btn-cerrar-boletos" class="btn-base btn-secundario btn-pequeno w-auto m-0">🔙</button>
+            <button type="button" id="btn-cerrar-boletos" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅️</button>
             <h3 data-i18n="billsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Boletos y Gastos Fijos</h3>
         </div>
         <p data-i18n="billsExplanation" class="text-muted-small text-center mb-15">Registra tus gastos fijos. Floux los restará automáticamente de tu liquidez antes de calcular tu límite diario.</p>
@@ -151,7 +149,7 @@
     <!-- TELA DE GESTÃO DE CONTAS -->
     <section id="pantalla-cuentas" class="transicion-seccion oculto">
         <div class="header-actions mb-15">
-            <button type="button" id="btn-cerrar-cuentas" class="btn-base btn-secundario btn-pequeno w-auto m-0">🔙</button>
+            <button type="button" id="btn-cerrar-cuentas" class="btn-base btn-secundario btn-pequeno w-auto m-0">⬅️</button>
             <h3 data-i18n="accountsTitle" class="m-0 flex-grow text-center" style="flex-grow:1;">Cuentas</h3>
         </div>
         <form id="form-cuenta" class="mb-20">
@@ -175,7 +173,7 @@
     <!-- TELA DE SIMULADOR (FLOUXVISION) -->
     <section id="pantalla-simulador" class="transicion-seccion oculto">
         <div class="text-center mb-24">
-            <div class="emoji-large">👁️</div>
+            <div class="emoji-large">🔮</div>
             <h3 data-i18n="flouxVisionTitle">FlouxVision - Pérdida Invisible</h3>
             <p data-i18n="lsimExplanation" class="text-muted-small">El costo de oportunidad es el dinero que dejas de ganar al elegir gastar en lugar de invertir. Calcula el valor real a futuro de esa compra.</p>
         </div>
@@ -366,10 +364,9 @@
                 </svg>
             </button>
         </div>
-
         <div class="grid-balances">
             <div class="balance-card highlight daily-card" style="grid-column: span 2;">
-                <span class="b-title" id="titulo-disponivel-hoje">Disponível Hoje</span>
+                <span class="b-title" id="titulo-disponivel-hoje" data-i18n="availableToday">Disponível Hoje</span>
                 <span class="b-amount" id="display-diario">0.00</span>
             </div>
             <div class="balance-card daily-card">
@@ -427,13 +424,11 @@
                     </select>
                     <input type="number" id="input-cuotas" min="1" value="1" class="oculto" style="margin-top: 8px;" placeholder="Ej: 18">
                 </div>
-
                 <!-- Checkbox Smart Default para Mês Seguinte -->
                 <div class="form-group flex-between-center" style="padding: 12px; background: var(--bg-color); border-radius: 12px; border: 1px solid var(--border-color); margin-top: 15px; margin-bottom: 20px;">
                     <label for="checkbox-mes-siguiente" class="m-0 field-label" style="margin-bottom: 0; font-size: 0.9rem;" data-i18n="applyNextMonth">Aplicar no próximo mês?</label>
                     <input type="checkbox" id="checkbox-mes-siguiente" style="width: 22px; height: 22px; margin: 0; min-height: auto; box-shadow: none;">
                 </div>
-
                 <button type="submit" id="btn-guardar-gasto" class="btn-principal mb-10">Agregar</button>
                 <button type="button" id="btn-toggle-nueva-cat" class="btn-base btn-secundario btn-pequeno">➕ <span data-i18n="newCategory">Nueva Categoría</span></button>
                 <div id="area-nueva-categoria" class="nueva-cat-container transicion-seccion oculto">
@@ -442,9 +437,9 @@
                     <button type="button" id="btn-guardar-nueva-cat" class="btn-principal mb-0 p-0-5" data-i18n="btnSave">Guardar</button>
                 </div>
             </form>
+            <hr class="divider">
         </div>
-        <hr class="divider">
-        
+                
         <div id="resumen-mes-pasado" class="summary-card transicion-seccion oculto">
             <h4 data-i18n="summaryTitle">Resumen del Mes</h4>
             <div class="summary-row">
@@ -463,23 +458,21 @@
         <h3 data-i18n="analysisTitle">Análisis del Mes</h3>
         <div class="cat-breakdown" id="grafico-categorias"></div>
         <h3 data-i18n="expensesMonth">Historial</h3>
-
         <!-- FILTROS RÁPIDOS E INDICADOR DE SOMA DO FILTRO -->
         <div id="filtros-historial" class="chips-container mb-10"></div>
         <div id="info-soma-filtro" class="text-center mb-10 oculto">
             <span id="texto-soma-filtro" class="badge-filtro"></span>
         </div>
-
-        <ul class="log" id="lista-historial"></ul>
-
-<!-- BOTÃO PARA MOSTRAR HISTÓRICO COMPLETO DO MÊS -->
+        <ul class="log" id="lista-historial"></ul> 
+        
+        <!-- BOTÃO PARA MOSTRAR HISTÓRICO COMPLETO DO MÊS -->
         <div id="container-mostrar-mais" class="text-center mt-15 mb-20 oculto">
             <button type="button" id="btn-mostrar-mais-historial" class="btn-base btn-secundario btn-pequeno w-auto m-0" style="padding: 10px 22px; font-weight: 600;">
                 <span id="label-mostrar-mais" data-i18n="btnShowMore">Ver histórico completo do mês</span>
             </button>
-        </div>
-
-<!-- CALENDÁRIO PARA FILTRAR POR DATA ESPECÍFICA -->
+        </div> 
+        
+        <!-- CALENDÁRIO PARA FILTRAR POR DATA ESPECÍFICA -->
         <div id="container-calendario-historial" class="summary-card mb-20">
             <div class="flex-between-center mb-10">
                 <span class="text-muted-small" style="padding:0; font-weight:700; color: var(--primary-color);" data-i18n="filterByDay">Filtrar por data no calendário</span>
@@ -488,13 +481,10 @@
             <div id="strip-calendario-dias" class="calendar-strip"></div>
         </div>
         
-        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">🔮 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
-        <button id="btn-abrir-flouxvault" class="btn-base btn-secundario btn-lsim mt-10">
-            🏦 <span data-i18n="nwTitle">FlouxVault</span>
-        </button>        
-        <button id="btn-editar-presupuesto" class="btn-base btn-secundario mt-20" aria-label="Editar Presupuesto">
-            ✏️ <span data-i18n="menuAdjustBudget">Ajustar Presupuesto</span>
-        </button>
+        <button id="btn-abrir-simulador" class="btn-base btn-secundario btn-lsim">📉 <span data-i18n="btnOpenFlouxVision">Simulador FlouxVision</span></button>
+        <button id="btn-abrir-flouxvault" class="btn-base btn-secundario btn-lsim mt-10">🏦 <span data-i18n="nwTitle">FlouxVault</span></button>
+        
+        <button id="btn-editar-presupuesto" class="btn-base btn-secundario mt-20" aria-label="Editar Presupuesto">⚙️ <span data-i18n="menuAdjustBudget">Ajustar Presupuesto</span></button>
     </section>
     
     <div id="toast-container" class="toast-container"></div>

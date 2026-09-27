@@ -258,17 +258,23 @@ function updateBalances(state, balances) {
     }
 }
 
-function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual) {
+// js/ui.js (Função interna, MANTÉM SEM EXPORT)
+function updateProgressIndicators(state, balances, diasEnElMes, diaCalculo, gastosMesActual) {
     const barraFill = document.getElementById('progreso-mensual-fill');
-    let porcentajeGastado = (totalGastadoMesCents / state.presupuestoMensual) * 100;
-    if (porcentajeGastado > 100 || isNaN(porcentajeGastado)) porcentajeGastado = 100;
     
     if (barraFill) {
-        barraFill.style.width = `${porcentajeGastado}%`;
-        if (state.presupuestoMensual - totalGastadoMesCents < (state.presupuestoMensual * 0.2)) {
-            barraFill.classList.add('warning');
-        } else {
+        // Trava visualmente em 100% no comprimento, mas aplica a animação de estouro se excedido
+        const larguraVisual = Math.min(100, balances.percentualConsumido || 0);
+        barraFill.style.width = `${larguraVisual}%`;
+        
+        if (balances.isExcedido) {
+            barraFill.classList.add('overbudget-fill');
             barraFill.classList.remove('warning');
+        } else if (balances.percentualConsumido >= 80) {
+            barraFill.classList.add('warning');
+            barraFill.classList.remove('overbudget-fill');
+        } else {
+            barraFill.classList.remove('warning', 'overbudget-fill');
         }
     }
     
@@ -280,7 +286,7 @@ function updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaC
         for (let d = 1; d <= diaCalculo; d++) if (!diasConGasto.has(d)) diasCero++;
         
         if (diasCero > 0) {
-            zeroSpendBadge.innerText = `🔥 ${diasCero} Dias sem gastos`;
+            zeroSpendBadge.innerText = `  ${diasCero} Dias sem gastos`;
             zeroSpendBadge.title = `${diasCero} Dias sem gastos`;
             zeroSpendBadge.classList.remove('oculto');
         } else {
@@ -550,13 +556,17 @@ export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) 
     listaUI.appendChild(fragList);
 }
 
+// js/ui.js
 export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const localeStr = currentLang === 'es' ? 'es-ES' : (currentLang === 'pt' ? 'pt-BR' : 'en-US');
     const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
-    
+
     const gastosMesActual = state.historialGlobal.filter(g => {
-        let mes = new Date(g.fecha).getMonth();
-        let ano = new Date(g.fecha).getFullYear();
+        // Garante extração de mês/ano considerando o fuso local de forma segura
+        const d = new Date(g.fecha);
+        let mes = d.getMonth();
+        let ano = d.getFullYear();
+        
         if (g.mesEfectivo) {
             const [eAno, eMes] = g.mesEfectivo.split('-').map(Number);
             mes = eMes - 1;
@@ -564,26 +574,26 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         }
         return mes === viewMonth && ano === viewYear;
     }).sort((a, b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
-    
+
     if (filtroHistorialActivo.tipo === 'cuenta' && !state.cuentas.some(c => c.id === filtroHistorialActivo.id)) {
         filtroHistorialActivo = { tipo: 'todos', id: null };
     }
-    
+
     let gastosFiltrados = gastosMesActual;
     if (filtroHistorialActivo.tipo === 'cuenta') {
         gastosFiltrados = gastosMesActual.filter(g => g.cuentaId === filtroHistorialActivo.id);
     } else if (filtroHistorialActivo.tipo === 'categoria') {
         gastosFiltrados = gastosMesActual.filter(g => g.categoria === filtroHistorialActivo.id);
     }
-    
+
     if (diasSeleccionadosCalendario.size > 0) {
         gastosFiltrados = gastosFiltrados.filter(g => diasSeleccionadosCalendario.has(new Date(g.fecha).getDate()));
     }
-    
+
     const containerMostrarMais = document.getElementById('container-mostrar-mais');
     const labelMostrarMais = document.getElementById('label-mostrar-mais');
     let gastosExibicao = gastosFiltrados;
-    
+
     if (diasSeleccionadosCalendario.size === 0) {
         const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
         const dataLimiteSeteDias = new Date(hoy.getTime() - seteDiasMs);
@@ -601,13 +611,13 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     } else {
         if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
     }
-    
+
     const infoSomaEl = document.getElementById('info-soma-filtro');
     const textoSomaEl = document.getElementById('texto-soma-filtro');
     if (infoSomaEl && textoSomaEl) {
         if (filtroHistorialActivo.tipo !== 'todos' || diasSeleccionadosCalendario.size > 0) {
             const totalFiltroCents = gastosFiltrados.reduce((acc, g) => acc + g.monto, 0);
-            
+
             let nomeFiltro = '';
             if (filtroHistorialActivo.tipo === 'cuenta') {
                 const acc = state.cuentas.find(c => c.id === filtroHistorialActivo.id);
@@ -629,11 +639,11 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
             infoSomaEl.classList.add('oculto');
         }
     }
-    
+
     const viewDate = new Date(viewYear, viewMonth, 1);
     const currentMonthDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     const isPastMonth = viewDate < currentMonthDate;
-    
+
     const temDadosFuturos = state.historialGlobal.some(g => {
         let mes = new Date(g.fecha).getMonth();
         let ano = new Date(g.fecha).getFullYear();
@@ -644,26 +654,26 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         }
         return new Date(ano, mes, 1) > viewDate;
     });
-    
+
     const btnNext = document.getElementById('btn-next-month');
     if (btnNext) {
         btnNext.disabled = !(isPastMonth || temDadosFuturos);
     }
-    
+
     const balances = calculateBalances(state, gastosMesActual, viewMonth, viewYear, hoy);
     const totalGastadoMesCents = balances.totalGastadoMesCents;
-    
+
     const diasEnElMes = new Date(viewYear, viewMonth + 1, 0).getDate();
     const diaCalculo = isCurrentMonth ? hoy.getDate() : diasEnElMes;
-    
+
     updateHeaderDisplays(hoy, viewMonth, viewYear, localeStr);
     renderSelectCuentas(state);
-    
+
     const areaRegistro = document.getElementById('area-registrar-gasto');
     const areaResumen = document.getElementById('resumen-mes-pasado');
     const dailyCards = document.querySelectorAll('.daily-card');
     const fabGasto = document.getElementById('btn-fab-gasto');
-    
+
     if (isCurrentMonth) {
         if(areaRegistro) areaRegistro.classList.remove('oculto');
         if(areaResumen) areaResumen.classList.add('oculto');
@@ -674,11 +684,11 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         if(areaResumen) areaResumen.classList.remove('oculto');
         dailyCards.forEach(c => c.style.display = 'none');
         if(fabGasto) fabGasto.classList.add('oculto');
-        
+
         if (areaResumen) {
             const perfEl = document.getElementById('summary-performance');
             const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
-            
+
             if (dineroRestanteCents >= 0) {
                 perfEl.innerText = `${t('summarySave')}${formatCurrency(dineroRestanteCents, state.monedaActual)}`;
                 perfEl.style.color = 'var(--success-color)';
@@ -686,25 +696,40 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
                 perfEl.innerText = `${t('summaryDeficit')}${formatCurrency(Math.abs(dineroRestanteCents), state.monedaActual)}`;
                 perfEl.style.color = 'var(--danger-color)';
             }
-            
+
             const largest = gastosMesActual.length > 0 ? Math.max(...gastosMesActual.map(g => g.monto)) : 0;
             document.getElementById('summary-largest').innerText = formatCurrency(largest, state.monedaActual);
             document.getElementById('summary-daily').innerText = formatCurrency(totalGastadoMesCents / diasEnElMes, state.monedaActual);
         }
     }
-    
+
+    // --- ATUALIZAÇÃO DO CARD PRINCIPAL EM CASO DE ESTOURO ---
+    const cardDiario = document.querySelector('.daily-card.highlight');
+    const tituloDiario = document.getElementById('titulo-disponivel-hoje');
+
+    if (cardDiario && tituloDiario) {
+    if (balances.isExcedido) {
+        cardDiario.classList.add('overbudget-card');
+        tituloDiario.innerText = t('overbudgetTitle') || "Teto Excedido";
+    } else {
+        cardDiario.classList.remove('overbudget-card');
+        tituloDiario.innerText = t('availableToday') || "Disponível Hoje";
+    }
+}
+
     updateBalances(state, balances);
-    updateProgressIndicators(state, totalGastadoMesCents, diasEnElMes, diaCalculo, gastosMesActual);
+    // Chamada atualizada com a variável 'balances'
+    updateProgressIndicators(state, balances, diasEnElMes, diaCalculo, gastosMesActual);
     renderCategoryChart(state, gastosMesActual, totalGastadoMesCents);
-    
+
     renderFiltrosHistorial(state, gastosMesActual, () => {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
-    
+
     renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear, localeStr, () => {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
-    
+
     renderExpenseList(state, gastosExibicao, localeStr, !isPastMonth);
 }
 

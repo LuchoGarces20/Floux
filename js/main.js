@@ -15,7 +15,6 @@ const INTERACTION_CONFIG = {
 
 let gastoEnEdicion = null;
 const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
-
 const hoy = new Date();
 const mesActual = hoy.getMonth();
 const anoActual = hoy.getFullYear();
@@ -64,12 +63,23 @@ subscribe((property) => {
 });
 
 window.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && (saveTimeout || isSaving)) {
-        clearTimeout(saveTimeout);
+    if (document.visibilityState === 'hidden') {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        // Tenta salvar via IndexedDB e garante cópia de emergência síncrona
+        try {
+            localStorage.setItem('floux_emergency_backup', JSON.stringify({
+                presupuesto: state.presupuestoMensual,
+                historial: state.historialGlobal,
+                cuentas: state.cuentas,
+                boletos: state.boletos,
+                patrimonio: state.historialPatrimonio
+            }));
+        } catch (e) {
+            console.error("Emergency storage failed", e);
+        }
         executeSave();
     }
 });
-
 function transicionPantalla(callback) {
     if (!document.startViewTransition) {
         callback();
@@ -88,6 +98,7 @@ const displayNetSurvival = document.getElementById('display-net-survival');
 const displayFreeSpending = document.getElementById('display-free-spending');
 const inputMoneda = document.getElementById('input-moneda');
 const inputPresupuesto = document.getElementById('input-presupuesto');
+
 const selectCuotas = document.getElementById('select-cuotas');
 const inputCuotas = document.getElementById('input-cuotas');
 
@@ -122,13 +133,12 @@ if (btnLembrete) {
         if (settingsDropdown) settingsDropdown.classList.add('oculto');
         
         if (!('Notification' in window)) {
-            showToast("⚠️ " + t('notifUnsupported'));
+            showToast("❌ " + t('notifUnsupported'));
             return;
         }
-
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            showToast("🔔 " + t('notifActivated'));
+            showToast("✅ " + t('notifActivated'));
             if (navigator.serviceWorker && navigator.serviceWorker.ready) {
                 const reg = await navigator.serviceWorker.ready;
                 reg.showNotification("Floux", {
@@ -183,7 +193,7 @@ document.addEventListener('click', (e) => {
                     boletoId: boleto.id
                 });
                 if (navigator.vibrate) navigator.vibrate(15);
-                showToast("💳 Boleto pago e contabilizado!");
+                showToast("✅ Boleto pago e contabilizado!");
                 renderBoletosList(state);
                 if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
                     actualizarInterfaz(state, viewMonth, viewYear, hoy);
@@ -203,7 +213,7 @@ function actualizarModoPrivacidade() {
     if (!btnPrivacidade) return;
     if (state.privacyMode) {
         document.body.classList.add('privacy-mode');
-        btnPrivacidade.innerText = '👁️‍🗨️';
+        btnPrivacidade.innerText = '🙈';
     } else {
         document.body.classList.remove('privacy-mode');
         btnPrivacidade.innerText = '👁️';
@@ -292,7 +302,16 @@ document.getElementById('btn-limpar-dia-calendario')?.addEventListener('click', 
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
 });
 
+const triggerShimmer = () => {
+    const cards = document.querySelectorAll('.balance-card, .cat-bar-container');
+    cards.forEach(c => c.classList.add('skeleton-loading'));
+    setTimeout(() => {
+        cards.forEach(c => c.classList.remove('skeleton-loading'));
+    }, 200);
+};
+
 document.getElementById('btn-prev-month').addEventListener('click', () => {
+    triggerShimmer();
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     setFiltroHistorial('todos', null);
@@ -301,6 +320,7 @@ document.getElementById('btn-prev-month').addEventListener('click', () => {
 });
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
+    triggerShimmer();
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     setFiltroHistorial('todos', null);
@@ -434,7 +454,7 @@ document.getElementById('form-onboarding-boleto').addEventListener('submit', (e)
         montoInput.dataset.cents = '0';
         document.getElementById('input-onboarding-boleto-dia').value = '';
         
-        showToast("✨ " + t('btnSave'));
+        showToast("✅ " + t('btnSave'));
         renderBoletosList(state);
         recalcularPresupuestoOnboarding();
     }
@@ -467,7 +487,7 @@ document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e)
         
         document.getElementById('input-onboarding-cuenta-nombre').value = '';
         document.getElementById('input-onboarding-cuenta-cierre').value = '';
-        showToast("✨ " + t('btnSave'));
+        showToast("✅ " + t('btnSave'));
         renderCuentasList(state);
     }
 });
@@ -507,7 +527,6 @@ function formatInputCents(e) {
 document.getElementById('input-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-boleto-monto').addEventListener('input', formatInputCents);
 document.getElementById('input-onboarding-boleto-monto').addEventListener('input', formatInputCents);
-
 const inputNwMonto = document.getElementById('input-nw-monto');
 if (inputNwMonto) inputNwMonto.addEventListener('input', formatInputCents);
 
@@ -543,14 +562,12 @@ if (btnToggleNuevaCat && areaNuevaCat) {
         areaNuevaCat.classList.toggle('oculto');
     });
 }
-
 if (btnGuardarNuevaCat) {
     btnGuardarNuevaCat.addEventListener('click', () => {
         const nombreInput = document.getElementById('input-nueva-cat-nombre');
         const emojiInput = document.getElementById('input-nueva-cat-emoji');
         const nombre = nombreInput.value.trim();
-        const emoji = emojiInput.value.trim() || '📌';
-
+        const emoji = emojiInput.value.trim() || '🏷️';
         if (nombre) {
             const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
             state.categoriasCustom = [...state.categoriasCustom, newCat];
@@ -558,36 +575,45 @@ if (btnGuardarNuevaCat) {
             emojiInput.value = '';
             areaNuevaCat.classList.add('oculto');
             renderizarSelectCategorias(state.categoriasCustom);
-            showToast("✨ " + t('btnSave'));
+            showToast("✅ " + t('btnSave'));
         }
     });
 }
 
 function atualizarCheckboxMes() {
-    const cuentaId = document.getElementById('input-cuenta-origen').value;
-    const inputFecha = document.getElementById('input-fecha-gasto').value;
+    const cuentaId = document.getElementById('input-cuenta-origen')?.value;
+    const inputFecha = document.getElementById('input-fecha-gasto')?.value;
     const checkbox = document.getElementById('checkbox-mes-siguiente');
-    
+
     if (!cuentaId || !checkbox) return;
     const cuenta = state.cuentas.find(c => c.id === cuentaId);
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
-    if (cuenta && cuenta.tipo === 'credit' && cuenta.cierreTC && dataBase.getDate() > cuenta.cierreTC) {
-        checkbox.checked = true;
+    
+    if (cuenta && cuenta.tipo === 'credit' && cuenta.cierreTC) {
+        const ultimoDiaMesActual = new Date(dataBase.getFullYear(), dataBase.getMonth() + 1, 0).getDate();
+        const diaCierreEfectivo = Math.min(cuenta.cierreTC, ultimoDiaMesActual);
+        
+        checkbox.checked = dataBase.getDate() > diaCierreEfectivo;
     } else {
         checkbox.checked = false;
     }
 }
-
 document.getElementById('input-cuenta-origen').addEventListener('change', atualizarCheckboxMes);
 document.getElementById('input-fecha-gasto').addEventListener('change', atualizarCheckboxMes);
 
 document.getElementById('form-gasto').addEventListener('submit', (e) => {
     e.preventDefault();
     const inputMonto = document.getElementById('input-monto');
-    const montoCents = parseInt(inputMonto.dataset.cents || '0', 10);
+    let montoCents = parseInt(inputMonto.dataset.cents || '0', 10);
     const desc = document.getElementById('input-desc').value.trim();
     const cat = document.getElementById('input-categoria').value;
     
+    // FALLBACK DE CURSOR/VALOR ZERADO MAS DIGITADO:
+    if (montoCents === 0 && inputMonto.value) {
+        const digits = inputMonto.value.replace(/\D/g, '');
+        if (digits) montoCents = parseInt(digits, 10);
+    }
+
     const cuentaId = document.getElementById('input-cuenta-origen').value;
     if (!cuentaId) {
         showToast("⚠️ Erro: Selecione uma conta de origem.");
@@ -596,6 +622,13 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     
     const inputCuotas = document.getElementById('input-cuotas');
     const cuotas = parseInt(inputCuotas?.value, 10) || 1;
+    
+    // VALIDAÇÃO DE PARCELA INVÁLIDA:
+    if (cuotas < 1) {
+        showToast(t('errInvalid') || "Erro: Parcelas inválidas.");
+        return;
+    }
+
     const inputFecha = document.getElementById('input-fecha-gasto').value;
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
@@ -653,7 +686,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         
         if (document.activeElement) document.activeElement.blur();
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
-        showToast(wasEditing ? "✨ " + t('btnEdit') : "✨ " + t('btnAdd'));
+        showToast(wasEditing ? "✅ " + t('btnEdit') : "✅ " + t('btnAdd'));
     }
 });
 
@@ -668,7 +701,6 @@ document.getElementById('btn-menu-cuentas').addEventListener('click', () => {
     });
     renderCuentasList(state);
 });
-
 document.getElementById('btn-cerrar-cuentas')?.addEventListener('click', mostrarPantallaPrincipal);
 
 const inputCuentaTipo = document.getElementById('input-cuenta-tipo');
@@ -703,7 +735,7 @@ if (formCuenta) {
             
             document.getElementById('input-cuenta-nombre').value = '';
             document.getElementById('input-cuenta-cierre').value = '';
-            showToast("✨ " + t('btnSave'));
+            showToast("✅ " + t('btnSave'));
             renderCuentasList(state);
         }
     });
@@ -720,7 +752,6 @@ document.getElementById('btn-menu-boletos').addEventListener('click', () => {
     });
     renderBoletosList(state);
 });
-
 document.getElementById('btn-cerrar-boletos')?.addEventListener('click', mostrarPantallaPrincipal);
 
 document.getElementById('form-boleto').addEventListener('submit', (e) => {
@@ -739,7 +770,7 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
         montoInput.value = '';
         montoInput.dataset.cents = '0';
         document.getElementById('input-boleto-dia').value = '';
-        showToast("✨ " + t('btnSave'));
+        showToast("✅ " + t('btnSave'));
         renderBoletosList(state);
     }
 });
@@ -806,21 +837,21 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
                 e.target.value = '';
                 return;
             }
-
             const historyToImport = Array.isArray(data) ? data : (data.historial || []);
             resetFormularioGasto(setGastoEnEdicion);
-
             if (confirm(t('confirmOverwrite'))) {
                 if(!Array.isArray(data)) {
                     if (data.cuentas) state.cuentas = data.cuentas;
                     if (data.boletos) state.boletos = data.boletos;
                     if (data.patrimonio) state.historialPatrimonio = data.patrimonio;
+                    // FIX: PRESERVAR O ORÇAMENTO MENSAL DO BACKUP
+                    if (data.presupuesto) state.presupuestoMensual = data.presupuesto; 
                 }
                 replaceHistory(historyToImport);
             } else {
                 replaceHistory(state.historialGlobal.concat(historyToImport));
             }
-            showToast("✨ Dados importados com sucesso!");
+            showToast("✅ Dados importados com sucesso!");
         } catch (err) {
             showToast(t('errInvalid'));
         }
@@ -829,17 +860,19 @@ document.getElementById('input-archivo').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
+// RESET DO APLICATIVO CORRIGIDO (LIMPEZA CONDICIONAL DO LOCALSTORAGE)
 document.getElementById('btn-reiniciar').addEventListener('click', () => {
     if (settingsDropdown) settingsDropdown.classList.add('oculto');
     if(confirm(t('alertReset'))) {
         resetFormularioGasto(setGastoEnEdicion);
-        localStorage.clear();
         const req = indexedDB.open('FlouxDB', 1);
         req.onsuccess = (e) => {
             const db = e.target.result;
             const tx = db.transaction('floux_store', 'readwrite');
             tx.objectStore('floux_store').clear();
             tx.oncomplete = () => {
+                // FIX: Limpeza só ocorre se a transação do banco confirmar o reset com sucesso
+                localStorage.clear();
                 db.close();
                 location.reload();
             };
@@ -905,7 +938,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                     
                     if (gastoEnEdicion && idsToRemove.includes(gastoEnEdicion)) resetFormularioGasto(setGastoEnEdicion);
                     if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-                    showToast("✨ " + t('toastAllDeleted'));
+                    showToast("✅ " + t('toastAllDeleted'));
                     return;
                 }
             }
@@ -914,7 +947,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
         removeExpense(id);
         if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
-        showToast("✨ " + t('toastDeleted'));
+        showToast("✅ " + t('toastDeleted'));
     },
     onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
@@ -981,7 +1014,6 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
 });
 
 init();
-
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
 }

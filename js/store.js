@@ -128,20 +128,26 @@ export async function saveStore() {
 }
 
 async function migrateFromLocalStorage() {
-    const db = await getDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    const store = tx.objectStore(STORE_NAME);
-
-    store.put(parseInt(localStorage.getItem(STORAGE_KEYS.PRESUPUESTO), 10) || 0, STORAGE_KEYS.PRESUPUESTO);
-    store.put(JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORIAL) || '[]'), STORAGE_KEYS.HISTORIAL);
-    store.put(localStorage.getItem(STORAGE_KEYS.MONEDA) || 'BRL', STORAGE_KEYS.MONEDA);
-    store.put(JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIAS) || '[]'), STORAGE_KEYS.CATEGORIAS);
-    store.put(localStorage.getItem(STORAGE_KEYS.PRIVACY) === 'true', STORAGE_KEYS.PRIVACY);
-    const cierreLocal = localStorage.getItem(STORAGE_KEYS.CIERRE_TC);
-    store.put(cierreLocal !== null ? parseInt(cierreLocal, 10) : 24, STORAGE_KEYS.CIERRE_TC);
-
-    await new Promise((resolve) => { tx.oncomplete = resolve; });
-    Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+    try {
+        const db = await getDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        
+        const rawPresupuesto = localStorage.getItem(STORAGE_KEYS.PRESUPUESTO);
+        const rawHistorial = localStorage.getItem(STORAGE_KEYS.HISTORIAL);
+        
+        if (rawPresupuesto) store.put(parseInt(rawPresupuesto, 10) || 0, STORAGE_KEYS.PRESUPUESTO);
+        if (rawHistorial) {
+            const parsedHistorial = JSON.parse(rawHistorial);
+            if (Array.isArray(parsedHistorial)) store.put(parsedHistorial, STORAGE_KEYS.HISTORIAL);
+        }
+        
+        await new Promise((resolve) => { tx.oncomplete = resolve; });
+        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+        console.error("Falha na migração do LocalStorage. Resetando chaves corrompidas.", e);
+        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
+    }
 }
 
 export function isValidoHistorialSchema(data) {

@@ -489,3 +489,139 @@ button.btn-principal { min-height: 52px; font-size: 1.1rem; }
 .calendar-day-item.is-today:not(.active) {
     border: 2px solid var(--primary-color);
 }
+
+/* --- ESTADOS PREMIUM DE ORÇAMENTO --- */
+
+/* Badge de Estado do Orçamento no Header */
+.budget-status-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+.budget-status-badge.ok {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--success-color);
+}
+
+.budget-status-badge.warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #F59E0B;
+}
+
+.budget-status-badge.overbudget {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
+    animation: pulse-danger 2s infinite;
+}
+
+/* Card Principal em Estado de Estouro */
+.balance-card.highlight.overbudget-card {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.03) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.12);
+}
+
+.balance-card.highlight.overbudget-card .b-amount {
+    color: var(--danger-color);
+}
+
+/* Barra de Progresso Com Transbordo (Overbudget Pattern) */
+.custom-progress-fill.overbudget-fill {
+    background: linear-gradient(
+        45deg,
+        var(--danger-color) 25%,
+        #DC2626 25%,
+        #DC2626 50%,
+        var(--danger-color) 50%,
+        var(--danger-color) 75%,
+        #DC2626 75%,
+        #DC2626
+    );
+    background-size: 16px 16px;
+    animation: move-stripes 1s linear infinite;
+}
+
+@keyframes move-stripes {
+    0% { background-position: 0 0; }
+    100% { background-position: 16px 0; }
+}
+
+@keyframes pulse-danger {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Brilho de Vidro Dinâmico nos Cards Principais */
+.balance-card.highlight {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+
+.balance-card.highlight::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, var(--primary-gradient) 0%, transparent 60%);
+    opacity: 0.4;
+    transform: translate(-30%, -30%);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+}
+
+.balance-card.highlight:active::before {
+    opacity: 0.9;
+    transform: translate(0%, 0%);
+}
+
+/* Animação Shimmer para Carregamento Fluido */
+.skeleton-loading {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-color) !important;
+}
+
+.skeleton-loading::after {
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0,
+        rgba(255, 255, 255, 0.15) 20%,
+        rgba(255, 255, 255, 0.3) 60%,
+        rgba(255, 255, 255, 0)
+    );
+    animation: shimmer 1.2s infinite;
+    content: '';
+}
+
+@keyframes shimmer {
+    100% { transform: translateX(100%); }
+}
+
+/* Ícones de Categoria com Fundo Tonal */
+.log .cat-icon {
+    background: rgba(15, 118, 110, 0.08);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.log li:active .cat-icon {
+    transform: scale(1.12) rotate(-4deg);
+}
+
+/* Efeito Tátil ao Pressionar Qualquer Botão */
+button:active, .cat-chip:active {
+    transform: scale(0.96) translateZ(0);
+}

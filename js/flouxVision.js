@@ -18,9 +18,13 @@ export function initFlouxVision(openModalCallback, closeModalCallback) {
 
     // Motor de cálculo de Juros Compostos
     function calcularInteresCompuesto(pCents, tVal, rVal) {
-        const futureValueCents = pCents * Math.pow(1 + (rVal / 100), tVal);
-        return { futureValueCents, differenceCents: futureValueCents - pCents };
-    }
+    const rawFutureValue = pCents * Math.pow(1 + (rVal / 100), tVal);
+    const futureValueCents = Math.round(Number.isFinite(rawFutureValue) ? rawFutureValue : 0);
+    return { 
+        futureValueCents, 
+        differenceCents: Math.max(0, futureValueCents - pCents) 
+    };
+}
 
     // Atualização reativa da interface do simulador
     function actualizarPerdidaInvisibleUI() {
