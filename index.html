@@ -73,35 +73,42 @@
         </div>
     </div>
     
-    <!-- TELA DE AUTENTICAÇÃO (MÁSCARA DE ENTRADA OBRIGATÓRIA) -->
-        <section id="pantalla-auth" class="transicion-seccion oculto">
-            <div class="brand-title text-center" style="margin-bottom: 28px;">
-                <img src="img/logo-light.svg" alt="Floux" class="logo-light" style="max-height: 60px;">
-                <img src="img/logo-dark.svg" alt="Floux" class="logo-dark" style="max-height: 60px;">
-            </div>
-            <div class="text-center mb-20">
-                <h3 id="auth-title-header" data-i18n="authTitleLogin" class="mb-8" style="margin-top: 20px;">Entrar</h3>
-                <p data-i18n="authExplanation" class="text-muted-small m-0">Sincronize seus dados na nuvem com total segurança.</p>
-            </div>
-
-        <form id="form-auth" class="mb-20">
-            <div class="form-group mb-12">
-                <label data-i18n="authEmailLabel">E-mail</label>
-                <input type="email" id="input-auth-email" placeholder="seu@email.com" required autocomplete="email">
-            </div>
-            <div class="form-group mb-20">
-                <label data-i18n="authPasswordLabel">Senha</label>
-                <input type="password" id="input-auth-password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
-            </div>
-            <button type="submit" id="btn-auth-submit" class="btn-principal mb-10" data-i18n="authBtnLogin">Entrar</button>
-        </form>
-
-        <div class="text-center mb-15">
-            <button type="button" id="btn-toggle-auth-mode" class="btn-base btn-secundario btn-pequeno" style="background:transparent; box-shadow:none;">
-                <span id="text-toggle-auth" data-i18n="authSwitchToSignup">Não tem uma conta? Cadastre-se</span>
-            </button>
+<!-- TELA DE AUTENTICAÇÃO -->
+<section id="pantalla-auth" class="transicion-seccion oculto">
+    <div class="auth-container">
+        <!-- BRAND LOGO -->
+        <div class="brand-title text-center mb-32">
+            <img src="img/logo-light.svg" alt="Floux" class="logo-light" style="max-height: 56px;">
+            <img src="img/logo-dark.svg" alt="Floux" class="logo-dark" style="max-height: 56px;">
         </div>
-    </section>
+
+        <!-- AUTH CARD -->
+        <div class="auth-card">
+            <div class="text-center mb-24">
+                <h3 id="auth-title-header" data-i18n="authTitleLogin" class="auth-title">Entrar</h3>
+                <p data-i18n="authExplanation" class="auth-subtitle">Sincronize seus dados na nuvem com total segurança.</p>
+            </div>
+
+            <form id="form-auth">
+                <div class="form-group mb-16">
+                    <label data-i18n="authEmailLabel" class="field-label">E-mail</label>
+                    <input type="email" id="input-auth-email" placeholder="seu@email.com" required autocomplete="email">
+                </div>
+                <div class="form-group mb-24">
+                    <label data-i18n="authPasswordLabel" class="field-label" style="margin-top: 12px;">Senha</label>
+                    <input type="password" id="input-auth-password" placeholder="••••••••" required minlength="6" autocomplete="current-password">
+                </div>
+                <button type="submit" id="btn-auth-submit" class="btn-principal mb-16" data-i18n="authBtnLogin">Entrar</button>
+            </form>
+
+            <div class="text-center pt-8">
+                <button type="button" id="btn-toggle-auth-mode" class="btn-toggle-auth">
+                    <span id="text-toggle-auth" data-i18n="authSwitchToSignup">Não tem uma conta? Cadastre-se</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 
     <!-- TELA DE PATRIMÔNIO (FLOUXVAULT) -->
     <section id="pantalla-flouxvault" class="transicion-seccion oculto">
