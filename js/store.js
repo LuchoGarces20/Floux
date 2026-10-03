@@ -162,8 +162,10 @@ export function isValidoHistorialSchema(data) {
     if (!Array.isArray(data)) return false;
     return data.every(item =>
         typeof item === 'object' && item !== null &&
-        typeof item.id === 'number' && typeof item.monto === 'number' &&
-        typeof item.desc === 'string' && typeof item.fecha === 'string' &&
+        (typeof item.id === 'number' || typeof item.id === 'string') && 
+        typeof item.monto === 'number' &&
+        typeof item.desc === 'string' && 
+        typeof item.fecha === 'string' &&
         typeof item.categoria === 'string'
     );
 }

@@ -60,7 +60,8 @@ export async function pushExpenseToSupabase(g) {
         categoria: g.categoria,
         mes_efectivo: g.mesEfectivo || null,
         cuenta_id: g.cuentaId || null,
-        boleto_id: g.boletoId || null
+        boleto_id: g.boletoId || null,
+        group_id: g.groupId || null
     });
 }
 
@@ -76,7 +77,8 @@ export async function pushMultipleExpensesToSupabase(expensesArray) {
         categoria: g.categoria,
         mes_efectivo: g.mesEfectivo || null,
         cuenta_id: g.cuentaId || null,
-        boleto_id: g.boletoId || null
+        boleto_id: g.boletoId || null,
+        group_id: g.groupId || null
     }));
     await supabase.from('gastos').upsert(payload);
 }
@@ -156,9 +158,7 @@ export async function pushLocalStateToSupabase(state) {
     const user = await getUser();
     if (!user) return;
     const userId = user.id;
-
     await pushProfileToSupabase(state);
-
     if (state.cuentas.length > 0) {
         const cuentasPayload = state.cuentas.map(c => ({
             id: c.id, user_id: userId, nombre: c.nombre, tipo: c.tipo, cierre_tc: c.cierreTC
@@ -173,7 +173,7 @@ export async function pushLocalStateToSupabase(state) {
     }
     if (state.historialGlobal.length > 0) {
         const gastosPayload = state.historialGlobal.map(g => ({
-            id: g.id, user_id: userId, monto: g.monto, description: g.desc, fecha: g.fecha, categoria: g.categoria, mes_efectivo: g.mesEfectivo || null, cuenta_id: g.cuentaId || null, boleto_id: g.boletoId || null
+            id: g.id, user_id: userId, monto: g.monto, description: g.desc, fecha: g.fecha, categoria: g.categoria, mes_efectivo: g.mesEfectivo || null, cuenta_id: g.cuentaId || null, boleto_id: g.boletoId || null, group_id: g.groupId || null
         }));
         await supabase.from('gastos').upsert(gastosPayload);
     }
@@ -191,7 +191,7 @@ export async function pullSupabaseToLocalState() {
     const [
         { data: profile }, { data: cuentas }, { data: boletos }, { data: gastos }, { data: patrimonio }
     ] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
         supabase.from('cuentas').select('*').eq('user_id', user.id),
         supabase.from('boletos').select('*').eq('user_id', user.id),
         supabase.from('gastos').select('*').eq('user_id', user.id),
@@ -206,7 +206,7 @@ export async function pullSupabaseToLocalState() {
         categoriasCustom: profile.categorias_custom || [],
         cuentas: (cuentas || []).map(c => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, cierreTC: c.cierre_tc })),
         boletos: (boletos || []).map(b => ({ id: b.id, desc: b.description, monto: b.monto, diaVencimiento: b.dia_vencimiento, categoria: b.categoria })),
-        historialGlobal: (gastos || []).map(g => ({ id: g.id, monto: g.monto, desc: g.description, fecha: g.fecha, categoria: g.categoria, mesEfectivo: g.mes_efectivo, cuentaId: g.cuenta_id, boletoId: g.boleto_id })),
+        historialGlobal: (gastos || []).map(g => ({ id: g.id, monto: g.monto, desc: g.description, fecha: g.fecha, categoria: g.categoria, mesEfectivo: g.mes_efectivo, cuentaId: g.cuenta_id, boletoId: g.boleto_id, groupId: g.group_id })),
         historialPatrimonio: (patrimonio || []).map(p => ({ id: p.id, cuentaId: p.cuenta_id, monto: p.monto, fecha: p.fecha }))
     };
 }
