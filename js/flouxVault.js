@@ -116,39 +116,54 @@ function bindChartInteractivity(svg, nwData, state) {
     const defaultLabelText = t('nwTotalLabel') || "Patrimonio Total";
     
     let activePointIndex = -1;
+    let isUpdatingChart = false;
 
     const handleMove = (e) => {
         if (e.cancelable) e.preventDefault();
-        svg.classList.add('scrubbing');
-        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const rect = svg.getBoundingClientRect();
-        const xInSVG = ((clientX - rect.left) / rect.width) * 400;
         
-        let closest = pointsData[0];
-        let minDx = Math.abs(xInSVG - closest.x);
-        let closestIdx = 0;
+        // Bloqueia a execução múltipla e encavalada se o frame ainda estiver processando
+        if (isUpdatingChart) return;
         
-        pointsData.forEach((p, i) => {
-            const dx = Math.abs(xInSVG - p.x);
-            if (dx < minDx) {
-                minDx = dx;
-                closest = p;
-                closestIdx = i;
-            }
-        });
+        isUpdatingChart = true;
 
-        if (activePointIndex !== closestIdx) {
-            activePointIndex = closestIdx;
-            crosshair.setAttribute("x1", closest.x);
-            crosshair.setAttribute("x2", closest.x);
+        requestAnimationFrame(() => {
+            svg.classList.add('scrubbing');
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const rect = svg.getBoundingClientRect();
+            const xInSVG = ((clientX - rect.left) / rect.width) * 400;
             
-            circles.forEach(c => c.classList.remove('nw-active-point'));
-            circles[closestIdx].classList.add('nw-active-point');
+            let closest = pointsData[0];
+            let minDx = Math.abs(xInSVG - closest.x);
+            let closestIdx = 0;
             
-            totalDisplay.innerText = formatCurrency(closest.value, state.monedaActual);
-            labelDisplay.innerText = new Date(closest.date).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
-            if (navigator.vibrate) navigator.vibrate(10);
-        }
+            for (let i = 0; i < pointsData.length; i++) {
+                const dx = Math.abs(xInSVG - pointsData[i].x);
+                if (dx < minDx) {
+                    minDx = dx;
+                    closest = pointsData[i];
+                    closestIdx = i;
+                } else if (dx > minDx) {
+                    // Como os pontos estão ordenados no eixo X, se a distância voltou a subir,
+                    // já passamos do ponto mais próximo. Podemos interromper o laço.
+                    break;
+                }
+            }
+
+            if (activePointIndex !== closestIdx) {
+                activePointIndex = closestIdx;
+                crosshair.setAttribute("x1", closest.x);
+                crosshair.setAttribute("x2", closest.x);
+                
+                circles.forEach(c => c.classList.remove('nw-active-point'));
+                circles[closestIdx].classList.add('nw-active-point');
+                
+                totalDisplay.innerText = formatCurrency(closest.value, state.monedaActual);
+                labelDisplay.innerText = new Date(closest.date).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+            
+            isUpdatingChart = false;
+        });
     };
 
     const handleEnd = () => {

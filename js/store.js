@@ -182,19 +182,35 @@ export function isValidBackupSchema(data) {
     return true;
 }
 
-// Ações com Sincronização Incremental
-export function addExpense(expense) {
+// Ações com Sincronização Incremental + Optimistic UI Rollback
+export async function addExpense(expense) {
+    const previousHistory = [...state.historialGlobal];
     state.historialGlobal = [...state.historialGlobal, expense];
-    pushExpenseToSupabase(expense).catch(console.error);
+    try {
+        await pushExpenseToSupabase(expense);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialGlobal = previousHistory;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
+    }
 }
 
-export function addMultipleExpenses(expensesArray) {
+export async function addMultipleExpenses(expensesArray) {
+    const previousHistory = [...state.historialGlobal];
     state.historialGlobal = [...state.historialGlobal, ...expensesArray];
-    pushMultipleExpensesToSupabase(expensesArray).catch(console.error);
+    try {
+        await pushMultipleExpensesToSupabase(expensesArray);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialGlobal = previousHistory;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
+    }
 }
 
-export function updateExpense(id, updatedData) {
+export async function updateExpense(id, updatedData) {
+    const previousHistory = [...state.historialGlobal];
     let updatedItem = null;
+    
     state.historialGlobal = state.historialGlobal.map(g => {
         if (g.id === id) {
             updatedItem = { ...g, ...updatedData };
@@ -202,35 +218,74 @@ export function updateExpense(id, updatedData) {
         }
         return g;
     });
+    
     if (updatedItem) {
-        pushExpenseToSupabase(updatedItem).catch(console.error);
+        try {
+            await pushExpenseToSupabase(updatedItem);
+        } catch (error) {
+            console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+            state.historialGlobal = previousHistory;
+            window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. A modificação foi desfeita." } }));
+        }
     }
 }
 
-export function removeExpense(id) {
+export async function removeExpense(id) {
+    const previousHistory = [...state.historialGlobal];
     state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
-    deleteExpenseFromSupabase(id).catch(console.error);
+    try {
+        await deleteExpenseFromSupabase(id);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialGlobal = previousHistory;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O item retornou à sua lista." } }));
+    }
 }
 
-export function removeMultipleExpenses(idsArray) {
+export async function removeMultipleExpenses(idsArray) {
+    const previousHistory = [...state.historialGlobal];
     state.historialGlobal = state.historialGlobal.filter(g => !idsArray.includes(g.id));
-    deleteMultipleExpensesFromSupabase(idsArray).catch(console.error);
+    try {
+        await deleteMultipleExpensesFromSupabase(idsArray);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialGlobal = previousHistory;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. Os itens retornaram à sua lista." } }));
+    }
 }
 
 export function replaceHistory(newHistory) {
     state.historialGlobal = newHistory;
 }
 
-export function addRegistroPatrimonio(registro) {
+export async function addRegistroPatrimonio(registro) {
+    const previousPatrimonio = [...state.historialPatrimonio];
     state.historialPatrimonio = [...state.historialPatrimonio, registro];
-    pushPatrimonioToSupabase(registro).catch(console.error);
+    try {
+        await pushPatrimonioToSupabase(registro);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialPatrimonio = previousPatrimonio;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
+    }
 }
 
-export function removeRegistroPatrimonio(id) {
+export async function removeRegistroPatrimonio(id) {
+    const previousPatrimonio = [...state.historialPatrimonio];
     state.historialPatrimonio = state.historialPatrimonio.filter(reg => reg.id !== id);
-    deletePatrimonioFromSupabase(id).catch(console.error);
+    try {
+        await deletePatrimonioFromSupabase(id);
+    } catch (error) {
+        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
+        state.historialPatrimonio = previousPatrimonio;
+        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O item retornou à sua lista." } }));
+    }
 }
 
-export function syncProfileToSupabase() {
-    pushProfileToSupabase(state).catch(console.error);
+export async function syncProfileToSupabase() {
+    try {
+        await pushProfileToSupabase(state);
+    } catch (error) {
+        console.error("Falha ao atualizar o perfil na nuvem", error);
+    }
 }

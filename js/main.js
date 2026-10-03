@@ -26,17 +26,20 @@ let presupuestoCalculadoTemporalCents = 0;
 
 let saveTimeout;
 let isSaving = false;
-let needsAnotherSave = false;
+let saveQueue = 0;
 
 const executeSave = async () => {
     if (isSaving) {
-        needsAnotherSave = true;
+        saveQueue++;
         return;
     }
+    
     isSaving = true;
     try {
         await saveStore();
-        if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
+        
+        // Atualiza a UI apenas se não houver mais salvamentos pendentes
+        if (saveQueue === 0 && !document.getElementById('pantalla-principal').classList.contains('oculto')) {
             actualizarInterfaz(state, viewMonth, viewYear, hoy);
         }
     } catch (error) {
@@ -45,8 +48,8 @@ const executeSave = async () => {
         }
     } finally {
         isSaving = false;
-        if (needsAnotherSave) {
-            needsAnotherSave = false;
+        if (saveQueue > 0) {
+            saveQueue = 0; // Reseta a fila e tenta salvar novamente as últimas mutações
             executeSave();
         }
     }
@@ -58,7 +61,8 @@ subscribe((property) => {
         return;
     }
     clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(executeSave, 50);
+    // Aumentado para 250ms para agrupar mutações da mesma thread e evitar engasgos
+    saveTimeout = setTimeout(executeSave, 250);
 });
 
 window.addEventListener('visibilitychange', () => {
@@ -77,6 +81,11 @@ window.addEventListener('visibilitychange', () => {
         }
         executeSave();
     }
+});
+
+// Listener global para capturar erros de rede/rollback emitidos por store.js
+window.addEventListener('floux-sync-error', (e) => {
+    showToast(e.detail.message);
 });
 
 // Oculta exclusivamente as secções principais da aplicação
