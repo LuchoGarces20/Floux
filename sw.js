@@ -1,4 +1,4 @@
-const CACHE_NAME = 'floux-cache-v1.15'; 
+const CACHE_NAME = 'floux-cache-v1.16'; 
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -13,6 +13,8 @@ const ASSETS_TO_CACHE = [
     './js/i18n.js',
     './js/categories.js',
     './js/swipeHandler.js',
+    './js/supabaseClient.js',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', // CDN em Cache
     './img/logo-floux.svg',
     './img/logo-light.svg',
     './img/logo-dark.svg',
@@ -46,9 +48,27 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+    // Ignora requisições que não sejam GET (como POST para o Supabase)
+    if (event.request.method !== 'GET') return;
+
     event.respondWith(
-        caches.match(event.request, { ignoreSearch: true }).then(response => {
-            return response || fetch(event.request);
+        caches.match(event.request, { ignoreSearch: true }).then(cachedResponse => {
+            // Inicia a requisição na rede em segundo plano
+            const fetchPromise = fetch(event.request).then(networkResponse => {
+                // Se a resposta for válida, atualiza o cache silenciosamente
+                if (networkResponse && networkResponse.status === 200) {
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, responseToCache);
+                    });
+                }
+                return networkResponse;
+            }).catch(() => {
+                // Opcional: Retornar uma página de offline genérica se a rede e o cache falharem
+            });
+
+            // Retorna o cache imediatamente se existir; caso contrário, aguarda a rede
+            return cachedResponse || fetchPromise;
         })
     );
 });

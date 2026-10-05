@@ -315,7 +315,7 @@ document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     }
 });
 
-// Inicialização
+// Inicialização Local-First
 async function init() {
     const user = await getUser();
     const headerApp = document.querySelector('.header-app');
@@ -332,17 +332,7 @@ async function init() {
     
     if (headerApp) headerApp.style.display = 'grid';
     
-    const remoteData = await pullSupabaseToLocalState();
-    if (remoteData) {
-        if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
-        if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
-        if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
-        if (remoteData.boletos) state.boletos = remoteData.boletos;
-        if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
-        if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
-        await saveStore();
-    }
-    
+    // 1. CARREGA DADOS LOCAIS DO INDEXEDDB (BOOT INSTANTÂNEO EM ~50ms)
     const hasData = await loadStore();
     inputMoneda.value = state.monedaActual;
     
@@ -364,6 +354,30 @@ async function init() {
             document.getElementById('wizard-ind-1')?.classList.add('active');
         });
     }
+
+    // 2. SINCRONIZAÇÃO EM SEGUNDO PLANO COM SUPABASE (NÃO BLOQUEIA A TELA)
+    pullSupabaseToLocalState().then(async (remoteData) => {
+        if (remoteData) {
+            if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
+            if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
+            if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
+            if (remoteData.boletos) state.boletos = remoteData.boletos;
+            if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
+            if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
+            await saveStore();
+
+            inputMoneda.value = state.monedaActual;
+            renderizarSelectCategorias(state.categoriasCustom);
+            renderCuentasList(state);
+            renderBoletosList(state);
+
+            if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
+                actualizarInterfaz(state, viewMonth, viewYear, hoy);
+            }
+        }
+    }).catch(err => {
+        console.error("Erro na sincronização em segundo plano:", err);
+    });
 }
 
 function mostrarPantallaPrincipal() {
@@ -1065,7 +1079,18 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
 init();
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+    });
+
+    // Escuta quando um novo Service Worker assume o controle (devido ao skipWaiting)
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+        }
+    });
 }
 
 window.addEventListener('popstate', () => {
