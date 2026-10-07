@@ -12,6 +12,77 @@ let filtroHistorialActivo = { tipo: 'todos', id: null };
 let mostrarTodosGastos = false;
 let diasSeleccionadosCalendario = new Set();
 
+let modoEdicionGasto = false;
+
+const HISTORY_TEXTS = {
+    pt: {
+        cancelEdit: 'Cancelar edição',
+        monthEmpty: 'Nenhum gasto registrado neste mês.',
+        filterEmpty: 'Nenhum gasto corresponde aos filtros selecionados.',
+        recentEmpty: 'Nenhum gasto nos últimos sete dias. Use “Ver histórico completo do mês” para consultar os demais registros.',
+        showMonth: 'Ver histórico completo do mês',
+        showRecent: 'Mostrar apenas os últimos sete dias'
+    },
+    es: {
+        cancelEdit: 'Cancelar edición',
+        monthEmpty: 'No hay gastos registrados en este mes.',
+        filterEmpty: 'Ningún gasto coincide con los filtros seleccionados.',
+        recentEmpty: 'No hay gastos en los últimos siete días. Usa “Ver historial completo del mes” para consultar los demás registros.',
+        showMonth: 'Ver historial completo del mes',
+        showRecent: 'Mostrar solo los últimos siete días'
+    },
+    en: {
+        cancelEdit: 'Cancel edit',
+        monthEmpty: 'No expenses recorded for this month.',
+        filterEmpty: 'No expenses match the selected filters.',
+        recentEmpty: 'No expenses in the last seven days. Use “View full month history” to see the other records.',
+        showMonth: 'View full month history',
+        showRecent: 'Show only the last seven days'
+    }
+};
+
+export function getHistoryText(key) {
+    return (HISTORY_TEXTS[currentLang] || HISTORY_TEXTS.en)[key] || key;
+}
+
+export function setModoEdicionGasto(isEditing) {
+    modoEdicionGasto = Boolean(isEditing);
+}
+
+export function obtenerVistaHistorial(gastosFiltrados, viewMonth, viewYear, hoy) {
+    const isCurrentMonth = viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear();
+    const hasDayFilter = diasSeleccionadosCalendario.size > 0;
+    const hasFilter = hasDayFilter || filtroHistorialActivo.tipo !== 'todos';
+    let gastosExibicao = gastosFiltrados;
+    let mostrarAlternador = false;
+
+    // Meses fechados e futuros são consultados por inteiro.
+    if (isCurrentMonth && !hasDayFilter) {
+        const inicioVentana = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 6);
+        const inicioMes = new Date(viewYear, viewMonth, 1);
+        const finVentana = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1);
+        const limiteInferior = Math.max(inicioVentana.getTime(), inicioMes.getTime());
+        const gastosRecentes = gastosFiltrados.filter(g => {
+            const timestamp = new Date(g.fecha).getTime();
+            return timestamp >= limiteInferior && timestamp < finVentana.getTime();
+        });
+        mostrarAlternador = gastosRecentes.length < gastosFiltrados.length;
+        if (!mostrarTodosGastos) gastosExibicao = gastosRecentes;
+    }
+
+    let mensajeVacio = '';
+    if (gastosExibicao.length === 0) {
+        if (gastosFiltrados.length > 0) {
+            mensajeVacio = getHistoryText('recentEmpty');
+        } else {
+            mensajeVacio = getHistoryText(hasFilter ? 'filterEmpty' : 'monthEmpty');
+        }
+    }
+
+    return { gastosExibicao, mostrarAlternador, mensajeVacio };
+}
+
+
 export function setFiltroHistorial(tipo, id = null) { filtroHistorialActivo = { tipo, id }; }
 export function resetFiltrosHistorialState() { mostrarTodosGastos = false; diasSeleccionadosCalendario.clear(); }
 export function toggleMostrarTodosGastos() { mostrarTodosGastos = !mostrarTodosGastos; }
@@ -29,6 +100,9 @@ export function aplicarTraduccion(gastoEnEdicion) {
     document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-ph')));
     document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))));
     
+    const btnCancelarEdicion = document.getElementById('btn-cancelar-edicion');
+    if (btnCancelarEdicion) btnCancelarEdicion.innerText = getHistoryText('cancelEdit');
+
     const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
     if(btnGuardarGasto) btnGuardarGasto.innerText = gastoEnEdicion ? t('btnEdit') : t('btnAdd');
 }
@@ -454,16 +528,25 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
     }, 50);
 }
 
-export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit) {
+export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit, mensajeVacio = '') {
     const listaUI = document.getElementById('lista-historial');
     if (!listaUI) return;
     listaUI.innerHTML = '';
     
-    if(gastosMesActual.length === 0) {
-        listaUI.innerHTML = `<li class="no-expenses-li" style="display:block; padding:0;"><div class="empty-state"><div class="empty-state-icon">🌱</div><div style="font-weight: 700; color: var(--primary-color); margin-bottom: 8px; font-size: 1.1rem;">${t('emptyStateTitle')}</div><div class="no-expenses-text" style="font-size: 0.9rem; max-width: 85%; line-height: 1.4;">${t('emptyStateMsg')}</div></div></li>`;
+    if (gastosMesActual.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'no-expenses-li';
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        const message = document.createElement('div');
+        message.className = 'no-expenses-text';
+        message.textContent = mensajeVacio || getHistoryText('monthEmpty');
+        emptyState.appendChild(message);
+        li.appendChild(emptyState);
+        listaUI.appendChild(li);
         return;
     }
-    
+
     const gastosOrdenados = [...gastosMesActual].sort((a, b) => {
         const timeA = new Date(a.fecha).getTime();
         const timeB = new Date(b.fecha).getTime();
@@ -588,24 +671,14 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
 
     const containerMostrarMais = document.getElementById('container-mostrar-mais');
     const labelMostrarMais = document.getElementById('label-mostrar-mais');
-    let gastosExibicao = gastosFiltrados;
+    const { gastosExibicao, mostrarAlternador, mensajeVacio } =
+        obtenerVistaHistorial(gastosFiltrados, viewMonth, viewYear, hoy);
 
-    if (diasSeleccionadosCalendario.size === 0) {
-        const seteDiasMs = 7 * 24 * 60 * 60 * 1000;
-        const dataLimiteSeteDias = new Date(hoy.getTime() - seteDiasMs);
-        const temGastosAntigos = gastosFiltrados.some(g => new Date(g.fecha) < dataLimiteSeteDias);
-        if (!mostrarTodosGastos && temGastosAntigos) {
-            gastosExibicao = gastosFiltrados.filter(g => new Date(g.fecha) >= dataLimiteSeteDias);
-            if (containerMostrarMais) containerMostrarMais.classList.remove('oculto');
-            if (labelMostrarMais) labelMostrarMais.innerText = t('btnShowMore') || 'Ver histórico completo do mês';
-        } else if (mostrarTodosGastos && temGastosAntigos) {
-            if (containerMostrarMais) containerMostrarMais.classList.remove('oculto');
-            if (labelMostrarMais) labelMostrarMais.innerText = t('btnShowLess') || 'Mostrar apenas últimos 7 dias';
-        } else {
-            if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
-        }
-    } else {
-        if (containerMostrarMais) containerMostrarMais.classList.add('oculto');
+    if (containerMostrarMais) {
+        containerMostrarMais.classList.toggle('oculto', !mostrarAlternador);
+    }
+    if (labelMostrarMais && mostrarAlternador) {
+        labelMostrarMais.innerText = getHistoryText(mostrarTodosGastos ? 'showRecent' : 'showMonth');
     }
 
     const infoSomaEl = document.getElementById('info-soma-filtro');
@@ -670,13 +743,15 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
     const dailyCards = document.querySelectorAll('.daily-card');
     const fabGasto = document.getElementById('btn-fab-gasto');
 
+    if (areaRegistro) {
+        areaRegistro.classList.toggle('oculto', !(isCurrentMonth || modoEdicionGasto));
+    }
+
     if (isCurrentMonth) {
-        if(areaRegistro) areaRegistro.classList.remove('oculto');
         if(areaResumen) areaResumen.classList.add('oculto');
         dailyCards.forEach(c => c.style.display = 'block');
         if(fabGasto) fabGasto.classList.remove('oculto');
     } else {
-        if(areaRegistro) areaRegistro.classList.add('oculto');
         if(areaResumen) areaResumen.classList.remove('oculto');
         dailyCards.forEach(c => c.style.display = 'none');
         if(fabGasto) fabGasto.classList.add('oculto');
@@ -724,7 +799,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         actualizarInterfaz(state, viewMonth, viewYear, hoy);
     });
 
-    renderExpenseList(state, gastosExibicao, localeStr, !isPastMonth);
+    renderExpenseList(state, gastosExibicao, localeStr, true, mensajeVacio);
 }
 
 export function resetFormularioGasto(setGastoCallback) {

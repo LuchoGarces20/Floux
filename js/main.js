@@ -1,7 +1,7 @@
 // js/main.js
 import { state, loadStore, saveStore, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, removeMultipleExpenses, replaceHistory, subscribe, syncProfileToSupabase } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
-import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario } from './ui.js';
+import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario, setModoEdicionGasto, getHistoryText } from './ui.js';
 import { initSwipeActions } from './swipeHandler.js';
 import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState, pushBoletoToSupabase, deleteBoletoFromSupabase, pushCuentaToSupabase, deleteCuentaFromSupabase } from './supabaseClient.js';
 
@@ -13,7 +13,29 @@ const INTERACTION_CONFIG = {
 };
 
 let gastoEnEdicion = null;
-const setGastoEnEdicion = (val) => { gastoEnEdicion = val; };
+let gastoOriginalEnEdicion = null;
+
+const setGastoEnEdicion = (val) => {
+    gastoEnEdicion = val;
+    gastoOriginalEnEdicion = val === null
+        ? null
+        : state.historialGlobal.find(g => g.id === val) || null;
+    setModoEdicionGasto(val !== null);
+    const btnCancelar = document.getElementById('btn-cancelar-edicion');
+    if (btnCancelar) {
+        btnCancelar.innerText = getHistoryText('cancelEdit');
+        btnCancelar.classList.toggle('oculto', val === null);
+    }
+};
+
+function fechaLocalInput(fecha) {
+    const date = new Date(fecha);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 const hoy = new Date();
 const mesActual = hoy.getMonth();
@@ -422,6 +444,7 @@ const triggerShimmer = () => {
 
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     triggerShimmer();
+    resetFormularioGasto(setGastoEnEdicion);
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     setFiltroHistorial('todos', null);
@@ -431,6 +454,7 @@ document.getElementById('btn-prev-month').addEventListener('click', () => {
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
     triggerShimmer();
+    resetFormularioGasto(setGastoEnEdicion);
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     setFiltroHistorial('todos', null);
@@ -703,6 +727,10 @@ function atualizarCheckboxMes() {
     const inputFecha = document.getElementById('input-fecha-gasto')?.value;
     const checkbox = document.getElementById('checkbox-mes-siguiente');
     if (!cuentaId || !checkbox) return;
+    if (gastoEnEdicion !== null) {
+        checkbox.checked = false;
+        return;
+    }
     const cuenta = state.cuentas.find(c => c.id === cuentaId);
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
@@ -718,6 +746,20 @@ function atualizarCheckboxMes() {
 
 document.getElementById('input-cuenta-origen').addEventListener('change', atualizarCheckboxMes);
 document.getElementById('input-fecha-gasto').addEventListener('change', atualizarCheckboxMes);
+
+const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
+if (btnGuardarGasto && !document.getElementById('btn-cancelar-edicion')) {
+    const btnCancelar = document.createElement('button');
+    btnCancelar.id = 'btn-cancelar-edicion';
+    btnCancelar.type = 'button';
+    btnCancelar.className = 'btn-base btn-secundario mb-10 oculto';
+    btnCancelar.innerText = getHistoryText('cancelEdit');
+    btnCancelar.addEventListener('click', () => {
+        resetFormularioGasto(setGastoEnEdicion);
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    });
+    btnGuardarGasto.insertAdjacentElement('afterend', btnCancelar);
+}
 
 document.getElementById('form-gasto').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -754,8 +796,11 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
         const baseIso = dataBase.toISOString();
         
         if (wasEditing) {
-            let mesEfectivo = undefined;
-            let fechaIso = baseIso;
+            // Alterar descrição/valor não modifica a data nem a competência original.
+            const fechaSinCambio = gastoOriginalEnEdicion &&
+                inputFecha === fechaLocalInput(gastoOriginalEnEdicion.fecha);
+            let mesEfectivo = fechaSinCambio ? gastoOriginalEnEdicion.mesEfectivo : undefined;
+            let fechaIso = fechaSinCambio ? gastoOriginalEnEdicion.fecha : baseIso;
             if (startOffset > 0) {
                 const futureDate = new Date(dataBase.getFullYear(), dataBase.getMonth() + startOffset, 1, 12, 0, 0);
                 mesEfectivo = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
@@ -798,6 +843,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
             resetFormularioGasto(setGastoEnEdicion);
         }
         
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
         if (document.activeElement) document.activeElement.blur();
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.SHORT_MS);
         showToast(wasEditing ? " " + t('btnEdit') : " " + t('btnAdd'));
@@ -1015,6 +1061,9 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
     onEdit: (id) => {
         const gasto = state.historialGlobal.find(g => g.id === id);
         if (gasto) {
+            setGastoEnEdicion(id);
+            actualizarInterfaz(state, viewMonth, viewYear, hoy);
+            document.getElementById('checkbox-mes-siguiente').checked = false;
             const inputMonto = document.getElementById('input-monto');
             inputMonto.dataset.cents = gasto.monto;
             inputMonto.value = formatCurrency(gasto.monto, state.monedaActual);
@@ -1068,10 +1117,9 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                 warnEl.style.display = 'none';
             }
             
-            setGastoEnEdicion(id);
             document.getElementById('btn-guardar-gasto').innerText = t('btnEdit');
             document.getElementById('input-monto').focus();
-            window.scrollTo({ top: document.getElementById('form-gasto').offsetTop - 20, behavior: 'smooth' });
+            document.getElementById('area-registrar-gasto').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 });
