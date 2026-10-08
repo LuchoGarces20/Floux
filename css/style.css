@@ -156,12 +156,65 @@ h4 { margin-bottom: 1rem; color: var(--text-color); }
 .calc-result strong { font-size: 2.2rem; font-weight: 800; color: var(--primary-color); display: block; margin-top: 8px; font-variant-numeric: tabular-nums; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
 #modo-calculadora, #modo-directo { padding: 0 3px; }
 .grid-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 15px; }
-.balance-card { text-align: center; padding: 1rem 0.5rem; background: var(--surface-color); border-radius: 16px; border: none; box-shadow: var(--dimensional-shadow), 0 4px 6px -1px var(--shadow-color); }
+.balance-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0.85rem 0.65rem;  /* Padding vertical reduzido para compactar o quadro */
+    background: var(--surface-color);
+    border-radius: 16px;
+    border: none;
+    box-shadow: var(--dimensional-shadow), 0 4px 6px -1px var(--shadow-color);
+    box-sizing: border-box;
+    gap: 2px;
+}
 .balance-card.highlight { background: linear-gradient(135deg, var(--primary-gradient) 0%, transparent 100%); padding: 1.5rem; }
-.b-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; display: block; font-weight: 500;}
-.b-amount { font-size: 1.5rem; font-weight: 700; color: var(--text-color); font-variant-numeric: tabular-nums; }
+.b-title {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;               /* Zerado para o flex gap cuidar do alinhamento perfeito */
+    font-weight: 500;
+}
+.b-amount {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+    line-height: 1.2;
+}
 .highlight .b-amount { font-size: 2.8rem; color: var(--primary-color); font-weight: 800; }
-.custom-progress { width: 100%; height: 6px; opacity: 0.7; background-color: var(--border-color); border-radius: 6px; margin-top: 10px; overflow: hidden; }
+.custom-progress {
+    width: 100%;
+    height: 6px;
+    opacity: 0.7;
+    background-color: var(--border-color);
+    border-radius: 6px;
+    margin: 8px 0 6px 0;       /* Respiro sutil em cima e embaixo da barra */
+    overflow: hidden;
+}
+.spent-inline {
+    display: flex;
+    flex-direction: row;        /* Mantém "Gasto:" e o valor lado a lado na mesma linha */
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.spent-inline span:last-child {
+    font-weight: 700;
+    color: var(--text-color);
+}
+.spent-inline span:last-child {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-color);
+}
 .custom-progress-fill { height: 100%; background-color: var(--success-color); border-radius: 6px; width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease; }
 .custom-progress-fill.warning { background-color: var(--danger-color); }
 .form-group { margin-bottom: 1rem; text-align: left;}

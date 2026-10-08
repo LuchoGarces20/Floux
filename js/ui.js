@@ -770,7 +770,7 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
 
     if (isCurrentMonth) {
         if(areaResumen) areaResumen.classList.add('oculto');
-        dailyCards.forEach(c => c.style.display = 'block');
+        dailyCards.forEach(c => c.style.display = 'flex');
         if(fabGasto) fabGasto.classList.remove('oculto');
     } else {
         if(areaResumen) areaResumen.classList.remove('oculto');

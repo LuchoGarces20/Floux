@@ -29,7 +29,7 @@ export function calculateBalances(state, expenses, viewMonth, viewYear, now) {
     const tetoDoDiaCents = monthly.known ? Math.max(0, Math.floor((liquidezLibreCents + gastosHojeCents) / diasRestantes)) : 0;
     // Cálculo da Previsão de Pouso (Landing Predictor)
     let projectedLiquidityCents = null;
-    if (isCurrentMonth && monthly.known && now.getDate() > 1) {
+    if (isCurrentMonth && monthly.known && now.getDate() >= 15) {
         const diasPassados = now.getDate();
         const gastoMedioDiario = totalGastadoMesCents / diasPassados;
         const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
