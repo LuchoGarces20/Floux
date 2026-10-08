@@ -155,7 +155,7 @@ h4 { margin-bottom: 1rem; color: var(--text-color); }
 .calc-result { background: linear-gradient(135deg, var(--surface-color) 0%, var(--primary-gradient) 100%); padding: 20px; border-radius: 16px; margin-bottom: 15px; text-align: center; border: none; box-shadow: var(--dimensional-shadow), 0 6px 12px -2px var(--shadow-color); }
 .calc-result strong { font-size: 2.2rem; font-weight: 800; color: var(--primary-color); display: block; margin-top: 8px; font-variant-numeric: tabular-nums; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
 #modo-calculadora, #modo-directo { padding: 0 3px; }
-.grid-balances { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+.grid-balances { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 15px; }
 .balance-card { text-align: center; padding: 1rem 0.5rem; background: var(--surface-color); border-radius: 16px; border: none; box-shadow: var(--dimensional-shadow), 0 4px 6px -1px var(--shadow-color); }
 .balance-card.highlight { background: linear-gradient(135deg, var(--primary-gradient) 0%, transparent 100%); padding: 1.5rem; }
 .b-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; display: block; font-weight: 500;}
@@ -781,4 +781,41 @@ button:active, .cat-chip:active {
     color: #ffffff;
     font-weight: 700;
     box-shadow: 0 4px 12px rgba(15, 118, 110, 0.3);
+}
+
+/* F15: allow content to fit the viewport rather than enlarging the document. */
+#app-movil, .header-app, .grid-balances > *, .summary-card,
+.form-group, .log, .log li, .expense-content, .list-item-flex .info { min-width: 0; }
+.header-app { grid-template-columns: 50px minmax(0, 1fr) 50px; }
+input, select, button { min-width: 0; max-width: 100%; }
+.b-amount, .summary-value, .cat-bar-amount, .expense-amount,
+#nw-display-total, #nw-display-variation, #display-calculado { overflow-wrap: anywhere; }
+#display-gastado { display: block; overflow-wrap: anywhere; }
+.b-amount { display: block; font-size: clamp(1rem, 4.5vw, 1.35rem); }
+.summary-row { gap: 12px; flex-wrap: wrap; }
+.summary-label { flex: 1 1 90px; min-width: 0; }
+.summary-value { flex: 1 1 110px; min-width: 0; text-align: right; }
+.cat-bar-label, .cat-bar-wrapper, .cat-bar-amount { min-width: 0; }
+.cat-bar-wrapper { flex: 1 1 45%; }
+.cat-bar-amount { flex: 0 1 35%; }
+#nw-dashboard > .nw-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+#nw-dashboard > .nw-header > div { min-width: 0; }
+#nw-dashboard > .nw-header > .text-right { text-align: left; }
+.expense-info { min-width: 0; flex: 1 1 0; }
+.expense-amount { flex: 0 1 45%; text-align: right; }
+.budget-note, .status-note { font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.budget-note { margin: 8px 0; }
+.budget-note:empty { display: none; }
+.status-note { padding: 12px; margin-bottom: 16px; background: var(--bg-color); border-radius: 12px; }
+.status-note p { margin: 0 0 12px; }
+.status-note button { white-space: normal; }
+@media (max-width: 380px) {
+    #app-movil { padding-left: calc(1rem + env(safe-area-inset-left)); padding-right: calc(1rem + env(safe-area-inset-right)); }
+    .highlight .b-amount { font-size: 2.2rem; }
+    .balance-card.highlight { padding: 1.25rem 0.75rem; }
+    .b-amount { font-size: 1.05rem; }
+    .b-title { letter-spacing: 0.5px; }
+    .log li.list-item-flex { padding: 14px 12px; }
+    .list-item-flex .actions { margin-left: 8px; }
+    .summary-card { padding: 16px; }
 }

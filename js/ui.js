@@ -166,15 +166,16 @@ export function renderSelectCuentas(state) {
     const select = document.getElementById('input-cuenta-origen');
     if (!select) return;
     const currentValue = select.value;
-    
-    select.innerHTML = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit').map(c => 
+    const contasAtivas = state.cuentas.filter(c => (c.tipo === 'cash' || c.tipo === 'credit') && !c.inactiva);
+
+    select.innerHTML = contasAtivas.map(c => 
         `<option value="${escapeHTML(c.id)}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
     ).join('');
-    
-    if (currentValue && state.cuentas.some(c => c.id === currentValue && (c.tipo === 'cash' || c.tipo === 'credit'))) {
+
+    if (currentValue && contasAtivas.some(c => c.id === currentValue)) {
         select.value = currentValue;
     } else {
-        select.value = state.cuentas.find(c => c.tipo === 'cash' || c.tipo === 'credit')?.id || '';
+        select.value = contasAtivas[0]?.id || '';
     }
 }
 
@@ -183,28 +184,27 @@ export function renderCuentasList(state) {
         const ul = document.getElementById(containerId);
         if(!ul) return;
         ul.innerHTML = '';
-        const contasNormais = state.cuentas.filter(c => c.tipo === 'cash' || c.tipo === 'credit');
-        contasNormais.forEach(c => {
+        state.cuentas.forEach(c => {
             const li = document.createElement('li');
             li.className = 'list-item-flex';
-            let typeLabel = t('accTypeCash');
-            let badgeClass = 'badge-cash';
-            
-            if (c.tipo === 'credit') {
-                typeLabel = `${t('accTypeCredit')} (Cierre: ${escapeHTML(String(c.cierreTC || ''))})`;
+            let typeLabel = c.tipo === 'cash' ? t('accTypeCash') : c.tipo === 'credit' ? `${t('accTypeCredit')} (Cierre: ${escapeHTML(String(c.cierreTC || ''))})` : t('accTypeInvestment');
+            let badgeClass = c.tipo === 'cash' ? 'badge-cash' : 'badge-credit';
+
+            if (c.inactiva) {
+                typeLabel += ' (Oculta)';
                 badgeClass = 'badge-credit';
-            } else if (c.tipo === 'investment') {
-                typeLabel = t('accTypeInvestment');
-                badgeClass = 'badge-credit';
+                li.style.opacity = '0.5';
             }
             
+            const iconToggle = c.inactiva ? '♻️' : '👁️';
+
             li.innerHTML = `
                 <div class="info">
                     <strong style="font-size: 1.1rem;">${escapeHTML(c.nombre)}</strong>
                     <div><span class="badge-tipo ${badgeClass}">${escapeHTML(typeLabel)}</span></div>
                 </div>
                 <div class="actions">
-                    <button type="button" class="btn-eliminar-simple btn-eliminar-cuenta" data-id="${escapeHTML(c.id)}">🗑️</button>
+                    <button type="button" class="btn-eliminar-simple btn-toggle-cuenta" data-id="${escapeHTML(c.id)}" title="Ocultar/Reativar">${iconToggle}</button>
                 </div>
             `;
             ul.appendChild(li);
@@ -326,11 +326,22 @@ function updateBalances(state, balances) {
         animateValue(displayLimiteHoje, balances.tetoDoDiaCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
     }
     
-    animateValue(document.getElementById('display-mensual'), balances.liquidezLibreCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    const monthly = document.getElementById('display-mensual');
+    if (balances.hasBudget) animateValue(monthly, balances.liquidezLibreCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
+    else if (monthly) {
+        monthly.dataset.animationVersion = String(Number(monthly.dataset.animationVersion || 0) + 1);
+        monthly.dataset.rawVal = '0'; monthly.textContent = '—';
+    }
+    let budgetNote = document.getElementById('monthly-budget-note');
+    if (!budgetNote) {
+        budgetNote = document.createElement('p'); budgetNote.id = 'monthly-budget-note'; budgetNote.className = 'budget-note';
+        monthly?.parentElement.appendChild(budgetNote);
+    }
+    budgetNote.textContent = !balances.hasBudget ? t('budgetNotRecorded') : balances.estimatedBudget ? t('budgetEstimate') : '';
     animateValue(document.getElementById('display-gastado'), balances.totalGastadoMesCents, UI_CONFIG.ANIMATION_DURATION_MS, state.monedaActual);
     
     const elDiario = document.getElementById('display-diario');
-    if (balances.liquidezLibreCents < (state.presupuestoMensual * UI_CONFIG.WARNING_THRESHOLD)) {
+    if (balances.hasBudget && balances.liquidezLibreCents < (balances.budgetCents * UI_CONFIG.WARNING_THRESHOLD)) {
         if(elDiario) elDiario.style.color = "var(--danger-color)";
     } else {
         if(elDiario) elDiario.style.color = "var(--primary-color)";
@@ -528,7 +539,11 @@ export function renderMiniCalendario(state, gastosMesActual, viewMonth, viewYear
         const targetEl = activeEl || (isCurrentMonth ? todayEl : stripUI.querySelector('.calendar-day-item'));
         
         if (targetEl) {
-            targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            const targetRect = targetEl.getBoundingClientRect();
+            const stripRect = stripUI.getBoundingClientRect();
+            const center = stripUI.scrollLeft + targetRect.left - stripRect.left + targetRect.width / 2 - stripUI.clientWidth / 2;
+            // Move only the horizontal strip; never move the document on render.
+            stripUI.scrollLeft = Math.max(0, Math.min(center, stripUI.scrollWidth - stripUI.clientWidth));
         }
     }, 50);
 }
@@ -568,7 +583,8 @@ export function renderExpenseList(state, gastosMesActual, localeStr, allowEdit, 
         const li = document.createElement('li');
         li.className = 'swipe-item';
         
-        if (Date.now() - g.id < 2000) {
+        const age = Date.now() - new Date(g.createdAt || g.fecha).getTime();
+        if (age >= 0 && age < 2000) {
             li.classList.add('new-item');
         }
         
@@ -763,9 +779,12 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
 
         if (areaResumen) {
             const perfEl = document.getElementById('summary-performance');
-            const dineroRestanteCents = state.presupuestoMensual - totalGastadoMesCents;
+            const dineroRestanteCents = balances.liquidezLibreCents;
 
-            if (dineroRestanteCents >= 0) {
+            if (!balances.hasBudget) {
+                perfEl.innerText = t('budgetNotRecorded');
+                perfEl.style.color = 'var(--text-muted)';
+            } else if (dineroRestanteCents >= 0) {
                 perfEl.innerText = `${t('summarySave')}${formatCurrency(dineroRestanteCents, state.monedaActual)}`;
                 perfEl.style.color = 'var(--success-color)';
             } else {
@@ -789,6 +808,18 @@ export function actualizarInterfaz(state, viewMonth, viewYear, hoy) {
         } else {
             cardDiario.classList.remove('overbudget-card');
             tituloDiario.innerText = t('availableToday') || "Disponível Hoje";
+        }
+    }
+
+    const predictor = document.getElementById('landing-predictor');
+    const landingText = document.getElementById('landing-text');
+    if (predictor && landingText) {
+        if (balances.projectedLiquidityCents !== null && isCurrentMonth) {
+            const isPositive = balances.projectedLiquidityCents >= 0;
+            landingText.innerHTML = `No ritmo atual, você fechará o mês com: <strong style="color: ${isPositive ? 'var(--success-color)' : 'var(--danger-color)'}">${formatCurrency(balances.projectedLiquidityCents, state.monedaActual)}</strong>`;
+            predictor.classList.remove('oculto');
+        } else {
+            predictor.classList.add('oculto');
         }
     }
 

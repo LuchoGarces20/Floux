@@ -63,6 +63,10 @@ async function executeQuery(query, controller) {
         if (result.error) {
             const error = new Error('Não foi possível confirmar a operação na nuvem. Verifique a conexão e as permissões da conta.');
             error.code = result.error.code || 'REMOTE_ERROR';
+            if (error.code === 'FLX01') error.message = 'Este campo mudou em outro dispositivo. Atualize os dados antes de salvar novamente.';
+            if (error.code === 'FLX03') error.message = 'Tentativa cancelada. Inicie uma nova despesa.';
+            if (error.code === 'FLX02') error.message = 'A tentativa anterior tem outros dados. Resolva-a antes de iniciar outra despesa.';
+            if (['42883','PGRST202'].includes(error.code)) error.message = 'Atualização do banco necessária. Execute o script Supabase fornecido antes de usar esta versão.';
             throw error;
         }
         return result;
@@ -104,34 +108,69 @@ export const pushExpenseToSupabase = (g, userId) => upsertRows('gastos', [expens
 export const pushMultipleExpensesToSupabase = (rows, userId) => upsertRows('gastos', rows.map(expensePayload), userId);
 export const deleteExpenseFromSupabase = (id, userId) => deleteRows('gastos', [id], userId);
 export const deleteMultipleExpensesFromSupabase = (ids, userId) => deleteRows('gastos', ids, userId);
-export const pushCuentaToSupabase = (c, userId) => upsertRows('cuentas', [{ id: c.id, nombre: c.nombre, tipo: c.tipo, cierre_tc: c.cierreTC }], userId);
+export const pushCuentaToSupabase = (c, userId) => upsertRows('cuentas', [{ id: c.id, nombre: c.nombre, tipo: c.tipo, cierre_tc: c.cierreTC, inactiva: c.inactiva || false }], userId);
 export const deleteCuentaFromSupabase = (id, userId) => deleteRows('cuentas', [id], userId);
 export const pushBoletoToSupabase = (b, userId) => upsertRows('boletos', [{ id: b.id, description: b.desc, monto: b.monto, dia_vencimiento: b.diaVencimiento, categoria: b.categoria }], userId);
 export const deleteBoletoFromSupabase = (id, userId) => deleteRows('boletos', [id], userId);
 export const pushPatrimonioToSupabase = (p, userId) => upsertRows('patrimonio_historial', [{ id: p.id, cuenta_id: p.cuentaId, monto: p.monto, fecha: p.fecha }], userId);
 export const deletePatrimonioFromSupabase = (id, userId) => deleteRows('patrimonio_historial', [id], userId);
-export const pushProfileToSupabase = (s, userId) => upsertRows('profiles', [{ presupuesto_mensual: s.presupuestoMensual,
-    moneda_actual: s.monedaActual, cierre_tc: s.cierreTC, privacy_mode: s.privacyMode,
-    categorias_custom: s.categoriasCustom, updated_at: new Date().toISOString() }], userId);
-
-// Conservado para compatibilidade. A inicialização nunca chama esta função.
-export async function pushLocalStateToSupabase(state, expectedUserId) {
+export const profileFields = { presupuestoMensual: 'presupuesto_mensual', monedaActual: 'moneda_actual',
+    cierreTC: 'cierre_tc', privacyMode: 'privacy_mode', categoriasCustom: 'categorias_custom',
+    onboardingCompleted: 'onboarding_completed' };
+export function mapProfile(p) {
+    return { presupuestoMensual: p.presupuesto_mensual ?? 0, monedaActual: p.moneda_actual ?? 'BRL',
+        cierreTC: p.cierre_tc ?? 24, privacyMode: p.privacy_mode ?? false,
+        categoriasCustom: p.categorias_custom ?? [], onboardingCompleted: p.onboarding_completed === true };
+}
+export const mapMonthlyBudget = b => ({ month: b.month, amount: b.budget, currency: b.currency, version: b.version });
+export const mapExpense = g => ({ id: g.id, monto: g.monto, desc: g.description, fecha: g.fecha,
+    categoria: g.categoria, mesEfectivo: g.mes_efectivo, cuentaId: g.cuenta_id, boletoId: g.boleto_id, groupId: g.group_id, createdAt: g.created_at });
+export function currentMonthKey(now = new Date()) {
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`;
+}
+export async function pushProfileToSupabase(patch, expected, budgetMonth, budgetVersion, expectedUserId) {
     const user = await requireUser(expectedUserId);
-    await pushProfileToSupabase(state, user.id);
-    for (const c of state.cuentas) await pushCuentaToSupabase(c, user.id);
-    for (const b of state.boletos) await pushBoletoToSupabase(b, user.id);
-    await pushMultipleExpensesToSupabase(state.historialGlobal, user.id);
-    for (const p of state.historialPatrimonio) await pushPatrimonioToSupabase(p, user.id);
+    const result = await executeQuery(getSupabaseClient().rpc('floux_patch_profile', {
+        p_patch: patch, p_expected: expected, p_budget_month: budgetMonth,
+        p_expected_budget_version: budgetVersion
+    }), new AbortController());
+    if (result.data?.owner_id !== user.id || result.data.profile?.id !== user.id) throw new Error('Perfil não confirmado. Atualize os dados.');
+    return result.data;
+}
+function validateExpenseReceipt(data, userId, operationId) {
+    if (data?.owner_id !== userId || data.operation_id !== operationId || !Array.isArray(data.expenses) ||
+        !['created','already_processed','cancelled'].includes(data.status) || data.expenses.some(g => g.user_id !== userId)) {
+        throw new Error('Recibo de despesa incompatível. Atualize os dados.');
+    }
+    return { ...data, expenses: data.expenses.map(mapExpense) };
+}
+export async function createExpensesOnceInSupabase(operationId, expenses, expectedUserId) {
+    const user = await requireUser(expectedUserId);
+    const result = await executeQuery(getSupabaseClient().rpc('floux_create_expenses', {
+        p_operation_id: operationId, p_expenses: expenses.map(expensePayload)
+    }), new AbortController());
+    return validateExpenseReceipt(result.data, user.id, operationId);
+}
+export async function getExpenseReceiptFromSupabase(operationId, expectedUserId, resolve = false) {
+    const user = await requireUser(expectedUserId);
+    const result = await executeQuery(getSupabaseClient().rpc('floux_get_expense_receipt', {
+        p_operation_id: operationId, p_resolve: resolve
+    }), new AbortController());
+    return result.data == null ? null : validateExpenseReceipt(result.data, user.id, operationId);
+}
+// Full-state uploads are intentionally refused: stale snapshots must not overwrite profile columns.
+export async function pushLocalStateToSupabase() {
+    throw new Error('Use alterações parciais confirmadas; o envio de um perfil completo não é permitido.');
 }
 
-async function readAll(table, userId, controller) {
+async function readAll(table, userId, controller, orderColumn = 'id') {
     const rows = [];
     const pageSize = 500;
     let expectedCount;
     while (true) {
         const result = await executeQuery(getSupabaseClient().from(table)
             .select('*', { count: 'exact' }).eq('user_id', userId)
-            .order('id', { ascending: true }).range(rows.length, rows.length + pageSize - 1), controller);
+            .order(orderColumn, { ascending: true }).range(rows.length, rows.length + pageSize - 1), controller);
         if (!Array.isArray(result.data) || !Number.isSafeInteger(result.count) || result.count < 0) {
             throw new Error('Resposta incompleta da nuvem. Os dados locais foram preservados.');
         }
@@ -148,10 +187,14 @@ export async function pullSupabaseToLocalState(expectedUserId) {
     const user = await requireUser(expectedUserId);
     const controller = new AbortController();
     try {
-        const [profileResult, cuentas, boletos, gastos, patrimonio] = await Promise.all([
+        const month = currentMonthKey();
+        const initialized = await executeQuery(getSupabaseClient().rpc('floux_initialize_user', { p_month: month }), controller);
+        if (initialized.data?.owner_id !== user.id || initialized.data.schema_version !== 1) throw new Error('Inicialização não confirmada.');
+        const [profileResult, cuentas, boletos, gastos, patrimonio, monthlyBudgets] = await Promise.all([
             executeQuery(getSupabaseClient().from('profiles').select('*').eq('id', user.id).maybeSingle(), controller),
             readAll('cuentas', user.id, controller), readAll('boletos', user.id, controller),
-            readAll('gastos', user.id, controller), readAll('patrimonio_historial', user.id, controller)
+            readAll('gastos', user.id, controller), readAll('patrimonio_historial', user.id, controller),
+            readAll('monthly_budgets', user.id, controller, 'month')
         ]);
         const profile = profileResult.data;
         if (!profile) {
@@ -160,12 +203,10 @@ export async function pullSupabaseToLocalState(expectedUserId) {
             }
             return null;
         }
-        return { presupuestoMensual: profile.presupuesto_mensual ?? 0,
-            monedaActual: profile.moneda_actual ?? 'BRL', cierreTC: profile.cierre_tc ?? 24,
-            privacyMode: profile.privacy_mode ?? false, categoriasCustom: profile.categorias_custom ?? [],
-            cuentas: cuentas.map(c => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, cierreTC: c.cierre_tc })),
+        return { ...mapProfile(profile), monthlyBudgets: monthlyBudgets.map(mapMonthlyBudget),
+            cuentas: cuentas.map(c => ({ id: c.id, nombre: c.nombre, tipo: c.tipo, cierreTC: c.cierre_tc, inactiva: c.inactiva || false })),
             boletos: boletos.map(b => ({ id: b.id, desc: b.description, monto: b.monto, diaVencimiento: b.dia_vencimiento, categoria: b.categoria })),
-            historialGlobal: gastos.map(g => ({ id: g.id, monto: g.monto, desc: g.description, fecha: g.fecha, categoria: g.categoria, mesEfectivo: g.mes_efectivo, cuentaId: g.cuenta_id, boletoId: g.boleto_id, groupId: g.group_id })),
+            historialGlobal: gastos.map(mapExpense),
             historialPatrimonio: patrimonio.map(p => ({ id: p.id, cuentaId: p.cuenta_id, monto: p.monto, fecha: p.fecha })) };
     } catch (error) { controller.abort(); throw error; }
 }

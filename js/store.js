@@ -1,7 +1,7 @@
 import { pushExpenseToSupabase, pushMultipleExpensesToSupabase, deleteExpenseFromSupabase,
     deleteMultipleExpensesFromSupabase, pushPatrimonioToSupabase, deletePatrimonioFromSupabase,
     pushProfileToSupabase, pushCuentaToSupabase, deleteCuentaFromSupabase,
-    pushBoletoToSupabase, deleteBoletoFromSupabase, eraseMyDataFromSupabase } from './supabaseClient.js';
+    pushBoletoToSupabase, deleteBoletoFromSupabase, eraseMyDataFromSupabase, createExpensesOnceInSupabase, profileFields, mapProfile, mapMonthlyBudget, currentMonthKey } from './supabaseClient.js';
 
 export const STORAGE_KEYS = {
     PRESUPUESTO: 'floux_presupuesto_v8',
@@ -19,7 +19,7 @@ export const STORAGE_KEYS = {
 
 // As chaves antigas e o FlouxDB original NÃO são migrados, apagados ou atribuídos a um login.
 const emptyState = () => ({ presupuestoMensual: 0, historialGlobal: [], monedaActual: 'BRL',
-    categoriasCustom: [], privacyMode: false, cierreTC: 24, cuentas: [], boletos: [], historialPatrimonio: [] });
+    categoriasCustom: [], privacyMode: false, cierreTC: 24, cuentas: [], boletos: [], historialPatrimonio: [], monthlyBudgets: [], onboardingCompleted: false });
 const rawState = emptyState();
 export function hasUserData() {
     const blank = emptyState();
@@ -99,7 +99,7 @@ export async function saveStore() {
     if (cacheWriteBlocked) throw new Error('A cópia local incompatível foi preservada. A gravação local está bloqueada para não sobrescrevê-la.');
     const userId = ownerId;
     const token = generation;
-    const record = { version: 2, ownerId: userId, savedAt: new Date().toISOString(), state: snapshot() };
+    const record = { version: 3, ownerId: userId, savedAt: new Date().toISOString(), state: snapshot() };
     assertSnapshot(record.state);
     const db = await getDB();
     sameSession(userId, token);
@@ -133,7 +133,8 @@ export async function loadStore(userId) {
     sameSession(userId, token);
     if (!record) return false;
     try {
-        if (record.ownerId !== userId || record.version !== 2) throw new Error('Cópia local incompatível. Ela foi preservada sem ser carregada.');
+        if (record.ownerId !== userId || ![2,3].includes(record.version)) throw new Error('Cópia local incompatível. Ela foi preservada sem ser carregada.');
+        if (record.version === 2) record.state = { ...emptyState(), ...record.state };
         assertSnapshot(record.state);
     } catch (error) {
         // Antes de substituir um cache incompatível, guardar seus bytes em outra chave.
@@ -172,12 +173,16 @@ export function isValidoHistorialSchema(rows) {
         (!g.mesEfectivo || /^\d{4}-(0[1-9]|1[0-2])$/.test(g.mesEfectivo))) && unique(rows);
 }
 function assertSnapshot(s) {
-    if (!s || !cents(s.presupuestoMensual) || !isValidoHistorialSchema(s.historialGlobal) ||
+    if (!s || typeof s.onboardingCompleted !== 'boolean' || !Array.isArray(s.monthlyBudgets) ||
+        !s.monthlyBudgets.every(b => b && /^\d{4}-(0[1-9]|1[0-2])$/.test(b.month) && cents(b.amount) &&
+            ['BRL','USD','EUR','CLP','ARS','MXN','COP','GBP','PEN'].includes(b.currency) && Number.isSafeInteger(b.version) && b.version > 0) ||
+        new Set(s.monthlyBudgets.map(b => b.month)).size !== s.monthlyBudgets.length || !cents(s.presupuestoMensual) || !isValidoHistorialSchema(s.historialGlobal) ||
         !['BRL','USD','EUR','CLP','ARS','MXN','COP','GBP','PEN'].includes(s.monedaActual) ||
         typeof s.privacyMode !== 'boolean' || !Number.isInteger(s.cierreTC) || s.cierreTC < 1 || s.cierreTC > 31 ||
         !Array.isArray(s.categoriasCustom) || !s.categoriasCustom.every(c => c && validId(c.id) && typeof c.nombre === 'string' && typeof c.emoji === 'string') ||
         !Array.isArray(s.cuentas) || !s.cuentas.every(c => c && validId(c.id) && typeof c.nombre === 'string' && typeof c.tipo === 'string' &&
-            (c.cierreTC == null || (Number.isInteger(c.cierreTC) && c.cierreTC >= 1 && c.cierreTC <= 31))) || !unique(s.cuentas) ||
+            (c.cierreTC == null || (Number.isInteger(c.cierreTC) && c.cierreTC >= 1 && c.cierreTC <= 31)) && 
+            (c.inactiva === undefined || typeof c.inactiva === 'boolean')) || !unique(s.cuentas) ||
         !Array.isArray(s.boletos) || !s.boletos.every(b => b && validId(b.id) && typeof b.desc === 'string' && cents(b.monto) && typeof b.categoria === 'string' &&
             Number.isInteger(b.diaVencimiento) && b.diaVencimiento >= 1 && b.diaVencimiento <= 31) || !unique(s.boletos) ||
         !Array.isArray(s.historialPatrimonio) || !s.historialPatrimonio.every(p => p && validId(p.id) && validId(p.cuentaId) && cents(p.monto) && date(p.fecha)) || !unique(s.historialPatrimonio)) {
@@ -232,6 +237,18 @@ export function confirmCreatedExpense(expense) {
         state.historialGlobal = [...state.historialGlobal.filter(g => !eq(g.id,item.id)), item];
     });
 }
+export function createExpensesOnce(draft, expenses) {
+    const items = structuredClone(expenses);
+    if (!isValidoHistorialSchema(items)) return Promise.reject(new Error('Despesa inválida.'));
+    return mutate(async (userId, guard) => {
+        if (draft.ownerId !== userId) throw new Error('A sessão mudou.');
+        const receipt = await createExpensesOnceInSupabase(draft.operationId, items, userId); guard();
+        if (!isValidoHistorialSchema(receipt.expenses)) throw new Error('Resposta de despesa inválida.');
+        const ids = new Set(items.map(g => String(g.id)));
+        if (receipt.expenses.some(g => !ids.has(String(g.id)))) throw new Error('Recibo de despesa incompatível.');
+        state.historialGlobal = [...state.historialGlobal.filter(g => !ids.has(String(g.id))), ...receipt.expenses];
+    });
+}
 export function addMultipleExpenses(expenses) {
     const items = structuredClone(expenses);
     if (!isValidoHistorialSchema(items)) return Promise.reject(new Error('Despesa inválida. Confira valor e data.'));
@@ -278,6 +295,15 @@ export function removeRegistroPatrimonio(id) {
         state.historialPatrimonio = state.historialPatrimonio.filter(p => !eq(p.id,id));
     });
 }
+export function updateCuentaStatus(id, inactiva) {
+    return mutate(async (userId, guard) => {
+        const original = state.cuentas.find(c => eq(c.id,id));
+        if (!original) return;
+        const updated = { ...original, inactiva };
+        await pushCuentaToSupabase(updated, userId); guard();
+        state.cuentas = state.cuentas.map(c => eq(c.id,id) ? updated : c);
+    });
+}
 export function addCuenta(cuenta) {
     const item = structuredClone(cuenta);
     return mutate(async (userId, guard) => {
@@ -311,8 +337,24 @@ export function updateProfile(patch) {
     return mutate(async (userId, guard) => {
         const updated = { ...snapshot(), ...changes };
         assertSnapshot(updated);
-        await pushProfileToSupabase(updated, userId); guard();
-        for (const key of Object.keys(changes)) state[key] = changes[key];
+        const patch = {}, expected = {};
+        for (const key of Object.keys(changes)) {
+            if (!profileFields[key]) throw new Error('Campo de perfil inválido.');
+            patch[profileFields[key]] = changes[key];
+            expected[profileFields[key]] = rawState[key];
+        }
+        const month = currentMonthKey();
+        const monthly = state.monthlyBudgets.find(b => b.month === month);
+        const result = await pushProfileToSupabase(patch, expected, month,
+            'presupuestoMensual' in changes ? monthly?.version ?? null : null, userId); guard();
+        const profile = mapProfile(result.profile);
+        const budgets = result.monthly_budget
+            ? [...state.monthlyBudgets.filter(b => b.month !== result.monthly_budget.month), mapMonthlyBudget(result.monthly_budget)]
+            : state.monthlyBudgets;
+        assertSnapshot({ ...snapshot(), ...profile, monthlyBudgets: budgets });
+        // Publish the snapshot together, then notify once to avoid intermediate stale UI.
+        Object.assign(rawState, profile, { monthlyBudgets: budgets });
+        listeners.forEach(fn => fn('profile', profile));
     });
 }
 export const syncProfileToSupabase = () => updateProfile({});

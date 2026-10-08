@@ -1,131 +1,74 @@
-/**
- * Motor Financeiro (Domain Logic)
- * Centraliza as regras de negócio e cálculos matemáticos do aplicativo.
- * Nenhuma manipulação de DOM deve acontecer neste arquivo.
- */
+/** Pure financial rules. All monetary values are integer cents. */
+export function getMonthlyBudget(state, viewMonth, viewYear, now = new Date()) {
+    const key = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+    const saved = (state.monthlyBudgets || []).find(b => b.month === key);
+    if (saved) return { amount: saved.amount, currency: saved.currency, known: true, estimated: false };
+    const viewed = new Date(viewYear, viewMonth, 1);
+    const current = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Never infer a past budget from today's settings. Future months are estimates.
+    if (viewed > current) return { amount: state.presupuestoMensual, known: true, estimated: true };
+    return { amount: null, known: false, estimated: false };
+}
 
-// js/financeEngine.js
-
-export function calculateBalances(state, gastosMesActual, viewMonth, viewYear, hoy) {
-    const isCurrentMonth = (viewMonth === hoy.getMonth() && viewYear === hoy.getFullYear());
-    const viewDate = new Date(viewYear, viewMonth, 1);
-    const currentDate = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-
-    // 1. ISOLAMENTO ABSOLUTO: O motor ignora qualquer gasto que seja um boleto pago
-    const gastosVariablesMes = gastosMesActual.filter(g => !g.boletoId);
-
-    // Soma APENAS os gastos livres (supermercado, lazer, etc)
-    const totalGastadoMesCents = gastosVariablesMes.reduce((acc, g) => acc + g.monto, 0);
-
-    // 2. Os boletos fixos já foram tirados da sua renda no onboarding.
-    const boletosPendientesCents = 0;
-
-    const liquidezLibreCents = state.presupuestoMensual - totalGastadoMesCents;
-
+export function calculateBalances(state, expenses, viewMonth, viewYear, now) {
+    const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
+    const monthly = getMonthlyBudget(state, viewMonth, viewYear, now);
+    const variable = expenses.filter(g => !g.boletoId);
+    const totalGastadoMesCents = variable.reduce((sum, g) => sum + g.monto, 0);
+    const liquidezLibreCents = monthly.known ? monthly.amount - totalGastadoMesCents : null;
     let gastosHojeCents = 0;
     let diasRestantes = new Date(viewYear, viewMonth + 1, 0).getDate();
-
     if (isCurrentMonth) {
-        diasRestantes = Math.max(1, (diasRestantes - hoy.getDate()) + 1);
-        
-        // Pega os gastos de hoje filtrando apenas os gastos livres
-        const gastosHoje = gastosVariablesMes.filter(g => {
-            const gDate = new Date(g.fecha);
-            // IGNORA parcelas futuras/agendamentos criados no passado (que possuem mesEfectivo)
-            return gDate.getDate() === hoy.getDate() && 
-                   gDate.getMonth() === hoy.getMonth() && 
-                   gDate.getFullYear() === hoy.getFullYear() &&
-                   !g.mesEfectivo; 
-        });
-
-        gastosHojeCents = gastosHoje.reduce((acc, g) => acc + g.monto, 0);
+        diasRestantes = Math.max(1, diasRestantes - now.getDate() + 1);
+        gastosHojeCents = variable.filter(g => {
+            const d = new Date(g.fecha);
+            return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() &&
+                d.getFullYear() === now.getFullYear() && !g.mesEfectivo;
+        }).reduce((sum, g) => sum + g.monto, 0);
+    }
+    const tetoDoDiaCents = monthly.known ? Math.max(0, Math.floor((liquidezLibreCents + gastosHojeCents) / diasRestantes)) : 0;
+    // Cálculo da Previsão de Pouso (Landing Predictor)
+    let projectedLiquidityCents = null;
+    if (isCurrentMonth && monthly.known && now.getDate() > 1) {
+        const diasPassados = now.getDate();
+        const gastoMedioDiario = totalGastadoMesCents / diasPassados;
+        const totalDiasMes = new Date(viewYear, viewMonth + 1, 0).getDate();
+        projectedLiquidityCents = Math.floor(monthly.amount - (gastoMedioDiario * totalDiasMes));
     }
 
-    const liquidezInicioDiaCents = liquidezLibreCents + gastosHojeCents;
-    const tetoDoDiaCents = Math.max(0, Math.floor(liquidezInicioDiaCents / diasRestantes));
-
-    const disponivelHojeCents = isCurrentMonth ? (tetoDoDiaCents - gastosHojeCents) : 0;
-
-    // --- NOVO: Métricas para UX/UI Premium de Estouro de Orçamento ---
-    const percentualConsumido = state.presupuestoMensual > 0 
-        ? (totalGastadoMesCents / state.presupuestoMensual) * 100 
-        : 0;
-
-    const isExcedido = liquidezLibreCents < 0;
-
-    return {
-        totalGastadoMesCents,
-        boletosPendientesCents,
-        liquidezLibreCents,
-        gastosHojeCents,
-        tetoDoDiaCents,
-        disponivelHojeCents,
-        diasRestantes,
-        percentualConsumido,
-        isExcedido
-    };
+    return { totalGastadoMesCents, boletosPendientesCents: 0, liquidezLibreCents, gastosHojeCents,
+        tetoDoDiaCents, disponivelHojeCents: isCurrentMonth ? tetoDoDiaCents - gastosHojeCents : 0,
+        diasRestantes, percentualConsumido: monthly.known && monthly.amount > 0 ? totalGastadoMesCents / monthly.amount * 100 : 0,
+        isExcedido: monthly.known && liquidezLibreCents < 0, hasBudget: monthly.known,
+        budgetCents: monthly.amount, estimatedBudget: monthly.estimated, projectedLiquidityCents };
 }
 
-export function calculateNetWorth(state) {
-    const contasInvestimento = state.cuentas.filter(c => c.tipo === 'vault_fixa' || c.tipo === 'vault_variavel');
-    
-    if (contasInvestimento.length === 0) {
-        return { totalCents: 0, variationCents: 0, pct: 0, history: [], contasInvestimento, saldosAtuais: {}, benchmarkLabel: '' };
-    }
-
-    // Ordena o histórico de patrimônio cronologicamente
-    const records = [...(state.historialPatrimonio || [])].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-    
-    const timeline = [];
+export function calculateNetWorth(state, now = new Date()) {
+    const contasInvestimento = state.cuentas.filter(c => ['vault_fixa','vault_variavel'].includes(c.tipo));
+    const ids = new Set(contasInvestimento.map(c => String(c.id)));
+    const records = (state.historialPatrimonio || []).filter(r => ids.has(String(r.cuentaId)) &&
+        new Date(r.fecha).getTime() <= now.getTime()).slice().sort((a,b) => new Date(a.fecha) - new Date(b.fecha) || a.id - b.id);
     const saldosAtuais = {};
-    
-    records.forEach(r => {
+    const initialized = new Set();
+    const history = [];
+    for (const r of records) {
         saldosAtuais[r.cuentaId] = r.monto;
-        const totalNoMomento = contasInvestimento.reduce((acc, c) => acc + (saldosAtuais[c.id] || 0), 0);
-        timeline.push({ date: new Date(r.fecha).getTime(), value: totalNoMomento });
-    });
-
-    const currentTotal = timeline.length > 0 ? timeline[timeline.length - 1].value : 0;
-    let variationCents = 0;
-    let pct = 0;
-    let benchmarkLabel = "vs. Início";
-
-    if (timeline.length > 1) {
-        const currentYear = new Date().getFullYear();
-        
-        // Busca o primeiro registro do ano atual (YTD - Year to Date)
-        let benchmarkRecord = timeline.find(t => new Date(t.date).getFullYear() === currentYear);
-
-        // Se não houver registro neste ano ou for o único, cai de volta para o primeiro registro histórico
-        if (!benchmarkRecord || benchmarkRecord.date === timeline[timeline.length - 1].date) {
-            benchmarkRecord = timeline.find(t => new Date(t.date).getFullYear() === currentYear && t !== timeline[timeline.length -1]);
-            if (!benchmarkRecord) {
-                benchmarkRecord = timeline[0];
-                benchmarkLabel = "vs. Início Histórico";
-            } else {
-                benchmarkLabel = "vs. Início do Ano";
-            }
-        } else {
-            benchmarkLabel = "vs. Início do Ano";
-        }
-
-        if (benchmarkRecord) {
-    variationCents = currentTotal - benchmarkRecord.value;
-    if (benchmarkRecord.value !== 0) {
-        pct = (variationCents / Math.abs(benchmarkRecord.value)) * 100;
-    } else {
-        pct = currentTotal > 0 ? 100 : 0;
+        initialized.add(String(r.cuentaId));
+        // A portfolio comparison needs an opening balance for every current asset.
+        if (initialized.size !== ids.size) continue;
+        const point = { date: new Date(r.fecha).getTime(), value: contasInvestimento.reduce((sum,c) => sum + saldosAtuais[c.id],0) };
+        if (history.at(-1)?.date === point.date) history[history.length - 1] = point;
+        else history.push(point);
     }
-}
-    }
-
-    return { 
-        totalCents: currentTotal, 
-        variationCents, 
-        pct, 
-        history: timeline, 
-        contasInvestimento, 
-        saldosAtuais,
-        benchmarkLabel
-    };
+    const totalCents = contasInvestimento.reduce((sum,c) => sum + (saldosAtuais[c.id] ?? 0),0);
+    const isComplete = ids.size > 0 && initialized.size === ids.size;
+    const yearStart = new Date(now.getFullYear(),0,1).getTime();
+    const opening = history.filter(p => p.date < yearStart).at(-1);
+    const baseline = opening || history[0];
+    const variationCents = isComplete && baseline ? totalCents - baseline.value : null;
+    const pct = variationCents == null ? null : baseline.value !== 0
+        ? variationCents / Math.abs(baseline.value) * 100 : variationCents === 0 ? 0 : null;
+    return { totalCents, variationCents, pct, history, contasInvestimento, saldosAtuais, isComplete,
+        benchmarkKey: !isComplete ? 'nwAwaitingBalances' : opening ? 'nwVsYearStart' : 'nwVsFirstComplete',
+        baselineDate: baseline?.date ?? null };
 }

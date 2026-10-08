@@ -16,7 +16,7 @@ function drawSVGChart(dataPoints) {
     svg.classList.add("nw-svg");
     
     if(dataPoints.length === 0) return svg;
-    if(dataPoints.length === 1) dataPoints = [ { date: dataPoints[0].date - 86400000, value: 0 }, dataPoints[0] ];
+    // A single observation is a single point, not an invented rise from zero.
     
     const minX = dataPoints[0].date;
     const maxX = dataPoints[dataPoints.length - 1].date;
@@ -29,7 +29,7 @@ function drawSVGChart(dataPoints) {
     const xRange = maxX - minX || 1;
     const yRange = yMax - yMin;
     
-    const getX = (date) => 10 + ((date - minX) / xRange) * 380;
+    const getX = (date) => dataPoints.length === 1 ? 200 : 10 + ((date - minX) / xRange) * 380;
     const getY = (val) => 150 - (((val - yMin) / yRange) * 140);
     
     const defs = document.createElementNS(svgNS, "defs");
@@ -243,24 +243,28 @@ export function renderNetWorthSection(state) {
     
     const varEl = document.getElementById('nw-display-variation');
     const signal = nwData.variationCents >= 0 ? '+' : '';
-    varEl.innerText = `${signal}${formatCurrency(nwData.variationCents, state.monedaActual)} (${signal}${nwData.pct.toFixed(2)}%)`;
+    varEl.innerText = nwData.variationCents == null ? '—' :
+        `${signal}${formatCurrency(nwData.variationCents, state.monedaActual)} (${nwData.pct == null ? '—' : signal + nwData.pct.toFixed(2) + '%'})`;
     varEl.className = nwData.variationCents >= 0 ? 'fs-1-1 variation-positive' : 'fs-1-1 variation-negative';
     
     const varLabelEl = document.getElementById('nw-var-label');
-    if (varLabelEl) varLabelEl.innerText = nwData.benchmarkLabel;
+    if (varLabelEl) varLabelEl.innerText = t(nwData.benchmarkKey);
+    let note = document.getElementById('nw-baseline-note');
+    if (!note) { note = document.createElement('p'); note.id = 'nw-baseline-note'; note.className = 'budget-note'; container.before(note); }
+    note.textContent = t(nwData.isComplete ? 'nwBalanceChangeNote' : 'nwOpeningBalanceNote');
     
     container.innerHTML = '';
-    if (nwData.contasInvestimento.length === 0) {
-        container.innerHTML = `<div class="empty-state text-center mt-20"><p class="text-muted-small">${t('nwEmpty')}</p></div>`;
+    if (nwData.contasInvestimento.length === 0 || nwData.history.length === 0) {
+        container.innerHTML = `<div class="empty-state text-center mt-20"><p class="text-muted-small">${t(nwData.contasInvestimento.length === 0 ? 'nwEmpty' : 'nwOpeningBalanceNote')}</p></div>`;
     } else {
         const svgChart = drawSVGChart(nwData.history);
         container.appendChild(svgChart);
         bindChartInteractivity(svgChart, nwData, state);
     }
     
-    select.innerHTML = nwData.contasInvestimento.map(c => {
-        const labelTipo = c.tipo === 'vault_fixa' ? 'Fixa' : 'Variável';
-        return `<option value="${escapeHTML(c.id)}">${escapeHTML(c.nombre)} [${labelTipo}] (Atual: ${formatCurrency(nwData.saldosAtuais[c.id] || 0, state.monedaActual)})</option>`;
+    select.innerHTML = nwData.contasInvestimento.filter(c => !c.inactiva).map(c => {
+        const labelTipo = t(c.tipo === 'vault_fixa' ? 'vaultFixed' : 'vaultVariable');
+        return `<option value="${escapeHTML(c.id)}">${escapeHTML(c.nombre)} [${labelTipo}] (${nwData.saldosAtuais[c.id] == null ? t('nwNoOpeningBalance') : formatCurrency(nwData.saldosAtuais[c.id], state.monedaActual)})</option>`;
     }).join('');
 
     renderVaultHistory(state);

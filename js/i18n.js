@@ -119,6 +119,58 @@ export const diccionario = {
     }
 };
 
+const fixTranslations = {
+  "es": {
+    "expensePending": "Hay un guardado pendiente. Repite los mismos datos para confirmarlo, o comprueba el intento antes de crear otro gasto.",
+    "expenseResolve": "Comprobar intento y empezar otro gasto",
+    "expenseConfirmed": "El gasto anterior fue confirmado. Puedes registrar otro.",
+    "expenseNotSaved": "El intento anterior no se guardó y fue cancelado. Puedes registrar otro.",
+    "budgetNotRecorded": "Presupuesto no registrado para este mes",
+    "budgetEstimate": "Estimación con el presupuesto actual",
+    "budgetCurrentMonth": "Este cambio ajusta el mes actual y el presupuesto predeterminado para próximos meses.",
+    "setupRequired": "Define un presupuesto positivo y añade una cuenta o tarjeta.",
+    "nwAwaitingBalances": "Faltan saldos iniciales",
+    "nwVsYearStart": "Cambio de saldo desde el inicio del año",
+    "nwVsFirstComplete": "Cambio de saldo desde el primer total completo",
+    "nwBalanceChangeNote": "El cambio de saldo incluye aportes y retiros; no mide el rendimiento de inversiones.",
+    "nwOpeningBalanceNote": "Registra un saldo inicial, incluso cero, para cada activo. El total mostrado contiene los saldos disponibles.",
+    "nwNoOpeningBalance": "Saldo inicial pendiente"
+  },
+  "en": {
+    "expensePending": "A save is pending. Enter the same details to confirm it, or check the previous attempt before creating another expense.",
+    "expenseResolve": "Check attempt and start another expense",
+    "expenseConfirmed": "The previous expense was confirmed. You can record another.",
+    "expenseNotSaved": "The previous attempt was not saved and has been cancelled. You can record another.",
+    "budgetNotRecorded": "No budget recorded for this month",
+    "budgetEstimate": "Estimate using the current budget",
+    "budgetCurrentMonth": "This change adjusts the current month and the default budget for upcoming months.",
+    "setupRequired": "Set a positive budget and add a payment account or card.",
+    "nwAwaitingBalances": "Opening balances pending",
+    "nwVsYearStart": "Balance change since year start",
+    "nwVsFirstComplete": "Balance change since first complete total",
+    "nwBalanceChangeNote": "Balance change includes deposits and withdrawals; it is not an investment return.",
+    "nwOpeningBalanceNote": "Record an opening balance, including zero, for every asset. The displayed total contains available balances.",
+    "nwNoOpeningBalance": "Opening balance pending"
+  },
+  "pt": {
+    "expensePending": "Há um salvamento pendente. Repita os mesmos dados para confirmá-lo ou verifique a tentativa antes de criar outra despesa.",
+    "expenseResolve": "Verificar tentativa e iniciar outra despesa",
+    "expenseConfirmed": "A despesa anterior foi confirmada. Você pode registrar outra.",
+    "expenseNotSaved": "A tentativa anterior não foi salva e foi cancelada. Você pode registrar outra.",
+    "budgetNotRecorded": "Orçamento não registrado para este mês",
+    "budgetEstimate": "Estimativa com o orçamento atual",
+    "budgetCurrentMonth": "Esta alteração ajusta o mês atual e o orçamento padrão dos próximos meses.",
+    "setupRequired": "Defina um orçamento positivo e adicione uma conta ou cartão.",
+    "nwAwaitingBalances": "Saldos iniciais pendentes",
+    "nwVsYearStart": "Variação de saldo desde o início do ano",
+    "nwVsFirstComplete": "Variação de saldo desde o primeiro total completo",
+    "nwBalanceChangeNote": "A variação de saldo inclui aportes e retiradas; não representa o rendimento dos investimentos.",
+    "nwOpeningBalanceNote": "Registre um saldo inicial, inclusive zero, para cada ativo. O total exibido contém os saldos disponíveis.",
+    "nwNoOpeningBalance": "Saldo inicial pendente"
+  }
+};
+for (const [lang, values] of Object.entries(fixTranslations)) Object.assign(diccionario[lang], values);
+
 export let currentLang = localStorage.getItem(STORAGE_KEYS.LANG) || (navigator.language || navigator.userLanguage).substring(0, 2);
 if (!diccionario[currentLang]) {
     currentLang = 'en';

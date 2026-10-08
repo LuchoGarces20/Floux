@@ -271,6 +271,7 @@
             <div class="wizard-step-indicator" id="wizard-ind-3">3</div>
         </div>
         <div id="wizard-step-1">
+                <p class="budget-note" data-i18n="budgetCurrentMonth"></p>
             <h3 data-i18n="wizardStep1Title" class="text-center mb-15">Moneda y Presupuesto</h3>
             <div class="form-group">
                 <label data-i18n="currencyLabel">Moneda</label>
@@ -427,12 +428,20 @@
                     <span data-i18n="spentMonth">Gasto:</span>
                     <span id="display-gastado">0.00</span>
                 </div>
+                
+                <!-- NOVO: Landing Predictor -->
+                <div id="landing-predictor" class="text-center mt-10 oculto" style="font-size: 0.85rem; background: var(--bg-color); padding: 8px; border-radius: 8px; font-weight: 500;">
+                    <span id="landing-text"></span>
+                </div>
             </div>
         </div>
         <hr class="divider">
         
         <div id="area-registrar-gasto">
             <h3 data-i18n="addExpenseTitle">Registrar Gasto</h3>
+            <div id="expense-pending-notice" class="status-note oculto" role="status">
+                <p></p><button id="btn-resolve-expense" type="button" class="btn-base btn-secundario"></button>
+            </div>
             <form id="form-gasto">
                 <div class="form-group">
                     <input type="text" id="input-monto" data-i18n-ph="amountPlaceholder" placeholder="Monto" required inputmode="decimal" data-cents="0">

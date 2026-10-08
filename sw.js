@@ -1,5 +1,4 @@
-// Atualizar este nome quando publicar novos arquivos do app.
-const CACHE_NAME = 'floux-cache-v1.19-flow';
+const CACHE_NAME = 'floux-cache-v1.19';
 const ASSETS_TO_CACHE = [
     './', './index.html', './manifest.json', './css/style.css',
     './js/main.js', './js/store.js', './js/ui.js', './js/financeEngine.js',

@@ -36,6 +36,39 @@ export function getPendingCreation(scope) {
     const draft = read(keyFor(ownerId, scope));
     return draft?.ownerId === ownerId && draft.scope === scope ? draft : null;
 }
+// Normal expenses keep a durable operation token and a hash, never form contents.
+// A different form cannot silently replace an unresolved save attempt.
+export async function getExpenseCreationDraft(fields, baseIso) {
+    const ownerId = getStoreUserId();
+    if (!ownerId) throw new Error('Entre na sua conta antes de criar registros.');
+    if (!crypto.subtle || !crypto.randomUUID) throw new Error('Abra o app por HTTPS para salvar com segurança.');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(fields)));
+    const fingerprint = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+    if (getStoreUserId() !== ownerId) throw new Error('A sessão mudou.');
+    const previous = getPendingCreation('expense');
+    if (previous) {
+        if (previous.fingerprint !== fingerprint || previous.itemIds?.length !== fields.cuotas) {
+            const error = new Error('Resolva a tentativa anterior antes de iniciar outra despesa.');
+            error.code = 'PENDING_EXPENSE';
+            throw error;
+        }
+        return previous;
+    }
+    const operationId = crypto.randomUUID();
+    const itemIds = [];
+    while (itemIds.length < fields.cuotas) {
+        const bytes = crypto.getRandomValues(new Uint8Array(6));
+        const id = bytes.reduce((value, byte) => value * 256 + byte, 0);
+        if (id > 0 && !itemIds.includes(id)) itemIds.push(id);
+    }
+    const draft = { ownerId, scope: 'expense', id: operationId, operationId, fingerprint,
+        itemIds, groupId: 'group_' + operationId, baseIso, createdAt: new Date().toISOString() };
+    const key = keyFor(ownerId, 'expense');
+    // If persistence fails, do not start an operation whose retry token could be lost.
+    sessionStorage.setItem(key, JSON.stringify(draft));
+    memory.set(key, draft);
+    return draft;
+}
 export function completeCreation(draft) {
     const key = keyFor(draft.ownerId, draft.scope);
     if (read(key)?.id !== draft.id) return;
