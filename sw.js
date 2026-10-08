@@ -1,97 +1,66 @@
-const CACHE_NAME = 'floux-cache-v1.17'; 
+// Atualizar este nome quando publicar novos arquivos do app.
+const CACHE_NAME = 'floux-cache-v1.19-flow';
 const ASSETS_TO_CACHE = [
-    './',
-    './index.html',
-    './manifest.json',
-    './css/style.css',
-    './js/main.js',
-    './js/store.js',
-    './js/ui.js',
-    './js/financeEngine.js',
-    './js/flouxVision.js', 
-    './js/flouxVault.js',
-    './js/i18n.js',
-    './js/categories.js',
-    './js/swipeHandler.js',
-    './js/supabaseClient.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', // CDN em Cache
-    './img/logo-floux.svg',
-    './img/logo-light.svg',
-    './img/logo-dark.svg',
-    './img/logo180.png',
-    './img/logo512.png',
-    './img/sc-icone-add.svg',
-    './img/sc-icone-sim.svg'
+    './', './index.html', './manifest.json', './css/style.css',
+    './js/main.js', './js/store.js', './js/ui.js', './js/financeEngine.js',
+    './js/flouxVision.js', './js/flouxVault.js', './js/i18n.js',
+    './js/categories.js', './js/swipeHandler.js', './js/supabaseClient.js',
+    './js/confirmedActions.js', './js/creationDrafts.js',
+    './img/logo-floux.svg', './img/logo-light.svg', './img/logo-dark.svg',
+    './img/logo180.png', './img/logo512.png', './img/sc-icone-add.svg', './img/sc-icone-sim.svg'
 ];
+const scopeURL = new URL('./', self.registration.scope);
+const publicAssetURLs = new Set(ASSETS_TO_CACHE.map(path => new URL(path, scopeURL).href));
 
 self.addEventListener('install', event => {
-    self.skipWaiting();
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
-    );
+    // Aguarda abas antigas fecharem; evita recarregar formulário durante atualização.
+    event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)));
 });
-
 self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
-    );
+    event.waitUntil((async () => {
+        for (const name of await caches.keys()) {
+            if (name.startsWith('floux-cache-') && name !== CACHE_NAME) await caches.delete(name);
+        }
+        await self.clients.claim();
+    })());
 });
 
+function cacheableURL(request) {
+    if (request.method !== 'GET') return null;
+    const url = new URL(request.url);
+    if (url.origin !== scopeURL.origin) return null;
+    // Somente a página pública pode ignorar parâmetros de navegação/atalho.
+    if (request.mode === 'navigate' && (url.pathname === scopeURL.pathname || url.pathname === new URL('index.html', scopeURL).pathname)) {
+        return new URL('index.html', scopeURL).href;
+    }
+    if (url.search || !publicAssetURLs.has(url.href)) return null;
+    return url.href;
+}
 self.addEventListener('fetch', event => {
-    // Ignora requisições que não sejam GET (como POST para o Supabase)
-    if (event.request.method !== 'GET') return;
-
-    event.respondWith(
-        caches.match(event.request, { ignoreSearch: true }).then(cachedResponse => {
-            // Inicia a requisição na rede em segundo plano
-            const fetchPromise = fetch(event.request).then(networkResponse => {
-                // Se a resposta for válida, atualiza o cache silenciosamente
-                if (networkResponse && networkResponse.status === 200) {
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, responseToCache);
-                    });
-                }
-                return networkResponse;
-            }).catch(() => {
-                // Opcional: Retornar uma página de offline genérica se a rede e o cache falharem
+    const url = cacheableURL(event.request);
+    if (!url) return; // API, Auth e SDK externo não passam pelo cache do app.
+    event.respondWith((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(url);
+        if (cached) return cached;
+        try {
+            const response = await fetch(event.request);
+            if (response.ok && response.type !== 'opaque') await cache.put(url, response.clone());
+            return response;
+        } catch {
+            return new Response('Sem conexão para carregar este arquivo. Reconecte e tente novamente.', {
+                status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
             });
-
-            // Retorna o cache imediatamente se existir; caso contrário, aguarda a rede
-            return cachedResponse || fetchPromise;
-        })
-    );
+        }
+    })());
 });
-
 self.addEventListener('notificationclick', event => {
-    event.notification.close(); // Fecha a notificação do sistema
-    
-    // A URL que queremos abrir (com o parâmetro action para acionar o modal)
-    const urlToOpen = new URL('./?action=add-expense', self.location.origin).href;
-
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-            // Se o app já estiver aberto em alguma aba, foca nela e redireciona
-            for (let client of windowClients) {
-                if (client.url.includes(self.location.origin) && 'focus' in client) {
-                    client.navigate(urlToOpen);
-                    return client.focus();
-                }
-            }
-            // Se o app estiver fechado, abre uma nova janela/aba
-            if (clients.openWindow) {
-                return clients.openWindow(urlToOpen);
-            }
-        })
-    );
+    event.notification.close();
+    const urlToOpen = new URL('?action=add-expense', scopeURL).href;
+    event.waitUntil((async () => {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        const client = windows.find(item => item.url.startsWith(scopeURL.href) && 'focus' in item);
+        if (client) { await client.navigate(urlToOpen); return client.focus(); }
+        return self.clients.openWindow(urlToOpen);
+    })());
 });

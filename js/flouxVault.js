@@ -1,9 +1,10 @@
 // js/flouxVault.js
-import { state, saveStore, addRegistroPatrimonio, removeRegistroPatrimonio } from './store.js';
+import { state, addRegistroPatrimonio, removeRegistroPatrimonio, addCuenta } from './store.js';
 import { t, formatCurrency } from './i18n.js';
 import { calculateNetWorth } from './financeEngine.js';
 import { escapeHTML, showToast } from './ui.js';
-import { pushCuentaToSupabase } from './supabaseClient.js';
+import { runConfirmedAction } from './confirmedActions.js';
+import { getCreationDraft, completeCreation } from './creationDrafts.js';
 
 let isVaultInitialized = false;
 
@@ -217,13 +218,12 @@ function renderVaultHistory(state) {
     });
 
     if (!historyList.dataset.bound) {
-        historyList.addEventListener('click', (e) => {
+        historyList.addEventListener('click', async (e) => {
             const btn = e.target.closest('.btn-eliminar-vault');
             if (btn) {
-                const id = parseInt(btn.dataset.id, 10);
+                const id = btn.dataset.id;
                 if(confirm(t('confirmRemoveAudit'))) {
-                    removeRegistroPatrimonio(id);
-                    saveStore();
+                    if (!await runConfirmedAction(btn, () => removeRegistroPatrimonio(id))) return;
                     renderNetWorthSection(state);
                     showToast(" " + t('toastRecordRemoved'));
                 }
@@ -274,21 +274,21 @@ export function initFlouxVault(closeModalCallback) {
 
     const formNovoAtivo = document.getElementById('form-novo-ativo-vault');
     if (formNovoAtivo && !formNovoAtivo.dataset.bound) {
-        formNovoAtivo.addEventListener('submit', (e) => {
+        formNovoAtivo.addEventListener('submit', async (e) => {
             e.preventDefault();
             const nome = document.getElementById('input-vault-nome').value.trim();
             const tipo = document.getElementById('input-vault-tipo').value;
             
             if (nome) {
-                const id = 'vault_' + Date.now();
+                const draft = getCreationDraft('vault-asset', 'vault_');
+                const id = draft.id;
                 const novaCuenta = { id, nombre: nome, tipo, cierreTC: null };
-                state.cuentas = [...state.cuentas, novaCuenta];
-                pushCuentaToSupabase(novaCuenta).catch(console.error);
+                if (!await runConfirmedAction(e.currentTarget, () => addCuenta(novaCuenta))) return;
+                completeCreation(draft);
 
                 document.getElementById('input-vault-nome').value = '';
                 if (navigator.vibrate) navigator.vibrate(15);
                 showToast(" " + t('toastAssetCreated'));
-                saveStore();
                 renderNetWorthSection(state);
             }
         });
@@ -297,24 +297,25 @@ export function initFlouxVault(closeModalCallback) {
 
     const formVault = document.getElementById('form-flouxvault');
     if (formVault && !formVault.dataset.bound) {
-        formVault.addEventListener('submit', (e) => {
+        formVault.addEventListener('submit', async (e) => {
             e.preventDefault();
             const inputNwMonto = document.getElementById('input-nw-monto');
             const cuentaId = document.getElementById('input-nw-cuenta').value;
             const montoCents = parseInt(inputNwMonto.dataset.cents || '0', 10);
             
             if (cuentaId && !isNaN(montoCents)) {
-                addRegistroPatrimonio({
-                    id: Date.now(),
+                const draft = getCreationDraft('vault-balance');
+                if (!await runConfirmedAction(e.currentTarget, () => addRegistroPatrimonio({
+                    id: draft.id,
                     cuentaId: cuentaId,
                     monto: montoCents,
-                    fecha: new Date().toISOString()
-                });
+                    fecha: draft.createdAt
+                }))) return;
+                completeCreation(draft);
                 inputNwMonto.value = '';
                 inputNwMonto.dataset.cents = '0';
                 if (navigator.vibrate) navigator.vibrate(15);
                 showToast(" " + t('btnSave'));
-                saveStore();
                 renderNetWorthSection(state);
             }
         });

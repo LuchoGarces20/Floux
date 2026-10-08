@@ -96,7 +96,9 @@ export function escapeHTML(str) {
 }
 
 export function aplicarTraduccion(gastoEnEdicion) {
-    document.querySelectorAll('[data-i18n]').forEach(el => el.innerText = t(el.getAttribute('data-i18n')));
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        if (!el.closest('[data-confirmed-busy="true"]')) el.innerText = t(el.getAttribute('data-i18n'));
+    });
     document.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.getAttribute('data-i18n-ph')));
     document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria'))));
     
@@ -104,7 +106,7 @@ export function aplicarTraduccion(gastoEnEdicion) {
     if (btnCancelarEdicion) btnCancelarEdicion.innerText = getHistoryText('cancelEdit');
 
     const btnGuardarGasto = document.getElementById('btn-guardar-gasto');
-    if(btnGuardarGasto) btnGuardarGasto.innerText = gastoEnEdicion ? t('btnEdit') : t('btnAdd');
+    if(btnGuardarGasto && btnGuardarGasto.dataset.confirmedBusy !== 'true') btnGuardarGasto.innerText = gastoEnEdicion ? t('btnEdit') : t('btnAdd');
 }
 
 export function renderizarSelectCategorias(customCats) {
@@ -169,10 +171,10 @@ export function renderSelectCuentas(state) {
         `<option value="${escapeHTML(c.id)}">${escapeHTML(c.nombre)} ${c.tipo === 'credit' ? '(💳)' : '(💵)'}</option>`
     ).join('');
     
-    if (currentValue && state.cuentas.find(c => c.id === currentValue)) {
+    if (currentValue && state.cuentas.some(c => c.id === currentValue && (c.tipo === 'cash' || c.tipo === 'credit'))) {
         select.value = currentValue;
-    } else if (state.cuentas.length > 0) {
-        select.value = state.cuentas[0].id;
+    } else {
+        select.value = state.cuentas.find(c => c.tipo === 'cash' || c.tipo === 'credit')?.id || '';
     }
 }
 
@@ -273,6 +275,8 @@ export function showToast(message) {
 
 export function animateValue(obj, endCents, duration, currency) {
     if (!obj) return;
+    const version = Number(obj.dataset.animationVersion || 0) + 1;
+    obj.dataset.animationVersion = String(version);
     const startCents = parseInt(obj.dataset.rawVal || '0', 10);
     
     if (startCents === endCents) {
@@ -283,6 +287,7 @@ export function animateValue(obj, endCents, duration, currency) {
     
     let startTimestamp = null;
     const step = (timestamp) => {
+        if (Number(obj.dataset.animationVersion) !== version) return;
         if (!startTimestamp) startTimestamp = timestamp;
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
         const easeProgress = 1 - Math.pow(1 - progress, 4);

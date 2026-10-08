@@ -1,13 +1,7 @@
-// js/store.js
-import {
-    pushExpenseToSupabase,
-    pushMultipleExpensesToSupabase,
-    deleteExpenseFromSupabase,
-    deleteMultipleExpensesFromSupabase,
-    pushPatrimonioToSupabase,
-    deletePatrimonioFromSupabase,
-    pushProfileToSupabase
-} from './supabaseClient.js';
+import { pushExpenseToSupabase, pushMultipleExpensesToSupabase, deleteExpenseFromSupabase,
+    deleteMultipleExpensesFromSupabase, pushPatrimonioToSupabase, deletePatrimonioFromSupabase,
+    pushProfileToSupabase, pushCuentaToSupabase, deleteCuentaFromSupabase,
+    pushBoletoToSupabase, deleteBoletoFromSupabase, eraseMyDataFromSupabase } from './supabaseClient.js';
 
 export const STORAGE_KEYS = {
     PRESUPUESTO: 'floux_presupuesto_v8',
@@ -23,24 +17,17 @@ export const STORAGE_KEYS = {
     PATRIMONIO: 'floux_patrimonio_v1'
 };
 
-const rawState = {
-    presupuestoMensual: 0,
-    historialGlobal: [],
-    monedaActual: 'BRL',
-    categoriasCustom: [],
-    privacyMode: false,
-    cierreTC: 24,
-    cuentas: [],
-    boletos: [],
-    historialPatrimonio: []
-};
-
+// As chaves antigas e o FlouxDB original NÃO são migrados, apagados ou atribuídos a um login.
+const emptyState = () => ({ presupuestoMensual: 0, historialGlobal: [], monedaActual: 'BRL',
+    categoriasCustom: [], privacyMode: false, cierreTC: 24, cuentas: [], boletos: [], historialPatrimonio: [] });
+const rawState = emptyState();
+export function hasUserData() {
+    const blank = emptyState();
+    return Object.keys(blank).some(key => Array.isArray(blank[key])
+        ? rawState[key].length > 0 : rawState[key] !== blank[key]);
+}
 const listeners = new Set();
-export const subscribe = (fn) => {
-    listeners.add(fn);
-    return () => listeners.delete(fn);
-};
-
+export const subscribe = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 export const state = new Proxy(rawState, {
     set(target, property, value) {
         if (target[property] === value) return true;
@@ -49,243 +36,292 @@ export const state = new Proxy(rawState, {
         return true;
     }
 });
-
-const DB_NAME = 'FlouxDB';
-const STORE_NAME = 'floux_store';
-
-function getDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
-        request.onupgradeneeded = e => {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+let ownerId = null;
+let generation = 0;
+let ready = false;
+let cacheWriteBlocked = false;
+let queue = Promise.resolve();
+let latestNumericId = 0;
+export const getStoreUserId = () => ownerId;
+export const isStoreReady = () => ready && Boolean(ownerId);
+export function resetSession(userId = null) {
+    generation++;
+    ownerId = userId;
+    ready = false;
+    cacheWriteBlocked = false;
+    queue = Promise.resolve();
+    Object.assign(rawState, emptyState());
+}
+export function markStoreReady(userId) {
+    if (ownerId !== userId) throw new Error('A sessão mudou.');
+    ready = true;
+}
+function sameSession(userId, token) {
+    if (ownerId !== userId || generation !== token) throw new Error('A sessão mudou. A operação anterior foi interrompida.');
 }
 
-async function dbGet(key) {
+const DB_NAME = 'FlouxUserCache_v2';
+const STORE_NAME = 'user_snapshots';
+let dbPromise;
+function getDB() {
+    if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME);
+        };
+        request.onsuccess = () => {
+            const db = request.result;
+            db.onversionchange = () => { db.close(); dbPromise = null; };
+            resolve(db);
+        };
+        request.onerror = () => { dbPromise = null; reject(request.error); };
+        request.onblocked = () => { dbPromise = null; reject(new Error('Feche outras abas do Floux e tente novamente.')); };
+    });
+    return dbPromise;
+}
+async function readCache(userId) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
-        const req = tx.objectStore(STORE_NAME).get(key);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        const req = tx.objectStore(STORE_NAME).get(userId);
+        let value;
+        req.onsuccess = () => { value = req.result; };
+        tx.oncomplete = () => resolve(value);
+        tx.onerror = () => reject(tx.error || req.error || new Error('Falha ao ler a cópia local.'));
+        tx.onabort = () => reject(tx.error || new Error('Leitura local interrompida.'));
     });
 }
-
-export async function loadStore() {
-    if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
-    if (localStorage.getItem(STORAGE_KEYS.PRESUPUESTO) !== null) await migrateFromLocalStorage();
-
-    const priv = await dbGet(STORAGE_KEYS.PRIVACY);
-    const m = await dbGet(STORAGE_KEYS.MONEDA);
-    const c = await dbGet(STORAGE_KEYS.CATEGORIAS);
-    const p = await dbGet(STORAGE_KEYS.PRESUPUESTO);
-    const h = await dbGet(STORAGE_KEYS.HISTORIAL);
-    const cierre = await dbGet(STORAGE_KEYS.CIERRE_TC);
-    const cuentas = await dbGet(STORAGE_KEYS.CUENTAS);
-    const boletos = await dbGet(STORAGE_KEYS.BOLETOS);
-    const pat = await dbGet(STORAGE_KEYS.PATRIMONIO);
-
-    if (priv === true) rawState.privacyMode = true;
-    if (m) rawState.monedaActual = m;
-    if (Array.isArray(c)) rawState.categoriasCustom = c;
-    if (cierre !== undefined) rawState.cierreTC = cierre;
-
-    if (Array.isArray(cuentas) && cuentas.length > 0) {
-        rawState.cuentas = cuentas;
-    } else {
-        rawState.cuentas = [{ id: 'acc_default', nombre: 'Conta Principal', tipo: 'cash', cierreTC: null }];
-    }
-
-    if (Array.isArray(boletos)) rawState.boletos = boletos;
-    if (Array.isArray(pat)) rawState.historialPatrimonio = pat;
-    if (p !== undefined) {
-        rawState.presupuestoMensual = p;
-        if (isValidoHistorialSchema(h)) rawState.historialGlobal = h;
-        return true;
-    }
-    return false;
+function snapshot() {
+    return structuredClone({ ...rawState });
 }
-
 export async function saveStore() {
+    if (!ownerId) return;
+    if (cacheWriteBlocked) throw new Error('A cópia local incompatível foi preservada. A gravação local está bloqueada para não sobrescrevê-la.');
+    const userId = ownerId;
+    const token = generation;
+    const record = { version: 2, ownerId: userId, savedAt: new Date().toISOString(), state: snapshot() };
+    assertSnapshot(record.state);
     const db = await getDB();
-    return new Promise((resolve, reject) => {
+    sameSession(userId, token);
+    await new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put(state.presupuestoMensual, STORAGE_KEYS.PRESUPUESTO);
-        store.put(state.historialGlobal, STORAGE_KEYS.HISTORIAL);
-        store.put(state.monedaActual, STORAGE_KEYS.MONEDA);
-        store.put(state.categoriasCustom, STORAGE_KEYS.CATEGORIAS);
-        store.put(state.privacyMode, STORAGE_KEYS.PRIVACY);
-        store.put(state.cierreTC, STORAGE_KEYS.CIERRE_TC);
-        store.put(state.cuentas, STORAGE_KEYS.CUENTAS);
-        store.put(state.boletos, STORAGE_KEYS.BOLETOS);
-        store.put(state.historialPatrimonio, STORAGE_KEYS.PATRIMONIO);
-
-        tx.oncomplete = () => {
-            resolve();
-        };
-        tx.onerror = (e) => reject(e.target.error);
-        tx.onabort = (e) => reject(e.target.error || new Error('Transação abortada'));
+        tx.objectStore(STORE_NAME).put(record, userId);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('Não foi possível gravar a cópia local.'));
+        tx.onabort = () => reject(tx.error || new Error('Salvamento local interrompido.'));
     });
 }
-
-async function migrateFromLocalStorage() {
-    try {
-        const db = await getDB();
+export async function clearCurrentUserCache() {
+    const userId = ownerId;
+    const token = generation;
+    if (!userId) return;
+    const db = await getDB();
+    sameSession(userId, token);
+    await new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-
-        const rawPresupuesto = localStorage.getItem(STORAGE_KEYS.PRESUPUESTO);
-        const rawHistorial = localStorage.getItem(STORAGE_KEYS.HISTORIAL);
-
-        if (rawPresupuesto) store.put(parseInt(rawPresupuesto, 10) || 0, STORAGE_KEYS.PRESUPUESTO);
-        if (rawHistorial) {
-            const parsedHistorial = JSON.parse(rawHistorial);
-            if (Array.isArray(parsedHistorial)) store.put(parsedHistorial, STORAGE_KEYS.HISTORIAL);
-        }
-
-        await new Promise((resolve) => { tx.oncomplete = resolve; });
-        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-    } catch (e) {
-        console.error("Falha na migração do LocalStorage. Resetando chaves corrompidas.", e);
-        Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-    }
+        tx.objectStore(STORE_NAME).delete(userId);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('Falha ao limpar esta cópia local.'));
+        tx.onabort = () => reject(tx.error || new Error('Operação local interrompida.'));
+    });
 }
-
-export function isValidoHistorialSchema(data) {
-    if (!Array.isArray(data)) return false;
-    return data.every(item =>
-        typeof item === 'object' && item !== null &&
-        (typeof item.id === 'number' || typeof item.id === 'string') && 
-        typeof item.monto === 'number' &&
-        typeof item.desc === 'string' && 
-        typeof item.fecha === 'string' &&
-        typeof item.categoria === 'string'
-    );
-}
-
-export function isValidBackupSchema(data) {
-    if (!data || typeof data !== 'object') return false;
-    const history = Array.isArray(data) ? data : data.historial;
-    if (!isValidoHistorialSchema(history)) return false;
-    if (!Array.isArray(data)) {
-        if (data.cuentas && !Array.isArray(data.cuentas)) return false;
-        if (data.boletos && !Array.isArray(data.boletos)) return false;
-        if (data.patrimonio && !Array.isArray(data.patrimonio)) return false;
+export async function loadStore(userId) {
+    if (typeof userId !== 'string' || !userId) throw new Error('Usuário obrigatório para carregar dados locais.');
+    resetSession(userId);
+    const token = generation;
+    const record = await readCache(userId);
+    sameSession(userId, token);
+    if (!record) return false;
+    try {
+        if (record.ownerId !== userId || record.version !== 2) throw new Error('Cópia local incompatível. Ela foi preservada sem ser carregada.');
+        assertSnapshot(record.state);
+    } catch (error) {
+        // Antes de substituir um cache incompatível, guardar seus bytes em outra chave.
+        cacheWriteBlocked = true;
+        try {
+            const db = await getDB();
+            sameSession(userId, token);
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(record, ['recovery', userId, new Date().toISOString()]);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error || new Error('Falha ao preservar a cópia.'));
+                tx.onabort = () => reject(tx.error || new Error('Preservação interrompida.'));
+            });
+            sameSession(userId, token);
+            cacheWriteBlocked = false;
+        } catch { /* Sem arquivo de recuperação confirmado, nunca sobrescrever a origem. */ }
+        throw error;
     }
+    Object.assign(rawState, structuredClone(record.state));
     return true;
 }
-
-// Ações com Sincronização Incremental + Optimistic UI Rollback
-export async function addExpense(expense) {
-    const previousHistory = [...state.historialGlobal];
-    state.historialGlobal = [...state.historialGlobal, expense];
-    try {
-        await pushExpenseToSupabase(expense);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialGlobal = previousHistory;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
-    }
+export function applyRemoteSnapshot(remoteData, userId) {
+    if (ownerId !== userId || ready) throw new Error('Não é seguro substituir dados enquanto a sessão está em uso.');
+    assertSnapshot(remoteData);
+    Object.assign(rawState, structuredClone(remoteData));
 }
 
-export async function addMultipleExpenses(expensesArray) {
-    const previousHistory = [...state.historialGlobal];
-    state.historialGlobal = [...state.historialGlobal, ...expensesArray];
-    try {
-        await pushMultipleExpensesToSupabase(expensesArray);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialGlobal = previousHistory;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
+const validId = id => (typeof id === 'string' && id.length > 0) || (Number.isSafeInteger(id) && id >= 0);
+const cents = value => Number.isSafeInteger(value) && value >= 0;
+const date = value => typeof value === 'string' && Number.isFinite(new Date(value).getTime());
+const unique = rows => new Set(rows.map(row => String(row.id))).size === rows.length;
+export function isValidoHistorialSchema(rows) {
+    return Array.isArray(rows) && rows.every(g => g && validId(g.id) && cents(g.monto) &&
+        typeof g.desc === 'string' && date(g.fecha) && typeof g.categoria === 'string' &&
+        (!g.mesEfectivo || /^\d{4}-(0[1-9]|1[0-2])$/.test(g.mesEfectivo))) && unique(rows);
+}
+function assertSnapshot(s) {
+    if (!s || !cents(s.presupuestoMensual) || !isValidoHistorialSchema(s.historialGlobal) ||
+        !['BRL','USD','EUR','CLP','ARS','MXN','COP','GBP','PEN'].includes(s.monedaActual) ||
+        typeof s.privacyMode !== 'boolean' || !Number.isInteger(s.cierreTC) || s.cierreTC < 1 || s.cierreTC > 31 ||
+        !Array.isArray(s.categoriasCustom) || !s.categoriasCustom.every(c => c && validId(c.id) && typeof c.nombre === 'string' && typeof c.emoji === 'string') ||
+        !Array.isArray(s.cuentas) || !s.cuentas.every(c => c && validId(c.id) && typeof c.nombre === 'string' && typeof c.tipo === 'string' &&
+            (c.cierreTC == null || (Number.isInteger(c.cierreTC) && c.cierreTC >= 1 && c.cierreTC <= 31))) || !unique(s.cuentas) ||
+        !Array.isArray(s.boletos) || !s.boletos.every(b => b && validId(b.id) && typeof b.desc === 'string' && cents(b.monto) && typeof b.categoria === 'string' &&
+            Number.isInteger(b.diaVencimiento) && b.diaVencimiento >= 1 && b.diaVencimiento <= 31) || !unique(s.boletos) ||
+        !Array.isArray(s.historialPatrimonio) || !s.historialPatrimonio.every(p => p && validId(p.id) && validId(p.cuentaId) && cents(p.monto) && date(p.fecha)) || !unique(s.historialPatrimonio)) {
+        throw new Error('Dados incompletos ou incompatíveis. A cópia anterior foi preservada; nenhum histórico foi substituído.');
     }
 }
+export function isValidBackupSchema(data) {
+    if (Array.isArray(data)) return isValidoHistorialSchema(data);
+    try {
+        const candidate = { ...emptyState(), ...data, historialGlobal: data?.historialGlobal ?? data?.historial,
+            historialPatrimonio: data?.historialPatrimonio ?? data?.patrimonio ?? [] };
+        assertSnapshot(candidate);
+        return true;
+    } catch { return false; }
+}
+export function nextRecordId() {
+    const historicalMax = [...state.historialGlobal, ...state.historialPatrimonio]
+        .reduce((max, row) => Math.max(max, typeof row.id === 'number' ? row.id : 0), 0);
+    latestNumericId = Math.max(Date.now(), latestNumericId + 1, historicalMax + 1);
+    return latestNumericId;
+}
 
-export async function updateExpense(id, updatedData) {
-    const previousHistory = [...state.historialGlobal];
-    let updatedItem = null;
-    
-    state.historialGlobal = state.historialGlobal.map(g => {
-        if (g.id === id) {
-            updatedItem = { ...g, ...updatedData };
-            return updatedItem;
+// Mutações serializadas e confirmadas: nenhum rollback de uma fotografia antiga.
+function mutate(action) {
+    const userId = ownerId;
+    const token = generation;
+    if (!isStoreReady()) return Promise.reject(new Error('Aguarde a sincronização antes de alterar dados.'));
+    const run = async () => {
+        sameSession(userId, token);
+        await action(userId, () => sameSession(userId, token));
+        sameSession(userId, token);
+        try { await saveStore(); }
+        catch (error) {
+            sameSession(userId, token);
+            window.dispatchEvent(new CustomEvent('floux-cache-warning', { detail: { message:
+                'Alteração confirmada na nuvem, mas a cópia local não pôde ser atualizada. Mantenha a conexão e recarregue antes de usar offline.' } }));
         }
-        return g;
+    };
+    const result = queue.then(run);
+    queue = result.catch(() => {});
+    return result;
+}
+const eq = (a,b) => String(a) === String(b);
+export const addExpense = expense => addMultipleExpenses([expense]);
+// Criação com ID de tentativa estável: a resposta perdida pode já ter sido
+// recuperada pelo pull. Reconciliar esse mesmo registro evita duplicá-lo.
+export function confirmCreatedExpense(expense) {
+    const item = structuredClone(expense);
+    if (!isValidoHistorialSchema([item])) return Promise.reject(new Error('Despesa inválida.'));
+    return mutate(async (userId, guard) => {
+        await pushExpenseToSupabase(item, userId); guard();
+        state.historialGlobal = [...state.historialGlobal.filter(g => !eq(g.id,item.id)), item];
     });
-    
-    if (updatedItem) {
-        try {
-            await pushExpenseToSupabase(updatedItem);
-        } catch (error) {
-            console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-            state.historialGlobal = previousHistory;
-            window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. A modificação foi desfeita." } }));
-        }
-    }
 }
-
-export async function removeExpense(id) {
-    const previousHistory = [...state.historialGlobal];
-    state.historialGlobal = state.historialGlobal.filter(g => g.id !== id);
-    try {
-        await deleteExpenseFromSupabase(id);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialGlobal = previousHistory;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O item retornou à sua lista." } }));
-    }
+export function addMultipleExpenses(expenses) {
+    const items = structuredClone(expenses);
+    if (!isValidoHistorialSchema(items)) return Promise.reject(new Error('Despesa inválida. Confira valor e data.'));
+    return mutate(async (userId, guard) => {
+        if (items.some(item => state.historialGlobal.some(g => eq(g.id,item.id)))) throw new Error('Registro já existe. Atualize os dados antes de repetir.');
+        await pushMultipleExpensesToSupabase(items, userId); guard();
+        state.historialGlobal = [...state.historialGlobal, ...items];
+    });
 }
-
-export async function removeMultipleExpenses(idsArray) {
-    const previousHistory = [...state.historialGlobal];
-    state.historialGlobal = state.historialGlobal.filter(g => !idsArray.includes(g.id));
-    try {
-        await deleteMultipleExpensesFromSupabase(idsArray);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialGlobal = previousHistory;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. Os itens retornaram à sua lista." } }));
-    }
+export function updateExpense(id, data) {
+    const patch = structuredClone(data);
+    return mutate(async (userId, guard) => {
+        const original = state.historialGlobal.find(g => eq(g.id,id));
+        if (!original) throw new Error('Despesa não encontrada. Atualize os dados.');
+        const updated = { ...original, ...patch, id: original.id };
+        if (!isValidoHistorialSchema([updated])) throw new Error('Despesa inválida.');
+        await pushExpenseToSupabase(updated, userId); guard();
+        state.historialGlobal = state.historialGlobal.map(g => eq(g.id,id) ? updated : g);
+    });
 }
-
-export function replaceHistory(newHistory) {
-    state.historialGlobal = newHistory;
+export const removeExpense = id => removeMultipleExpenses([id]);
+export function removeMultipleExpenses(ids) {
+    const selected = [...ids];
+    return mutate(async (userId, guard) => {
+        await deleteMultipleExpensesFromSupabase(selected, userId); guard();
+        state.historialGlobal = state.historialGlobal.filter(g => !selected.some(id => eq(id,g.id)));
+    });
 }
-
-export async function addRegistroPatrimonio(registro) {
-    const previousPatrimonio = [...state.historialPatrimonio];
-    state.historialPatrimonio = [...state.historialPatrimonio, registro];
-    try {
-        await pushPatrimonioToSupabase(registro);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialPatrimonio = previousPatrimonio;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O registro não pôde ser salvo na nuvem." } }));
-    }
+export function replaceHistory(history) {
+    if (!isValidoHistorialSchema(history)) throw new Error('Histórico inválido.');
+    state.historialGlobal = structuredClone(history);
 }
-
-export async function removeRegistroPatrimonio(id) {
-    const previousPatrimonio = [...state.historialPatrimonio];
-    state.historialPatrimonio = state.historialPatrimonio.filter(reg => reg.id !== id);
-    try {
-        await deletePatrimonioFromSupabase(id);
-    } catch (error) {
-        console.error("Falha ao sincronizar com Supabase. Revertendo...", error);
-        state.historialPatrimonio = previousPatrimonio;
-        window.dispatchEvent(new CustomEvent('floux-sync-error', { detail: { message: "Erro de conexão. O item retornou à sua lista." } }));
-    }
+export function addRegistroPatrimonio(registro) {
+    const item = structuredClone(registro);
+    return mutate(async (userId, guard) => {
+        if (!validId(item.id) || !validId(item.cuentaId) || !cents(item.monto) || !date(item.fecha)) throw new Error('Saldo inválido.');
+        await pushPatrimonioToSupabase(item, userId); guard();
+        state.historialPatrimonio = [...state.historialPatrimonio.filter(p => !eq(p.id,item.id)), item];
+    });
 }
+export function removeRegistroPatrimonio(id) {
+    return mutate(async (userId, guard) => {
+        await deletePatrimonioFromSupabase(id, userId); guard();
+        state.historialPatrimonio = state.historialPatrimonio.filter(p => !eq(p.id,id));
+    });
+}
+export function addCuenta(cuenta) {
+    const item = structuredClone(cuenta);
+    return mutate(async (userId, guard) => {
+        assertSnapshot({ ...snapshot(), cuentas: [...state.cuentas.filter(c => !eq(c.id,item.id)), item] });
+        await pushCuentaToSupabase(item, userId); guard();
+        state.cuentas = [...state.cuentas.filter(c => !eq(c.id,item.id)), item];
+    });
+}
+export function removeCuenta(id) {
+    return mutate(async (userId, guard) => {
+        await deleteCuentaFromSupabase(id, userId); guard();
+        state.cuentas = state.cuentas.filter(c => !eq(c.id,id));
+    });
+}
+export function addBoleto(boleto) {
+    const item = structuredClone(boleto);
+    return mutate(async (userId, guard) => {
+        assertSnapshot({ ...snapshot(), boletos: [...state.boletos.filter(b => !eq(b.id,item.id)), item] });
+        await pushBoletoToSupabase(item, userId); guard();
+        state.boletos = [...state.boletos.filter(b => !eq(b.id,item.id)), item];
+    });
+}
+export function removeBoleto(id) {
+    return mutate(async (userId, guard) => {
+        await deleteBoletoFromSupabase(id, userId); guard();
+        state.boletos = state.boletos.filter(b => !eq(b.id,id));
+    });
+}
+export function updateProfile(patch) {
+    const changes = structuredClone(patch);
+    return mutate(async (userId, guard) => {
+        const updated = { ...snapshot(), ...changes };
+        assertSnapshot(updated);
+        await pushProfileToSupabase(updated, userId); guard();
+        for (const key of Object.keys(changes)) state[key] = changes[key];
+    });
+}
+export const syncProfileToSupabase = () => updateProfile({});
 
-export async function syncProfileToSupabase() {
-    try {
-        await pushProfileToSupabase(state);
-    } catch (error) {
-        console.error("Falha ao atualizar o perfil na nuvem", error);
-    }
+export function eraseUserData(operationId) {
+    return mutate(async (userId, guard) => {
+        await eraseMyDataFromSupabase(operationId, userId);
+        guard();
+        // Nunca esvaziar o estado antes de a transação da nuvem confirmar.
+        for (const [key, value] of Object.entries(emptyState())) state[key] = value;
+    });
 }

@@ -1,9 +1,11 @@
 // js/main.js
-import { state, loadStore, saveStore, STORAGE_KEYS, addExpense, addMultipleExpenses, updateExpense, removeExpense, removeMultipleExpenses, replaceHistory, subscribe, syncProfileToSupabase } from './store.js';
+import { state, loadStore, saveStore, STORAGE_KEYS, confirmCreatedExpense, addMultipleExpenses, updateExpense, removeExpense, removeMultipleExpenses, subscribe, updateProfile, addCuenta, removeCuenta, addBoleto, removeBoleto, resetSession, getStoreUserId, isStoreReady, markStoreReady, applyRemoteSnapshot, clearCurrentUserCache, nextRecordId, eraseUserData, hasUserData } from './store.js';
 import { currentLang, t, setLangStr, formatCurrency } from './i18n.js';
 import { aplicarTraduccion, renderizarSelectCategorias, renderCuentasList, renderBoletosList, actualizarInterfaz, resetFormularioGasto, showToast, setFiltroHistorial, resetFiltrosHistorialState, toggleMostrarTodosGastos, limparDiaCalendario, setModoEdicionGasto, getHistoryText } from './ui.js';
 import { initSwipeActions } from './swipeHandler.js';
-import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState, pushBoletoToSupabase, deleteBoletoFromSupabase, pushCuentaToSupabase, deleteCuentaFromSupabase } from './supabaseClient.js';
+import { getUser, signInWithEmail, signUpWithEmail, signOutUser, pullSupabaseToLocalState, onAuthChange, getEraseReceiptFromSupabase } from './supabaseClient.js';
+import { runConfirmedAction, isActionBusy } from './confirmedActions.js';
+import { getCreationDraft, getPendingCreation, completeCreation, clearCreationDrafts } from './creationDrafts.js';
 
 const INTERACTION_CONFIG = {
     KEYBOARD_FOCUS_DELAY_MS: 300,
@@ -46,69 +48,46 @@ let viewYear = anoActual;
 let modoActual = 'directo';
 let presupuestoCalculadoTemporalCents = 0;
 
-let saveTimeout;
-let isSaving = false;
-let saveQueue = 0;
-
-const executeSave = async () => {
-    if (isSaving) {
-        saveQueue++;
-        return;
-    }
-    
-    isSaving = true;
-    try {
-        await saveStore();
-        
-        // Atualiza a UI apenas se não houver mais salvamentos pendentes
-        if (saveQueue === 0 && !document.getElementById('pantalla-principal').classList.contains('oculto')) {
-            actualizarInterfaz(state, viewMonth, viewYear, hoy);
-        }
-    } catch (error) {
-        if (error && error.name === 'QuotaExceededError') {
-            showToast(t('errStorageFull'));
-        }
-    } finally {
-        isSaving = false;
-        if (saveQueue > 0) {
-            saveQueue = 0; // Reseta a fila e tenta salvar novamente as últimas mutações
-            executeSave();
-        }
-    }
-};
-
+// O store grava o cache depois de confirmar cada operação. Renderizar não envia perfil.
 subscribe((property) => {
-    if (property === 'privacyMode') {
-        actualizarModoPrivacidade();
-        return;
-    }
-    clearTimeout(saveTimeout);
-    // Aumentado para 250ms para agrupar mutações da mesma thread e evitar engasgos
-    saveTimeout = setTimeout(executeSave, 250);
-});
-
-window.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-        if (saveTimeout) clearTimeout(saveTimeout);
-        try {
-            localStorage.setItem('floux_emergency_backup', JSON.stringify({
-                presupuesto: state.presupuestoMensual,
-                historial: state.historialGlobal,
-                cuentas: state.cuentas,
-                boletos: state.boletos,
-                patrimonio: state.historialPatrimonio
-            }));
-        } catch (e) {
-            console.error("Emergency storage failed", e);
-        }
-        executeSave();
+    if (property === 'privacyMode') actualizarModoPrivacidade();
+    if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
+        actualizarInterfaz(state, viewMonth, viewYear, hoy);
     }
 });
+window.addEventListener('floux-cache-warning', e => showToast(e.detail.message));
 
-// Listener global para capturar erros de rede/rollback emitidos por store.js
-window.addEventListener('floux-sync-error', (e) => {
-    showToast(e.detail.message);
-});
+let initRevision = 0;
+let recoveryNotice = '';
+const connectionStatus = document.createElement('div');
+connectionStatus.id = 'floux-connection-status';
+connectionStatus.setAttribute('role', 'status');
+connectionStatus.setAttribute('aria-live', 'polite');
+connectionStatus.style.cssText = 'padding:12px;margin:8px 0;border-radius:12px;background:var(--bg-color);color:var(--text-color);font-size:0.9rem;';
+document.getElementById('app-movil').prepend(connectionStatus);
+function setConnectionStatus(message, retry = false) {
+    connectionStatus.replaceChildren();
+    connectionStatus.hidden = !message;
+    if (!message) return;
+    const text = document.createElement('span');
+    text.textContent = message;
+    connectionStatus.appendChild(text);
+    if (retry) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn-base btn-secundario btn-pequeno';
+        button.textContent = 'Atualizar dados';
+        button.addEventListener('click', () => {
+            if (isActionBusy()) return;
+            if (gastoEnEdicion !== null || document.getElementById('input-desc').value.trim() ||
+                Number(document.getElementById('input-monto').dataset.cents || 0) > 0) {
+                if (!confirm('Atualizar vai recarregar as telas. Deseja descartar o formulário ainda não salvo?')) return;
+            }
+            init();
+        });
+        connectionStatus.appendChild(button);
+    }
+}
 
 // Oculta exclusivamente as secções principais da aplicação
 function ocultarTodasPantallas() {
@@ -187,7 +166,7 @@ if (btnLembrete) {
     });
 }
 
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
     if (settingsDropdown && !settingsDropdown.classList.contains('oculto')) {
         const isClickInsideMenu = settingsDropdown.contains(e.target);
         const isClickOnToggle = btnSettingsToggle && btnSettingsToggle.contains(e.target);
@@ -199,8 +178,7 @@ document.addEventListener('click', (e) => {
     const btnEliminarBoleto = e.target.closest('.btn-eliminar-boleto');
     if (btnEliminarBoleto) {
         const idDel = btnEliminarBoleto.dataset.id;
-        state.boletos = state.boletos.filter(b => b.id !== idDel);
-        deleteBoletoFromSupabase(idDel).catch(console.error);
+        if (!await runConfirmedAction(btnEliminarBoleto, () => removeBoleto(idDel))) return;
         renderBoletosList(state);
         recalcularPresupuestoOnboarding();
         return;
@@ -223,15 +201,17 @@ document.addEventListener('click', (e) => {
                 .replace('{monto}', formatCurrency(boleto.monto, state.monedaActual));
 
             if (confirm(msgConfirm)) {
-                addExpense({
-                    id: Date.now(),
+                const draft = getCreationDraft(`bill-payment:${boleto.id}:${new Date().getFullYear()}-${new Date().getMonth()}`);
+                if (!await runConfirmedAction(btnPagar, () => confirmCreatedExpense({
+                    id: draft.id,
                     monto: boleto.monto,
                     desc: boleto.desc,
-                    fecha: new Date().toISOString(),
+                    fecha: draft.createdAt,
                     categoria: boleto.categoria,
                     cuentaId: cuentaId,
                     boletoId: boleto.id
-                });
+                }))) return;
+                completeCreation(draft);
                 if (navigator.vibrate) navigator.vibrate(15);
                 showToast(" " + t('toastBillPaid'));
                 renderBoletosList(state);
@@ -245,8 +225,7 @@ document.addEventListener('click', (e) => {
     const btnCuentaDelete = e.target.closest('.btn-eliminar-cuenta');
     if (btnCuentaDelete) {
         const idDel = btnCuentaDelete.dataset.id;
-        state.cuentas = state.cuentas.filter(c => c.id !== idDel);
-        deleteCuentaFromSupabase(idDel).catch(console.error);
+        if (!await runConfirmedAction(btnCuentaDelete, () => removeCuenta(idDel))) return;
         renderCuentasList(state);
     }
 });
@@ -260,12 +239,11 @@ function actualizarModoPrivacidade() {
         document.body.classList.remove('privacy-mode');
         btnPrivacidade.innerText = '👁️';
     }
-    syncProfileToSupabase();
 }
 
 if (btnPrivacidade) {
-    btnPrivacidade.addEventListener('click', () => {
-        state.privacyMode = !state.privacyMode;
+    btnPrivacidade.addEventListener('click', async () => {
+        await runConfirmedAction(btnPrivacidade, () => updateProfile({ privacyMode: !state.privacyMode }));
     });
 }
 
@@ -281,12 +259,18 @@ async function actualizarEstadoAuthUI() {
 }
 
 document.getElementById('btn-logout')?.addEventListener('click', async () => {
-    if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    if (confirm(t('confirmLogout'))) {
+    if (isActionBusy()) { showToast('Aguarde a operação em andamento antes de sair.'); return; }
+    if (!confirm(t('confirmLogout'))) return;
+    initRevision++;
+    resetSession();
+    hideUserData();
+    try {
         await signOutUser();
         showToast(t('authLogoutSuccess'));
-        location.reload();
+    } catch {
+        showToast('Não foi possível encerrar a sessão na nuvem. Verifique a conexão e tente novamente.');
     }
+    await init();
 });
 
 // Alternador de Abas (Entrar / Criar Conta)
@@ -322,8 +306,8 @@ document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     
     try {
         if (authMode === 'signup') {
-            await signUpWithEmail(email, password);
-            showToast(t('authSuccessSignup'));
+            const result = await signUpWithEmail(email, password);
+            showToast(result.session ? t('authSuccessSignup') : 'Confira seu e-mail para confirmar o cadastro antes de entrar.');
         } else {
             await signInWithEmail(email, password);
             showToast(t('authSuccessLogin'));
@@ -337,69 +321,120 @@ document.getElementById('form-auth')?.addEventListener('submit', async (e) => {
     }
 });
 
-// Inicialização Local-First
+function hideUserData() {
+    const header = document.querySelector('.header-app');
+    if (header) header.style.display = 'none';
+    ocultarTodasPantallas();
+    document.getElementById('btn-fab-gasto')?.classList.add('oculto');
+    document.getElementById('settings-dropdown')?.classList.add('oculto');
+    document.getElementById('user-email-display').textContent = '';
+    pendingExpenseDraft = null;
+    setGastoEnEdicion(null);
+    viewMonth = hoy.getMonth();
+    viewYear = hoy.getFullYear();
+    setFiltroHistorial('todos', null);
+    resetFiltrosHistorialState();
+    // Retirar dados financeiros do DOM ao trocar/encerrar identidade.
+    for (const id of ['lista-historial','lista-cuentas','lista-onboarding-cuentas','lista-boletos','lista-onboarding-boletos','lista-vault-historial','nw-chart-container','grafico-categorias','filtros-historial','strip-calendario-dias','categoria-chips','input-cuenta-origen','input-nw-cuenta','input-boleto-categoria','input-onboarding-boleto-categoria']) {
+        document.getElementById(id)?.replaceChildren();
+    }
+    for (const id of ['display-diario','display-mensual','display-gastado','display-limite-hoje','nw-display-total','nw-display-variation','summary-performance','summary-largest','summary-daily']) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.dataset.animationVersion = String(Number(element.dataset.animationVersion || 0) + 1);
+            element.textContent = ''; element.dataset.rawVal = '0';
+        }
+    }
+    for (const input of document.querySelectorAll('input')) {
+        input.value = input.defaultValue;
+        if (input.type === 'checkbox') input.checked = input.defaultChecked;
+        if (input.dataset.cents !== undefined) input.dataset.cents = '0';
+    }
+    resetFormularioGasto(setGastoEnEdicion);
+    document.body.classList.remove('privacy-mode');
+}
+function resolveInitialScreen() {
+    inputMoneda.value = state.monedaActual;
+    actualizarModoPrivacidade();
+    aplicarTraduccion(gastoEnEdicion);
+    document.documentElement.lang = currentLang;
+    renderizarSelectCategorias(state.categoriasCustom);
+    renderCuentasList(state);
+    renderBoletosList(state);
+    if (state.presupuestoMensual > 0) mostrarPantallaPrincipal();
+    else {
+        ocultarTodasPantallas();
+        document.getElementById('pantalla-configuracion').classList.remove('oculto');
+        goWizardStep(1);
+        tabDirecto.click();
+    }
+}
+
+// Hidratação termina antes de liberar alterações. Nenhum pull tardio pisa em uma edição.
 async function init() {
-    const user = await getUser();
-    const headerApp = document.querySelector('.header-app');
-    
-    if (!user) {
-        if (headerApp) headerApp.style.display = 'none';
-        
-        transicionPantalla(() => {
-            ocultarTodasPantallas();
-            document.getElementById('pantalla-auth').classList.remove('oculto');
-        });
+    const revision = ++initRevision;
+    resetSession();
+    hideUserData();
+    setConnectionStatus('Verificando sessão e recuperando dados…');
+    let user;
+    try { user = await getUser(); }
+    catch {
+        if (revision !== initRevision) return;
+        document.getElementById('pantalla-auth').classList.remove('oculto');
+        aplicarTraduccion(null);
+        setConnectionStatus('Não foi possível verificar sua sessão. Conecte para entrar.', true);
         return;
     }
-    
-    if (headerApp) headerApp.style.display = 'grid';
-    
-    // 1. CARREGA DADOS LOCAIS DO INDEXEDDB (BOOT INSTANTÂNEO EM ~50ms)
-    const hasData = await loadStore();
-    inputMoneda.value = state.monedaActual;
-    
-    actualizarModoPrivacidade();
-    await actualizarEstadoAuthUI();
-    
-    aplicarTraduccion(gastoEnEdicion);
-    renderizarSelectCategorias(state.categoriasCustom);
-    
-    if (hasData && state.presupuestoMensual > 0) {
-        mostrarPantallaPrincipal();
-    } else {
-        transicionPantalla(() => {
-            ocultarTodasPantallas();
-            document.getElementById('pantalla-configuracion').classList.remove('oculto');
-            document.getElementById('wizard-step-1')?.classList.remove('oculto');
-            document.getElementById('modo-directo')?.classList.remove('oculto');
-            document.getElementById('modo-calculadora')?.classList.add('oculto');
-            document.getElementById('wizard-ind-1')?.classList.add('active');
-        });
+    if (revision !== initRevision) return;
+    ensureAuthListener();
+    if (!user) {
+        document.getElementById('pantalla-auth').classList.remove('oculto');
+        aplicarTraduccion(null);
+        setConnectionStatus('');
+        return;
     }
-
-    // 2. SINCRONIZAÇÃO EM SEGUNDO PLANO COM SUPABASE (NÃO BLOQUEIA A TELA)
-    pullSupabaseToLocalState().then(async (remoteData) => {
-        if (remoteData) {
-            if (remoteData.presupuestoMensual) state.presupuestoMensual = remoteData.presupuestoMensual;
-            if (remoteData.monedaActual) state.monedaActual = remoteData.monedaActual;
-            if (remoteData.cuentas) state.cuentas = remoteData.cuentas;
-            if (remoteData.boletos) state.boletos = remoteData.boletos;
-            if (remoteData.historialPatrimonio) state.historialPatrimonio = remoteData.historialPatrimonio;
-            if (remoteData.historialGlobal) replaceHistory(remoteData.historialGlobal);
-            await saveStore();
-
-            inputMoneda.value = state.monedaActual;
-            renderizarSelectCategorias(state.categoriasCustom);
-            renderCuentasList(state);
-            renderBoletosList(state);
-
-            if (!document.getElementById('pantalla-principal').classList.contains('oculto')) {
-                actualizarInterfaz(state, viewMonth, viewYear, hoy);
+    let hasCache = false;
+    recoveryNotice = '';
+    try { hasCache = await loadStore(user.id); }
+    catch {
+        recoveryNotice = 'A cópia local anterior foi preservada, mas não pôde ser carregada. ';
+    }
+    if (revision !== initRevision || getStoreUserId() !== user.id) return;
+    try {
+        const pendingErase = getPendingCreation('erase-app');
+        if (pendingErase) {
+            // Verifica uma exclusão anterior, sem executar uma nova ao abrir.
+            const receipt = await getEraseReceiptFromSupabase(String(pendingErase.id), user.id);
+            if (revision !== initRevision || getStoreUserId() !== user.id) return;
+            if (receipt) {
+                resetSession(user.id);
+                clearCreationDrafts(user.id);
+                try { await clearCurrentUserCache(); } catch { /* A nuvem já confirmou. */ }
+                hasCache = false;
             }
         }
-    }).catch(err => {
-        console.error("Erro na sincronização em segundo plano:", err);
-    });
+        const remote = await pullSupabaseToLocalState(user.id);
+        if (revision !== initRevision || getStoreUserId() !== user.id) return;
+        if (!remote && hasCache && hasUserData()) throw new Error('O perfil da nuvem não foi encontrado. A cópia local foi preservada.');
+        if (remote) applyRemoteSnapshot(remote, user.id);
+        try { await saveStore(); }
+        catch { recoveryNotice += 'Os dados vieram da nuvem, mas a cópia local não pôde ser gravada. '; }
+        if (revision !== initRevision || getStoreUserId() !== user.id) return;
+        markStoreReady(user.id);
+        document.querySelector('.header-app').style.display = 'grid';
+        document.getElementById('user-email-display').textContent = user.email || '';
+        resolveInitialScreen();
+        setConnectionStatus(recoveryNotice);
+    } catch (error) {
+        if (revision !== initRevision || getStoreUserId() !== user.id) return;
+        document.querySelector('.header-app').style.display = 'grid';
+        document.getElementById('user-email-display').textContent = user.email || '';
+        resolveInitialScreen();
+        setConnectionStatus(recoveryNotice + (hasCache
+            ? 'Exibindo somente a cópia local desta conta. Alterações bloqueadas até concluir a atualização. '
+            : 'Não foi possível recuperar os dados. Alterações bloqueadas para proteger seu histórico. ') +
+            (error.message || ''), true);
+    }
 }
 
 function mostrarPantallaPrincipal() {
@@ -408,20 +443,8 @@ function mostrarPantallaPrincipal() {
         document.getElementById('pantalla-principal').classList.remove('oculto');
     });
     
-    viewMonth = hoy.getMonth();
-    viewYear = hoy.getFullYear();
-    setFiltroHistorial('todos', null);
-    resetFiltrosHistorialState();
-    resetFormularioGasto(setGastoEnEdicion);
+    // Retornar conserva mês, filtros e formulário da mesma sessão.
     actualizarInterfaz(state, viewMonth, viewYear, hoy);
-    
-    setTimeout(() => {
-        const inputMonto = document.getElementById('input-monto');
-        if (inputMonto) {
-            inputMonto.focus();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, INTERACTION_CONFIG.KEYBOARD_FOCUS_DELAY_MS || 300);
 }
 
 document.getElementById('btn-mostrar-mais-historial')?.addEventListener('click', () => {
@@ -444,7 +467,6 @@ const triggerShimmer = () => {
 
 document.getElementById('btn-prev-month').addEventListener('click', () => {
     triggerShimmer();
-    resetFormularioGasto(setGastoEnEdicion);
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     setFiltroHistorial('todos', null);
@@ -454,7 +476,6 @@ document.getElementById('btn-prev-month').addEventListener('click', () => {
 
 document.getElementById('btn-next-month').addEventListener('click', () => {
     triggerShimmer();
-    resetFormularioGasto(setGastoEnEdicion);
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     setFiltroHistorial('todos', null);
@@ -528,9 +549,9 @@ document.querySelectorAll('.input-calc').forEach(input => {
     input.addEventListener('input', recalcularPresupuestoOnboarding);
 });
 
-inputMoneda.addEventListener('change', () => {
-    state.monedaActual = inputMoneda.value;
-    syncProfileToSupabase();
+inputMoneda.addEventListener('change', async () => {
+    const desired = inputMoneda.value;
+    if (!await runConfirmedAction(inputMoneda, () => updateProfile({ monedaActual: desired }))) { inputMoneda.value = state.monedaActual; return; }
     recalcularPresupuestoOnboarding();
     renderBoletosList(state);
     renderCuentasList(state);
@@ -555,25 +576,27 @@ function goWizardStep(step) {
     });
 }
 
-document.getElementById('btn-wizard-next-1').addEventListener('click', () => {
+document.getElementById('btn-wizard-next-1').addEventListener('click', async (e) => {
     const inputVal = parseFloat(inputPresupuesto.value);
     const nuevoPresupuesto = modoActual === 'directo' ? Math.round((isNaN(inputVal) ? 0 : inputVal) * 100) : presupuestoCalculadoTemporalCents;
     
-    if (nuevoPresupuesto <= 0) {
+    if (!Number.isSafeInteger(nuevoPresupuesto) || nuevoPresupuesto <= 0) {
         alert(t('errorBudget'));
         return;
     }
-    state.presupuestoMensual = nuevoPresupuesto;
-    syncProfileToSupabase();
+    if (!await runConfirmedAction(e.currentTarget, () => updateProfile({ presupuestoMensual: nuevoPresupuesto }))) return;
     renderCuentasList(state);
     goWizardStep(2);
 });
 
 document.getElementById('btn-wizard-back-1').addEventListener('click', () => goWizardStep(1));
-document.getElementById('btn-wizard-next-2').addEventListener('click', () => goWizardStep(3));
+document.getElementById('btn-wizard-next-2').addEventListener('click', () => {
+    if (!state.cuentas.some(c => c.tipo === 'cash' || c.tipo === 'credit')) { showToast('Cadastre uma conta ou cartão antes de continuar.'); return; }
+    goWizardStep(3);
+});
 document.getElementById('btn-wizard-back-2').addEventListener('click', () => goWizardStep(2));
 
-document.getElementById('form-onboarding-boleto').addEventListener('submit', (e) => {
+document.getElementById('form-onboarding-boleto').addEventListener('submit', async (e) => {
     e.preventDefault();
     const desc = document.getElementById('input-onboarding-boleto-desc').value.trim();
     const montoInput = document.getElementById('input-onboarding-boleto-monto');
@@ -582,10 +605,11 @@ document.getElementById('form-onboarding-boleto').addEventListener('submit', (e)
     const categoria = document.getElementById('input-onboarding-boleto-categoria').value;
     
     if (desc && montoCents > 0 && dia >= 1 && dia <= 31) {
-        const id = 'bol_' + Date.now();
+        const draft = getCreationDraft('bill-onboarding', 'bol_');
+        const id = draft.id;
         const novoBoleto = { id, desc, monto: montoCents, diaVencimiento: dia, categoria };
-        state.boletos = [...state.boletos, novoBoleto];
-        pushBoletoToSupabase(novoBoleto).catch(console.error);
+        if (!await runConfirmedAction(e.currentTarget, () => addBoleto(novoBoleto))) return;
+        completeCreation(draft);
         
         document.getElementById('input-onboarding-boleto-desc').value = '';
         montoInput.value = '';
@@ -608,22 +632,23 @@ document.getElementById('input-onboarding-cuenta-tipo').addEventListener('change
     }
 });
 
-document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e) => {
+document.getElementById('form-onboarding-cuenta').addEventListener('submit', async (e) => {
     e.preventDefault();
     const nombre = document.getElementById('input-onboarding-cuenta-nombre').value.trim();
     const tipo = document.getElementById('input-onboarding-cuenta-tipo').value;
     const cierreInput = document.getElementById('input-onboarding-cuenta-cierre').value;
     
     if (nombre) {
-        const id = 'acc_' + Date.now();
+        const draft = getCreationDraft('account-onboarding', 'acc_');
+        const id = draft.id;
         const novaCuenta = { 
             id, 
             nombre, 
             tipo, 
             cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
         };
-        state.cuentas = [...state.cuentas, novaCuenta];
-        pushCuentaToSupabase(novaCuenta).catch(console.error);
+        if (!await runConfirmedAction(e.currentTarget, () => addCuenta(novaCuenta))) return;
+        completeCreation(draft);
         
         document.getElementById('input-onboarding-cuenta-nombre').value = '';
         document.getElementById('input-onboarding-cuenta-cierre').value = '';
@@ -632,19 +657,23 @@ document.getElementById('form-onboarding-cuenta').addEventListener('submit', (e)
     }
 });
 
-document.getElementById('btn-comenzar').addEventListener('click', () => {
+document.getElementById('btn-comenzar').addEventListener('click', async (e) => {
+    if (!isStoreReady()) { showToast('Atualize os dados antes de continuar.'); return; }
     if (!document.getElementById('area-gastos-previos').classList.contains('oculto')) {
         const inicialCents = Math.round((parseFloat(document.getElementById('input-gastos-iniciales').value) || 0) * 100);
         if (inicialCents > 0) {
-            const defaultCuenta = state.cuentas.length > 0 ? state.cuentas[0].id : null;
-            addExpense({
-                id: Date.now(),
+            const defaultCuenta = state.cuentas.find(c => c.tipo === 'cash' || c.tipo === 'credit')?.id || null;
+            const draft = getCreationDraft('initial-expense');
+            if (!await runConfirmedAction(e.currentTarget, () => confirmCreatedExpense({
+                id: draft.id,
                 monto: inicialCents,
                 desc: t('prevExpense'),
-                fecha: new Date().toISOString(),
+                fecha: draft.createdAt,
                 categoria: 'otros_previo',
                 cuentaId: defaultCuenta
-            });
+            }))) return;
+            completeCreation(draft);
+            document.getElementById('input-gastos-iniciales').value = '';
         }
     }
     
@@ -704,15 +733,14 @@ if (btnToggleNuevaCat && areaNuevaCat) {
 }
 
 if (btnGuardarNuevaCat) {
-    btnGuardarNuevaCat.addEventListener('click', () => {
+    btnGuardarNuevaCat.addEventListener('click', async () => {
         const nombreInput = document.getElementById('input-nueva-cat-nombre');
         const emojiInput = document.getElementById('input-nueva-cat-emoji');
         const nombre = nombreInput.value.trim();
         const emoji = emojiInput.value.trim() || '🏷️';
         if (nombre) {
-            const newCat = { id: 'custom_' + Date.now(), emoji, nombre };
-            state.categoriasCustom = [...state.categoriasCustom, newCat];
-            syncProfileToSupabase();
+            const newCat = { id: 'custom_' + nextRecordId(), emoji, nombre };
+            if (!await runConfirmedAction(btnGuardarNuevaCat, () => updateProfile({ categoriasCustom: [...state.categoriasCustom, newCat] }))) return;
             nombreInput.value = '';
             emojiInput.value = '';
             areaNuevaCat.classList.add('oculto');
@@ -761,7 +789,8 @@ if (btnGuardarGasto && !document.getElementById('btn-cancelar-edicion')) {
     btnGuardarGasto.insertAdjacentElement('afterend', btnCancelar);
 }
 
-document.getElementById('form-gasto').addEventListener('submit', (e) => {
+let pendingExpenseDraft = null;
+document.getElementById('form-gasto').addEventListener('submit', async (e) => {
     e.preventDefault();
     const inputMonto = document.getElementById('input-monto');
     let montoCents = parseInt(inputMonto.dataset.cents || '0', 10);
@@ -779,15 +808,16 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
     }
     
     const inputCuotas = document.getElementById('input-cuotas');
-    const cuotas = parseInt(inputCuotas?.value, 10) || 1;
+    const cuotas = Number(inputCuotas?.value || 1);
     
-    if (cuotas < 1) {
+    if (!Number.isInteger(cuotas) || cuotas < 1 || cuotas > 360 || cuotas > montoCents) {
         showToast(t('errInvalid') || "Erro: Parcelas inválidas.");
         return;
     }
     const inputFecha = document.getElementById('input-fecha-gasto').value;
     const dataBase = inputFecha ? new Date(inputFecha + 'T12:00:00') : new Date();
     
+    if (!Number.isFinite(dataBase.getTime())) { showToast('Data inválida.'); return; }
     const checkboxMarcado = document.getElementById('checkbox-mes-siguiente').checked;
     const startOffset = checkboxMarcado ? 1 : 0;
     
@@ -806,14 +836,16 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                 mesEfectivo = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
                 fechaIso = futureDate.toISOString();
             }
-            updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: fechaIso });
+            if (!await runConfirmedAction(e.currentTarget, () => updateExpense(gastoEnEdicion, { monto: montoCents, desc, categoria: cat, mesEfectivo, cuentaId, fecha: fechaIso }))) return;
             resetFormularioGasto(setGastoEnEdicion);
         } else {
             const montoCuotaNormal = Math.floor(montoCents / cuotas);
             const montoUltimaCuota = montoCents - (montoCuotaNormal * (cuotas - 1));
             
             const nuevasCuotas = [];
-            const groupId = 'group_' + Date.now();
+            const fingerprint = JSON.stringify({ montoCents, desc, cat, cuentaId, cuotas, inputFecha, startOffset, userId: getStoreUserId() });
+            const previousDraft = pendingExpenseDraft?.fingerprint === fingerprint ? pendingExpenseDraft.items : null;
+            const groupId = previousDraft?.[0]?.groupId || 'group_' + nextRecordId();
             for (let i = 0; i < cuotas; i++) {
                 const totalMonthOffset = startOffset + i;
                 let mesEfectivo = undefined;
@@ -829,7 +861,7 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                 const montoMapeado = (i === cuotas - 1) ? montoUltimaCuota : montoCuotaNormal;
                 
                 nuevasCuotas.push({
-                    id: Date.now() + i,
+                    id: previousDraft?.[i]?.id ?? nextRecordId(),
                     groupId: groupId,
                     monto: montoMapeado,
                     desc: descCuota,
@@ -839,7 +871,9 @@ document.getElementById('form-gasto').addEventListener('submit', (e) => {
                     cuentaId
                 });
             }
-            addMultipleExpenses(nuevasCuotas);
+            pendingExpenseDraft = { fingerprint, items: nuevasCuotas };
+            if (!await runConfirmedAction(e.currentTarget, () => addMultipleExpenses(nuevasCuotas))) return;
+            pendingExpenseDraft = null;
             resetFormularioGasto(setGastoEnEdicion);
         }
         
@@ -878,22 +912,23 @@ if (inputCuentaTipo) {
 
 const formCuenta = document.getElementById('form-cuenta');
 if (formCuenta) {
-    formCuenta.addEventListener('submit', (e) => {
+    formCuenta.addEventListener('submit', async (e) => {
         e.preventDefault();
         const nombre = document.getElementById('input-cuenta-nombre').value.trim();
         const tipo = document.getElementById('input-cuenta-tipo').value;
         const cierreInput = document.getElementById('input-cuenta-cierre').value;
         
         if (nombre) {
-            const id = 'acc_' + Date.now();
+            const draft = getCreationDraft('account', 'acc_');
+            const id = draft.id;
             const novaCuenta = { 
                 id, 
                 nombre, 
                 tipo, 
                 cierreTC: tipo === 'credit' && cierreInput ? parseInt(cierreInput, 10) : null 
             };
-            state.cuentas = [...state.cuentas, novaCuenta];
-            pushCuentaToSupabase(novaCuenta).catch(console.error);
+            if (!await runConfirmedAction(e.currentTarget, () => addCuenta(novaCuenta))) return;
+            completeCreation(draft);
             
             document.getElementById('input-cuenta-nombre').value = '';
             document.getElementById('input-cuenta-cierre').value = '';
@@ -916,7 +951,7 @@ document.getElementById('btn-menu-boletos').addEventListener('click', () => {
 
 document.getElementById('btn-cerrar-boletos')?.addEventListener('click', mostrarPantallaPrincipal);
 
-document.getElementById('form-boleto').addEventListener('submit', (e) => {
+document.getElementById('form-boleto').addEventListener('submit', async (e) => {
     e.preventDefault();
     const desc = document.getElementById('input-boleto-desc').value.trim();
     const montoInput = document.getElementById('input-boleto-monto');
@@ -925,10 +960,11 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
     const categoria = document.getElementById('input-boleto-categoria').value;
     
     if (desc && montoCents > 0 && dia >= 1 && dia <= 31) {
-        const id = 'bol_' + Date.now();
+        const draft = getCreationDraft('bill', 'bol_');
+        const id = draft.id;
         const novoBoleto = { id, desc, monto: montoCents, diaVencimiento: dia, categoria };
-        state.boletos = [...state.boletos, novoBoleto];
-        pushBoletoToSupabase(novoBoleto).catch(console.error);
+        if (!await runConfirmedAction(e.currentTarget, () => addBoleto(novoBoleto))) return;
+        completeCreation(draft);
         
         document.getElementById('input-boleto-desc').value = '';
         montoInput.value = '';
@@ -941,7 +977,6 @@ document.getElementById('form-boleto').addEventListener('submit', (e) => {
 
 document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
     history.pushState({ view: 'configuracion' }, '');
-    resetFormularioGasto(setGastoEnEdicion);
     
     transicionPantalla(() => {
         ocultarTodasPantallas();
@@ -959,24 +994,43 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
     inputMoneda.value = state.monedaActual;
 });
 
-document.getElementById('btn-reiniciar').addEventListener('click', () => {
-    if (settingsDropdown) settingsDropdown.classList.add('oculto');
-    if(confirm(t('alertReset'))) {
-        resetFormularioGasto(setGastoEnEdicion);
-        const req = indexedDB.open('FlouxDB', 1);
-        req.onsuccess = (e) => {
-            const db = e.target.result;
-            const tx = db.transaction('floux_store', 'readwrite');
-            tx.objectStore('floux_store').clear();
-            tx.oncomplete = () => {
-                localStorage.clear();
-                db.close();
-                location.reload();
-            };
-        };
-        req.onerror = () => location.reload();
+const eraseButton = document.getElementById('btn-reiniciar');
+eraseButton.setAttribute('aria-label', 'Apagar meus dados do Floux');
+eraseButton.addEventListener('click', async (e) => {
+    if (isActionBusy()) { showToast(t('actionWait')); return; }
+    if (!isStoreReady()) { showToast('Atualize os dados antes de apagar.'); return; }
+    const userId = getStoreUserId();
+    const email = document.getElementById('user-email-display').textContent;
+    const answer = prompt(`Apagar os dados do Floux de ${email || 'sua conta'}?\n\nSerão apagados gastos, contas, boletos, patrimônio, orçamento e preferências da nuvem. Seu login continuará existindo. Não há desfazer.\n\nFeche o Floux em outros dispositivos antes de continuar.\n\nDigite APAGAR para confirmar:`);
+    if (answer !== 'APAGAR') return;
+    const draft = getCreationDraft('erase-app', 'reset_');
+    if (!await runConfirmedAction(e.currentTarget, () => eraseUserData(String(draft.id)), { label: t('actionDeleting') })) {
+        // Se a resposta se perdeu, o recibo permite confirmar sem repetir DELETE.
+        await init();
+        return;
     }
+    clearCreationDrafts(userId);
+    try { await clearCurrentUserCache(); } catch { /* O snapshot já está vazio e a nuvem confirmou. */ }
+    try {
+        const channel = new BroadcastChannel('floux-reset-v1');
+        channel.postMessage({ userId });
+        channel.close();
+    } catch { /* Reabra outras abas se este recurso não existir. */ }
+    await init();
+    showToast('Seus dados do Floux foram apagados. Seu login foi mantido.');
 });
+try {
+    const resetChannel = new BroadcastChannel('floux-reset-v1');
+    resetChannel.addEventListener('message', async ({ data }) => {
+        if (data?.userId !== getStoreUserId()) return;
+        initRevision++;
+        resetSession(data.userId);
+        hideUserData();
+        clearCreationDrafts(data.userId);
+        try { await clearCurrentUserCache(); } catch { /* A leitura da nuvem decidirá o estado. */ }
+        await init();
+    });
+} catch { /* Navegadores sem BroadcastChannel não sincronizam o reset entre abas. */ }
 
 const fabGasto = document.getElementById('btn-fab-gasto');
 if (fabGasto) {
@@ -1022,8 +1076,8 @@ document.getElementById('btn-abrir-flouxvault')?.addEventListener('click', async
 });
 
 initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.SWIPE, {
-    onDelete: (id) => {
-        const gasto = state.historialGlobal.find(g => g.id === id);
+    onDelete: async (id) => {
+        const gasto = state.historialGlobal.find(g => String(g.id) === String(id));
         if (!gasto) return;
         const isInstallment = /\(\d+\/\d+\)$/.test((gasto.desc || '').trim());
         
@@ -1043,7 +1097,7 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
                 const deleteAll = confirm(t('confirmDeleteAllInst'));
                 if (deleteAll) {
                     const idsToRemove = relatedExpenses.map(r => r.id);
-                    removeMultipleExpenses(idsToRemove);
+                    if (!await runConfirmedAction(document.getElementById('lista-historial'), () => removeMultipleExpenses(idsToRemove))) return;
                     
                     if (gastoEnEdicion && idsToRemove.includes(gastoEnEdicion)) resetFormularioGasto(setGastoEnEdicion);
                     if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
@@ -1053,15 +1107,16 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
             }
         }
         
-        removeExpense(id);
-        if (gastoEnEdicion === id) resetFormularioGasto(setGastoEnEdicion);
+        if (!await runConfirmedAction(document.getElementById('lista-historial'), () => removeExpense(id))) return;
+        if (gastoEnEdicion !== null && String(gastoEnEdicion) === String(id)) resetFormularioGasto(setGastoEnEdicion);
         if (navigator.vibrate) navigator.vibrate(INTERACTION_CONFIG.HAPTICS.DELETE_PATTERN_MS);
         showToast(" " + t('toastDeleted'));
     },
     onEdit: (id) => {
-        const gasto = state.historialGlobal.find(g => g.id === id);
+        if (isActionBusy()) { showToast(t('actionWait')); return; }
+        const gasto = state.historialGlobal.find(g => String(g.id) === String(id));
         if (gasto) {
-            setGastoEnEdicion(id);
+            setGastoEnEdicion(gasto.id);
             actualizarInterfaz(state, viewMonth, viewYear, hoy);
             document.getElementById('checkbox-mes-siguiente').checked = false;
             const inputMonto = document.getElementById('input-monto');
@@ -1124,6 +1179,22 @@ initSwipeActions(document.getElementById('lista-historial'), INTERACTION_CONFIG.
     }
 });
 
+let authUnsubscribe = null;
+function ensureAuthListener() {
+    if (authUnsubscribe) return;
+    try {
+        authUnsubscribe = onAuthChange((event, session) => {
+            if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return;
+            if ((session?.user?.id || null) !== getStoreUserId()) {
+                initRevision++;
+                resetSession();
+                hideUserData();
+                setTimeout(() => init(), 0);
+            }
+        });
+    } catch { /* Nova tentativa em init quando o SDK da CDN estiver disponível. */ }
+}
+ensureAuthListener();
 init();
 
 if ('serviceWorker' in navigator) {

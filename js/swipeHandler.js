@@ -88,7 +88,7 @@ export function initSwipeActions(listaElement, config, callbacks) {
             activeItem = null;
         }
 
-        if (btnDelete && callbacks.onDelete) callbacks.onDelete(parseInt(btnDelete.getAttribute('data-id'), 10));
-        else if (btnEdit && callbacks.onEdit) callbacks.onEdit(parseInt(btnEdit.getAttribute('data-id'), 10));
+        if (btnDelete && callbacks.onDelete) callbacks.onDelete(btnDelete.getAttribute('data-id'));
+        else if (btnEdit && callbacks.onEdit) callbacks.onEdit(btnEdit.getAttribute('data-id'));
     });
 }
