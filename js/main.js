@@ -537,6 +537,13 @@ tabDirecto.addEventListener('click', () => {
     tabCalc.classList.remove('active');
     modoDirecto.classList.remove('oculto');
     modoCalculadora.classList.add('oculto');
+    
+    // Garante liberação do botão se houvesse erro preso no modo calculadora
+    const btnWizardNext = document.getElementById('btn-wizard-next-1');
+    if (btnWizardNext) {
+        btnWizardNext.disabled = false;
+        btnWizardNext.style.opacity = '1';
+    }
 });
 
 tabCalc.addEventListener('click', () => {
@@ -551,19 +558,49 @@ tabCalc.addEventListener('click', () => {
 
 function recalcularPresupuestoOnboarding() {
     if (modoActual !== 'calculadora') return;
-    
+
     const rentaCents = Math.round((parseFloat(inputIngresos?.value) || 0) * 100);
+    
+    const pctLargo = parseFloat(document.getElementById('input-pct-largo')?.value) || 0;
+    const pctCorto = parseFloat(document.getElementById('input-pct-corto')?.value) || 0;
+    const pctEdu = parseFloat(document.getElementById('input-pct-edu')?.value) || 0;
     const pctViver = parseFloat(inputPctViver?.value) || 0;
     const pctLivre = parseFloat(inputPctLivre?.value) || 0;
-    
+
+    const totalPct = pctLargo + pctCorto + pctEdu + pctViver + pctLivre;
+
+    const msgErrorPct = document.getElementById('msg-error-pct');
+    const spanTotalPct = document.getElementById('span-total-pct');
+    const btnWizardNext = document.getElementById('btn-wizard-next-1');
+
+    // Validação de alocação de porcentagem > 100%
+    if (totalPct > 100) {
+        if (msgErrorPct) msgErrorPct.classList.remove('oculto');
+        if (spanTotalPct) spanTotalPct.innerText = totalPct;
+        if (btnWizardNext) {
+            btnWizardNext.disabled = true;
+            btnWizardNext.style.opacity = '0.5';
+        }
+        displayNetSurvival.innerText = '---';
+        displayFreeSpending.innerText = '---';
+        displayCalculado.innerText = '---';
+        return;
+    } else {
+        if (msgErrorPct) msgErrorPct.classList.add('oculto');
+        if (btnWizardNext) {
+            btnWizardNext.disabled = false;
+            btnWizardNext.style.opacity = '1';
+        }
+    }
+
     const tetoSobrevivenciaCents = Math.round(rentaCents * (pctViver / 100));
     const tetoLivreCents = Math.round(rentaCents * (pctLivre / 100));
-    
+
     const totalBoletosCents = state.boletos.reduce((acc, b) => acc + b.monto, 0);
     const supervivenciaLiquidaCents = Math.max(0, tetoSobrevivenciaCents - totalBoletosCents);
-    
+
     presupuestoCalculadoTemporalCents = supervivenciaLiquidaCents + tetoLivreCents;
-    
+
     displayNetSurvival.innerText = formatCurrency(supervivenciaLiquidaCents, inputMoneda.value);
     displayFreeSpending.innerText = formatCurrency(tetoLivreCents, inputMoneda.value);
     displayCalculado.innerText = formatCurrency(presupuestoCalculadoTemporalCents, inputMoneda.value);
@@ -1022,9 +1059,10 @@ document.getElementById('form-boleto').addEventListener('submit', async (e) => {
     }
 });
 
-document.getElementById('btn-editar-presupuesto').addEventListener('click', () => {
+const handleAbrirPresupuesto = () => {
+    if (settingsDropdown) settingsDropdown.classList.add('oculto');
     history.pushState({ view: 'configuracion' }, '');
-    
+
     transicionPantalla(() => {
         ocultarTodasPantallas();
         document.getElementById('pantalla-configuracion').classList.remove('oculto');
@@ -1036,10 +1074,13 @@ document.getElementById('btn-editar-presupuesto').addEventListener('click', () =
         document.getElementById('wizard-ind-2').classList.remove('active');
         document.getElementById('wizard-ind-3').classList.remove('active');
     });
-    
+
     inputPresupuesto.value = (state.presupuestoMensual / 100).toString();
     inputMoneda.value = state.monedaActual;
-});
+};
+
+document.getElementById('btn-editar-presupuesto')?.addEventListener('click', handleAbrirPresupuesto);
+document.getElementById('btn-menu-ajustar-presupuesto')?.addEventListener('click', handleAbrirPresupuesto);
 
 const eraseButton = document.getElementById('btn-reiniciar');
 eraseButton.setAttribute('aria-label', 'Apagar meus dados do Floux');
